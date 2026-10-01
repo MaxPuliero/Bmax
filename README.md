@@ -2,6 +2,12 @@
 
 Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization and a more convenient rigging interface. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
+## Download for Windows
+
+[**Download Bmax for Windows from Gumroad**](https://maxpuliero.gumroad.com/l/bmax)
+
+Sorry I can't include the compiled Windows build directly in this GitHub repository: the package is too large. Please download it from Gumroad using the link above. The full Bmax source code is available here.
+
 ## Features
 
 ### Absolute Octahedral Radius
