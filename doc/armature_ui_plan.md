@@ -269,3 +269,8 @@ Nuove ossa e file privi del campo ricevono 0,03; i valori personalizzati
 si conservano in Bmax e nei passaggi di modo. Sostituisce la regola 3x raggio.
 Come Octahedral Radius, il nuovo campo non viene conservato risalvando il
 file da Blender ufficiale. La scala dell'oggetto si applica alla visualizzazione.
+
+
+## Publication status (supersedes earlier historical notes)
+
+Published as MaxPuliero/Bmax. The current executables are blender.exe and blender-launcher.exe; branding remains Bmax. Axis Size is independent, default 0.03 units. The corrected Max Puliero Pie Menu List 1.0.1 addon is included under extras/addons. Relationship filtering, 0.2-unit new-bone length and coincident selection outlines remain planned. See the English root README for the current feature list.

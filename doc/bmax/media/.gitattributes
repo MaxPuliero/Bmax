@@ -1,0 +1,1 @@
+*.webp -filter -diff -merge -text
