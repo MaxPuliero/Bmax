@@ -12329,6 +12329,31 @@ static int but_pie_menu_apply(bContext *C, PopupBlockHandle *menu, Button *but, 
   return retval;
 }
 
+static bool pie_menu_tap_gesture_should_confirm(const Block *block,
+                                                const Button *but,
+                                                const float event_xy[2])
+{
+  const int flags = block->pie_data->flags;
+  if (!(flags & PIE_CONFIRM_AFTER_TAP) || !(flags & PIE_CLICK_STYLE) ||
+      !(flags & PIE_ANIMATION_FINISHED) || (flags & PIE_INVALID_DIR) || but == nullptr ||
+      but->pie_dir == UI_RADIAL_NONE || (but->flag & (BUT_DISABLED | UI_HIDDEN)))
+  {
+    return false;
+  }
+
+  float direction[2];
+  button_pie_dir(but->pie_dir, direction);
+  const float *center = block->pie_data->pie_center_spawned;
+  /* Project the item's furthest corner onto its radial direction. Crossing that edge
+   * confirms; moving over the item or back towards the center does not. */
+  const float outer_corner[2] = {
+      (direction[0] >= 0.0f ? but->rect.xmax : but->rect.xmin) - center[0],
+      (direction[1] >= 0.0f ? but->rect.ymax : but->rect.ymin) - center[1]};
+  const float pointer_offset[2] = {event_xy[0] - center[0], event_xy[1] - center[1]};
+  const float outer_distance = dot_v2v2(outer_corner, direction);
+  return dot_v2v2(pointer_offset, direction) > outer_distance + 4.0f * UI_SCALE_FAC;
+}
+
 static Button *block_pie_dir_activate(Block *block, const wmEvent *event, RadialDirection dir)
 {
   if ((block->flag & BLOCK_NUMSELECT) && event->val == KM_PRESS) {
@@ -12462,6 +12487,12 @@ static int pie_handler(bContext *C, const wmEvent *event, PopupBlockHandle *menu
           }
         }
       }
+      /* Also resolve quick gestures once the pie's opening animation has finished. */
+      if (pie_menu_tap_gesture_should_confirm(
+              block, region_find_active_but(menu->region), event_xy))
+      {
+        return but_pie_menu_apply(C, menu, region_find_active_but(menu->region), false);
+      }
     }
 
     if (event->type == block->pie_data->event_type && !is_click_style) {
@@ -12519,6 +12550,12 @@ static int pie_handler(bContext *C, const wmEvent *event, PopupBlockHandle *menu
           }
 
           handle_menu_button(C, event, menu);
+
+          if (Button *gesture_but = region_find_active_but(menu->region);
+              pie_menu_tap_gesture_should_confirm(block, gesture_but, event_xy))
+          {
+            return but_pie_menu_apply(C, menu, gesture_but, false);
+          }
 
           /* mouse move should always refresh the area for pie menus */
           ED_region_tag_redraw(region);

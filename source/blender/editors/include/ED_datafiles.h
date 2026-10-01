@@ -26,6 +26,9 @@ extern const char datatoc_preview_grease_pencil_blend[];
 extern int datatoc_splash_png_size;
 extern const char datatoc_splash_png[];
 
+extern int datatoc_bmax_logo_png_size;
+extern const char datatoc_bmax_logo_png[];
+
 extern int datatoc_bfont_pfb_size;
 extern const char datatoc_bfont_pfb[];
 

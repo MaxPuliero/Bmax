@@ -199,6 +199,10 @@ wmOperatorStatus pie_menu_invoke(bContext *C, const char *idname, const wmEvent 
 
   PieMenu *pie = pie_menu_begin(
       C, CTX_IFACE_(mt->translation_context, mt->label), ICON_NONE, event);
+  /* Bmax: the mode pie opened with Tab also supports an outward gesture after a tap. */
+  if (STREQ(idname, "VIEW3D_MT_object_mode_pie") && event->type == EVT_TABKEY) {
+    pie->pie_block->pie_data->flags |= PIE_CONFIRM_AFTER_TAP;
+  }
   Layout *layout = pie_menu_layout(pie);
 
   menutype_draw(C, mt, layout);

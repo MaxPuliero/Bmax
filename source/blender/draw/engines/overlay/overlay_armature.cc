@@ -210,6 +210,16 @@ class UnifiedBonePtr {
 
   /* For some, to me unknown, reason, the drawing code passes these around as pointers. This is the
    * reason that these are returned as references. I'll leave refactoring that for another time. */
+  float octahedral_radius() const
+  {
+    return is_editbone_ ? eBone_->octahedral_radius : bone_->octahedral_radius;
+  }
+
+  float axis_size() const
+  {
+    return is_editbone_ ? eBone_->axis_size : bone_->axis_size;
+  }
+
   const float &rad_head() const
   {
     return is_editbone_ ? eBone_->rad_head : bone_->rad_head;
@@ -640,9 +650,7 @@ static void drw_shgroup_bone_axes(const Armatures::DrawContext *ctx,
                                   const float color[4])
 {
   float4x4 mat = ctx->ob->object_to_world() * float4x4(bone_mat);
-  /* Move to bone tail. */
-  mat[3] += mat[1];
-  ExtraInstanceData data(mat, color, 0.25f);
+  ExtraInstanceData data(mat, color, 1.0f);
   /* NOTE: Axes are not drawn in bone selection (pose or edit mode).
    * They are only drawn and selectable in object mode. So only load the object select ID. */
   ctx->bone_buf->arrows_buf.append(data, ctx->res->select_id(*ctx->ob_ref));
@@ -1268,34 +1276,56 @@ static void draw_axes(const Armatures::DrawContext *ctx,
   /* Mix with axes color. */
   final_col[3] = (ctx->const_color) ? 1.0 : (bone.flag() & BONE_SELECTED) ? 0.1 : 0.65;
 
+  float axis_mat[4][4];
   if (bone.is_posebone() && bone.as_posebone()->custom && !(arm.flag & ARM_NO_CUSTOM)) {
     const bPoseChannel *pchan = bone.as_posebone();
-    const Bone *pchan_bone = bone.posebone_bone();
-    /* Special case: Custom bones can have different scale than the bone.
-     * Recompute display matrix without the custom scaling applied. (#65640). */
-    float axis_mat[4][4];
-    float length = pchan_bone->length;
+    /* Preserve the custom transform orientation and the existing axis position. */
     copy_m4_m4(axis_mat, pchan->custom_tx ? pchan->custom_tx->pose_mat : pchan->pose_mat);
+    const float length = bone.posebone_bone()->length;
     const float3 length_vec = {length, length, length};
     rescale_m4(axis_mat, length_vec);
-    translate_m4(axis_mat, 0.0, arm.axes_position - 1.0, 0.0);
-
-    drw_shgroup_bone_axes(ctx, axis_mat, final_col);
   }
   else {
-    float disp_mat[4][4];
-    copy_m4_m4(disp_mat, bone.disp_mat());
-    translate_m4(disp_mat, 0.0, arm.axes_position - 1.0, 0.0);
-    drw_shgroup_bone_axes(ctx, disp_mat, final_col);
+    copy_m4_m4(axis_mat, bone.disp_mat());
   }
+  /* Locate the axes with the original bone-length matrix before changing their size. */
+  translate_m4(axis_mat, 0.0f, arm.axes_position, 0.0f);
+  const float axis_length = max_ff(bone.axis_size(), 0.000001f);
+  for (int axis = 0; axis < 3; axis++) {
+    normalize_v3_length(axis_mat[axis], axis_length);
+  }
+  drw_shgroup_bone_axes(ctx, axis_mat, final_col);
 }
 
 static void draw_points(const Armatures::DrawContext *ctx,
                         const UnifiedBonePtr bone,
                         const eBone_Flag boneflag,
                         const float col_solid[4],
-                        const int select_id)
+                        const int select_id,
+                        const bool use_octahedral_radius = false)
 {
+  float octahedral_head_mat[4][4], octahedral_tail_mat[4][4];
+  const float (*head_mat)[4] = bone.disp_mat();
+  const float (*tail_mat)[4] = bone.disp_tail_mat();
+  if (use_octahedral_radius) {
+    /* The radius is independent of rest-bone length. In Pose Mode retain the complete
+     * evaluated pose basis, including non-uniform scale and shear, as standard Blender does. */
+    if (bone.is_posebone()) {
+      copy_m4_m4(octahedral_head_mat, bone.as_posebone()->pose_mat);
+    }
+    else {
+      unit_m4(octahedral_head_mat);
+    }
+    const float radius_scale = max_ff(bone.octahedral_radius(), 0.000001f) / PT_DEFAULT_RAD;
+    const float3 radius_vec = {radius_scale, radius_scale, radius_scale};
+    rescale_m4(octahedral_head_mat, radius_vec);
+    copy_m4_m4(octahedral_tail_mat, octahedral_head_mat);
+    copy_v3_v3(octahedral_head_mat[3], head_mat[3]);
+    copy_v3_v3(octahedral_tail_mat[3], tail_mat[3]);
+    head_mat = octahedral_head_mat;
+    tail_mat = octahedral_tail_mat;
+  }
+
   float col_wire_root[4], col_wire_tail[4];
   float col_hint_root[4], col_hint_tail[4];
 
@@ -1304,7 +1334,8 @@ static void draw_points(const Armatures::DrawContext *ctx,
   copy_v4_v4(col_wire_root, (ctx->const_color) ? ctx->const_color : &theme.colors.vert.x);
   copy_v4_v4(col_wire_tail, (ctx->const_color) ? ctx->const_color : &theme.colors.vert.x);
 
-  const bool is_envelope_draw = (ctx->drawtype == ARM_DRAW_TYPE_ENVELOPE);
+  const bool is_envelope_draw = !use_octahedral_radius &&
+                                (ctx->drawtype == ARM_DRAW_TYPE_ENVELOPE);
   const float envelope_ignore = -1.0f;
 
   col_wire_tail[3] = col_wire_root[3] = get_bone_wire_thickness(ctx, boneflag);
@@ -1349,7 +1380,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
     }
     else {
       drw_shgroup_bone_sphere(
-          ctx, bone.disp_mat(), col_solid, col_hint_root, col_wire_root, select_id | BONESEL_ROOT);
+          ctx, head_mat, col_solid, col_hint_root, col_wire_root, select_id | BONESEL_ROOT);
     }
   }
 
@@ -1365,12 +1396,8 @@ static void draw_points(const Armatures::DrawContext *ctx,
                               select_id | BONESEL_TIP);
   }
   else {
-    drw_shgroup_bone_sphere(ctx,
-                            bone.disp_tail_mat(),
-                            col_solid,
-                            col_hint_tail,
-                            col_wire_tail,
-                            select_id | BONESEL_TIP);
+    drw_shgroup_bone_sphere(
+        ctx, tail_mat, col_solid, col_hint_tail, col_wire_tail, select_id | BONESEL_TIP);
   }
 }
 
@@ -1422,7 +1449,23 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
   auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
-  float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(bone.disp_mat());
+  float display_mat[4][4];
+  copy_m4_m4(display_mat, bone.disp_mat());
+  /* The cached Octahedral geometry has X/Z half-width 0.1. Change only the transverse
+   * display axes: keep the head/tail positions and the common matrix used by other overlays. */
+  const float transverse_scale = max_ff(bone.octahedral_radius(), 0.000001f) / 0.1f;
+  if (bone.is_posebone()) {
+    /* Use the evaluated basis instead of normalizing away pose scale. The cached geometry
+     * receives the absolute rest radius, then the same pose deformation as the actual bone. */
+    const bPoseChannel *pchan = bone.as_posebone();
+    mul_v3_v3fl(display_mat[0], pchan->pose_mat[0], transverse_scale);
+    mul_v3_v3fl(display_mat[2], pchan->pose_mat[2], transverse_scale);
+  }
+  else {
+    normalize_v3_length(display_mat[0], transverse_scale);
+    normalize_v3_length(display_mat[2], transverse_scale);
+  }
+  float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(display_mat);
 
   if (ctx->is_filled) {
     ctx->bone_buf->octahedral_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
@@ -1431,7 +1474,7 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
     ctx->bone_buf->octahedral_outline_buf.append({bone_mat, col_wire}, sel_id);
   }
 
-  draw_points(ctx, bone, boneflag, col_solid, select_id);
+  draw_points(ctx, bone, boneflag, col_solid, select_id, true);
 }
 
 static void bone_draw_line(const Armatures::DrawContext *ctx,
@@ -1998,11 +2041,15 @@ void Armatures::draw_armature_edit(Armatures::DrawContext *ctx)
     bone_draw(drawtype, false, ctx, bone, boneflag, select_id);
 
     if (!is_select) {
-      if (show_text && (arm.flag & ARM_DRAWNAMES)) {
+      if (show_text && (arm.flag & ARM_DRAWNAMES) &&
+          (bone.flag() & (BONE_SELECTED | BONE_ROOTSEL | BONE_TIPSEL)))
+      {
         draw_bone_name(ctx, bone);
       }
 
-      if (arm.flag & ARM_DRAWAXES) {
+      if ((arm.flag & ARM_DRAWAXES) &&
+          (bone.flag() & (BONE_SELECTED | BONE_ROOTSEL | BONE_TIPSEL)))
+      {
         draw_axes(ctx, bone, arm);
       }
     }
@@ -2141,10 +2188,10 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     if (draw_dofs) {
       draw_bone_degrees_of_freedom(ctx, pchan);
     }
-    if (show_text && (arm.flag & ARM_DRAWNAMES)) {
+    if (show_text && (arm.flag & ARM_DRAWNAMES) && (bone_ptr.flag() & BONE_SELECTED)) {
       draw_bone_name(ctx, bone_ptr);
     }
-    if (arm.flag & ARM_DRAWAXES) {
+    if ((arm.flag & ARM_DRAWAXES) && (bone_ptr.flag() & BONE_SELECTED)) {
       draw_axes(ctx, bone_ptr, arm);
     }
   }

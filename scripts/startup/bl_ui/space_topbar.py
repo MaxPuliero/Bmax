@@ -114,7 +114,7 @@ class TOPBAR_MT_editor_menus(Menu):
         if getattr(context.area, "show_menus", False):
             layout.menu("TOPBAR_MT_blender", text="", icon='BLENDER')
         else:
-            layout.menu("TOPBAR_MT_blender", text="Blender")
+            layout.menu("TOPBAR_MT_blender", text="Bmax")
 
         layout.menu("TOPBAR_MT_file")
         layout.menu("TOPBAR_MT_edit")
@@ -126,7 +126,7 @@ class TOPBAR_MT_editor_menus(Menu):
 
 
 class TOPBAR_MT_blender(Menu):
-    bl_label = "Blender"
+    bl_label = "Bmax"
 
     def draw(self, _context):
         layout = self.layout
@@ -320,7 +320,7 @@ class TOPBAR_MT_file_defaults(Menu):
         layout.operator("wm.save_homefile")
         if app_template:
             display_name = bpy.path.display_name(iface_(app_template))
-            props = layout.operator("wm.read_factory_settings", text="Load Factory Blender Settings")
+            props = layout.operator("wm.read_factory_settings", text="Load Factory Bmax Settings")
             props.app_template = app_template
             props = layout.operator(
                 "wm.read_factory_settings",

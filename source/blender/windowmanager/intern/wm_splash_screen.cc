@@ -160,8 +160,8 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   }
 
   if (ibuf == nullptr) {
-    const uchar *splash_data = reinterpret_cast<const uchar *>(datatoc_splash_png);
-    size_t splash_data_size = datatoc_splash_png_size;
+    const uchar *splash_data = reinterpret_cast<const uchar *>(datatoc_bmax_logo_png);
+    size_t splash_data_size = datatoc_bmax_logo_png_size;
     ibuf = IMB_load_image_from_memory(
         splash_data, splash_data_size, ImBufFlags::ByteData, "<splash screen>");
   }
@@ -454,10 +454,17 @@ static ui::Block *wm_block_about_create(bContext *C, ARegion *region, void * /*a
 
 /* Blender logo. */
 #ifndef WITH_HEADLESS
-  constexpr bool show_color = false;
+  constexpr bool show_color = true;
   const float size = 0.2f * dialog_width;
 
-  ImBuf *ibuf = ui::svg_icon_bitmap(ICON_BLENDER_LOGO_LARGE, size, show_color);
+  ImBuf *ibuf = IMB_load_image_from_memory(reinterpret_cast<const uchar *>(datatoc_bmax_logo_png),
+                                           datatoc_bmax_logo_png_size,
+                                           ImBufFlags::ByteData,
+                                           "<Bmax logo>");
+  if (ibuf) {
+    IMB_scale(ibuf, int(size), int(size), IMBScaleFilter::Box, false);
+    IMB_premultiply_alpha(ibuf);
+  }
 
   if (ibuf) {
     bTheme *btheme = ui::theme::theme_get();
@@ -477,7 +484,7 @@ static ui::Block *wm_block_about_create(bContext *C, ARegion *region, void * /*a
 
   ui::Layout &col = layout.column(true);
 
-  uiItemL_ex(&col, IFACE_("Blender"), ICON_NONE, true, false);
+  uiItemL_ex(&col, IFACE_("Bmax"), ICON_NONE, true, false);
 
   MenuType *mt = WM_menutype_find("WM_MT_splash_about", true);
   if (mt) {
@@ -500,9 +507,9 @@ static wmOperatorStatus wm_splash_about_invoke(bContext *C,
 
 void WM_OT_splash_about(wmOperatorType *ot)
 {
-  ot->name = "About Blender";
+  ot->name = "About Bmax";
   ot->idname = "WM_OT_splash_about";
-  ot->description = "Open a window with information about Blender";
+  ot->description = "Open a window with information about Bmax";
 
   ot->invoke = wm_splash_about_invoke;
   ot->poll = WM_operator_winactive;

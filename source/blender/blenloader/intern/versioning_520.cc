@@ -7,13 +7,16 @@
  */
 
 #define DNA_DEPRECATED_ALLOW
+#define DNA_GENFILE_VERSIONING_MACROS
 
 #include "NOD_geometry_nodes_srna.hh"
 
 #include "DNA_ID.h"
+#include "DNA_armature_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_curve_types.h"
+#include "DNA_genfile.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_tree_interface_types.h"
@@ -543,8 +546,41 @@ static void version_solid_color_width_height_defaults(Main &bmain)
   }
 }
 
-void blo_do_versions_520(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+static void version_bone_octahedral_radius(ListBaseT<Bone> &bones)
 {
+  for (Bone &bone : bones) {
+    /* Freeze the previous transverse width as an absolute value when opening standard files.
+     * The endpoints now share this radius, so their previous relative size intentionally changes.
+     */
+    bone.octahedral_radius = bone.length > 0.00001f ? bone.length * 0.1f : 0.000001f;
+    version_bone_octahedral_radius(bone.childbase);
+  }
+}
+
+static void version_bone_axis_size(ListBaseT<Bone> &bones)
+{
+  for (Bone &bone : bones) {
+    bone.axis_size = 0.03f;
+    version_bone_axis_size(bone.childbase);
+  }
+}
+
+void blo_do_versions_520(FileData *fd, Library * /*lib*/, Main *bmain)
+{
+  if (!DNA_struct_member_exists(fd->filesdna, "Bone", "float", "axis_size")) {
+    for (bArmature &armature : bmain->armatures) {
+      version_bone_axis_size(armature.bonebase);
+    }
+  }
+
+  /* This fork-specific property uses DNA detection so standard Blender files are migrated
+   * independently of their upstream subversion, while saved custom radii remain untouched. */
+  if (!DNA_struct_member_exists(fd->filesdna, "Bone", "float", "octahedral_radius")) {
+    for (bArmature &armature : bmain->armatures) {
+      version_bone_octahedral_radius(armature.bonebase);
+    }
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 502, 1)) {
     for (Scene &scene : bmain->scenes) {
       scene.r.mode |= R_SAVE_OUTPUT;
