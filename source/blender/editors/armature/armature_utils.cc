@@ -498,6 +498,8 @@ static EditBone *make_boneList_recursive(ListBaseT<EditBone> *edbo,
     eBone->zwidth = curBone.zwidth;
     eBone->rad_head = curBone.rad_head;
     eBone->rad_tail = curBone.rad_tail;
+    eBone->octahedral_radius = curBone.octahedral_radius;
+    eBone->axis_size = curBone.axis_size;
     eBone->segments = curBone.segments;
     eBone->layer = curBone.layer;
 
@@ -760,6 +762,8 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
     newBone->zwidth = eBone.zwidth;
     newBone->rad_head = eBone.rad_head;
     newBone->rad_tail = eBone.rad_tail;
+    newBone->octahedral_radius = eBone.octahedral_radius;
+    newBone->axis_size = eBone.axis_size;
     newBone->segments = eBone.segments;
     newBone->layer = eBone.layer;
 

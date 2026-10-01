@@ -721,7 +721,7 @@ void WM_exit(bContext *C, const int exit_code)
   WM_exit_ex(C, true, do_user_exit_actions);
 
   if (!CLG_quiet_get()) {
-    printf("\nBlender quit\n");
+    printf("\nBmax quit\n");
   }
 
   exit(exit_code);

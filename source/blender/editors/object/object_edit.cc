@@ -573,6 +573,12 @@ static void flush_bone_selection_to_pose(Object &ob)
   for (bPoseChannel &pose_bone : ob.pose->chanbase) {
     pose_bone.flag &= ~(POSE_SELECTED | POSE_SELECTED_ROOT | POSE_SELECTED_TIP);
     const Bone *bone = pose_bone.bone_get(ob);
+    /* Edit visibility becomes the pose visibility when leaving Edit Mode. */
+    pose_bone.drawflag &= ~PCHAN_DRAW_HIDDEN;
+    if (bone->flag & BONE_HIDDEN_A) {
+      pose_bone.drawflag |= PCHAN_DRAW_HIDDEN;
+      continue;
+    }
     if (bone->flag & BONE_ROOTSEL) {
       pose_bone.flag |= POSE_SELECTED_ROOT;
     }
@@ -590,7 +596,12 @@ static void flush_pose_selection_to_bone(Object &ob)
   BLI_assert(ob.pose);
   for (bPoseChannel &pose_bone : ob.pose->chanbase) {
     Bone *bone = pose_bone.bone_get(ob);
-    bone->flag &= ~(BONE_ROOTSEL | BONE_TIPSEL | BONE_SELECTED);
+    bone->flag &= ~(BONE_ROOTSEL | BONE_TIPSEL | BONE_SELECTED | BONE_HIDDEN_A);
+    /* Pose visibility becomes the edit visibility when entering Edit Mode. */
+    if (pose_bone.drawflag & PCHAN_DRAW_HIDDEN) {
+      bone->flag |= BONE_HIDDEN_A;
+      continue;
+    }
     if (pose_bone.flag & POSE_SELECTED_ROOT) {
       bone->flag |= BONE_ROOTSEL;
     }

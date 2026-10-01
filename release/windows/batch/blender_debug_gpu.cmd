@@ -1,5 +1,5 @@
 @echo off
-echo Starting blender with GPU debugging options, log files will be created
+echo Starting Bmax with GPU debugging options, log files will be created
 echo in your temp folder, windows explorer will open after you close blender
 echo to help you find them.
 echo.
@@ -9,7 +9,7 @@ echo blender_debug_output.txt and blender_system_info.txt in your report.
 echo.
 pause
 echo.
-echo Starting blender and waiting for it to exit....
+echo Starting Bmax and waiting for it to exit....
 setlocal
 
 set PYTHONPATH=

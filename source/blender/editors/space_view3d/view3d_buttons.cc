@@ -2100,6 +2100,11 @@ static void v3d_posearmature_buts(ui::Layout &layout, Object *ob)
    * but old-school UI shows in eulers always. Do we want to be able to still display in Eulers?
    * Maybe needs RNA/UI options to display rotations as different types. */
   v3d_transform_butsR(col, &pchanptr);
+
+  PointerRNA boneptr = RNA_pointer_get(&pchanptr, "bone");
+  col.separator();
+  col.prop(&boneptr, "octahedral_radius", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  col.prop(&boneptr, "axis_size", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 }
 
 static void v3d_editarmature_buts(ui::Layout &layout, Object *ob)
@@ -2130,6 +2135,9 @@ static void v3d_editarmature_buts(ui::Layout &layout, Object *ob)
   col.prop(&eboneptr, "roll", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   col.prop(&eboneptr, "length", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   col.prop(&eboneptr, "envelope_distance", UI_ITEM_NONE, IFACE_("Envelope"), ICON_NONE);
+  col.separator();
+  col.prop(&eboneptr, "octahedral_radius", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  col.prop(&eboneptr, "axis_size", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 }
 
 static void v3d_editmetaball_buts(ui::Layout &layout, Object *ob)

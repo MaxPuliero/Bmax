@@ -1,15 +1,15 @@
 @echo off
-echo Starting blender with GPU debugging and glitch workaround options, log files 
-echo will be created in your temp folder, windows explorer will open after you 
+echo Starting Bmax with GPU debugging and glitch workaround options, log files
+echo will be created in your temp folder, windows explorer will open after you
 echo close blender to help you find them.
 echo.
 echo If you report a bug on https://projects.blender.org you can attach these files
 echo by dragging them into the text area of your bug report, please include both
-echo blender_debug_output.txt and blender_system_info.txt in your report. 
+echo blender_debug_output.txt and blender_system_info.txt in your report.
 echo.
 pause
 echo.
-echo Starting blender and waiting for it to exit....
+echo Starting Bmax and waiting for it to exit....
 setlocal
 
 set PYTHONPATH=

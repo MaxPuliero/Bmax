@@ -80,6 +80,10 @@ struct EditBone {
   /** put them in order! transform uses this as scale */
   float xwidth = 0, length = 0, zwidth = 0;
   float rad_head = 0, rad_tail = 0;
+  /** Octahedral display radius, independent of bone length. */
+  float octahedral_radius = 0.02f;
+  /** Independent display-axis length in armature space. */
+  float axis_size = 0.03f;
 
   /* Bendy-Bone parameters */
   short segments = 0;

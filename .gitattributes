@@ -110,3 +110,6 @@
 *.rgb filter=lfs diff=lfs merge=lfs -text
 *.btx filter=lfs diff=lfs merge=lfs -text
 scripts/modules/_bpy_internal/assets/remote_library/*_openapi.py linguist-generated=true
+
+# Bmax-owned assets are stored directly in Git.
+release/datafiles/bmax_logo.png -filter -diff -merge -text

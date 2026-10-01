@@ -714,6 +714,11 @@ endif()
 # ------------------------------------------------------------------------------
 
 add_blender_test(
+  bl_armature_octahedral_radius
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_armature_octahedral_radius.py
+)
+
+add_blender_test(
   bl_animation_armature
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_armature.py
   --

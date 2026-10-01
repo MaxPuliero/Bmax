@@ -179,6 +179,8 @@ enum {
   PIE_ANIMATION_FINISHED = (1 << 5),
   /** Pie gesture selection has been done, now wait for mouse motion to end. */
   PIE_GESTURE_END_WAIT = (1 << 6),
+  /** After tapping the opening key, confirm by moving past the hovered item's outer edge. */
+  PIE_CONFIRM_AFTER_TAP = (1 << 7),
 };
 
 #define PIE_CLICK_THRESHOLD_SQ 50.0f

@@ -361,6 +361,10 @@ struct Bone {
    * `parent->rad_tip` overrides `rad_head`.
    */
   float rad_head = 0, rad_tail = 0;
+  /** Absolute Octahedral X/Z half-width and endpoint sphere radius in armature space. */
+  float octahedral_radius = 0.02f;
+  /** Independent display-axis length in armature space. */
+  float axis_size = 0.03f;
 
   /** Curved bones settings - these define the "rest-pose" for a curved bone. */
   float roll1 = 0, roll2 = 0;

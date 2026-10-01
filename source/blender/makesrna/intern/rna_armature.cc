@@ -1429,6 +1429,31 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
 
+  prop = RNA_def_property(srna, "octahedral_radius", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "octahedral_radius");
+  RNA_def_property_range(prop, 0.000001f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0001f, 1.0f, 1, 4);
+  RNA_def_property_float_default(prop, 0.02f);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Octahedral Radius",
+      "Absolute Octahedral X/Z half-width and head/tail sphere radius in armature space, "
+      "independent of bone length; only affects Octahedral display");
+  RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
+
+  prop = RNA_def_property(srna, "axis_size", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "axis_size");
+  RNA_def_property_range(prop, 0.000001f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0001f, 1.0f, 1, 4);
+  RNA_def_property_float_default(prop, 0.03f);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Axis Size",
+      "Display-axis length in armature space, independent of Octahedral Radius");
+  RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
+
   /* flags */
   prop = RNA_def_property(srna, "use_connect", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", BONE_CONNECTED);
@@ -2284,7 +2309,8 @@ static void rna_def_armature(BlenderRNA *brna)
   /* flag */
   prop = RNA_def_property(srna, "show_axes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", ARM_DRAWAXES);
-  RNA_def_property_ui_text(prop, "Display Axes", "Display bone axes");
+  RNA_def_property_ui_text(
+      prop, "Display Axes", "Display selected bone axes, using each bone's Axis Size");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
 
@@ -2314,7 +2340,7 @@ static void rna_def_armature(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_names", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", ARM_DRAWNAMES);
-  RNA_def_property_ui_text(prop, "Display Names", "Display bone names");
+  RNA_def_property_ui_text(prop, "Display Names", "Display names of selected bones");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
 
