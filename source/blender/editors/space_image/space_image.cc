@@ -114,6 +114,8 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
   simage->uv_opacity = 1.0f;
+  simage->overlay.uv_overlap_opacity = 1.0f;
+  simage->overlay.image_opacity = 1.0f;
   simage->uv_face_opacity = 1.0f;
   simage->uv_edge_opacity = 1.0f;
   simage->stretch_opacity = 1.0f;
@@ -635,17 +637,15 @@ static void image_widgets()
 /* sets up the fields of the View2D from zoom and offset */
 static void image_main_region_set_view2d(SpaceImage *sima, ARegion *region)
 {
-  Image *ima = ED_space_image(sima);
-
   int width, height;
   ED_space_image_get_size(sima, &width, &height);
 
   float w = width;
   float h = height;
 
-  if (ima) {
-    h *= ima->aspy / ima->aspx;
-  }
+  float aspx, aspy;
+  ED_space_image_get_display_aspect(sima, &aspx, &aspy);
+  h *= aspy / aspx;
 
   int winx = BLI_rcti_size_x(&region->winrct) + 1;
   int winy = BLI_rcti_size_y(&region->winrct) + 1;

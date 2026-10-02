@@ -1698,7 +1698,7 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
     @classmethod
     def poll(cls, context):
         sima = context.space_data
-        return (sima and (sima.show_uvedit))
+        return (sima and sima.mode == 'UV' and not sima.show_render)
 
     def draw(self, context):
         layout = self.layout
@@ -1715,9 +1715,18 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
         col.prop(uvedit, "edge_display_type", text="")
         col.prop(uvedit, "show_modified_edges", text="Modified Edges")
 
+        col.separator()
+        col.prop(uvedit, "show_shell_outline")
+        row = col.row(align=True)
+        row.prop(uvedit, "show_overlap", text="Overlap")
+        sub = row.row(align=True)
+        sub.active = uvedit.show_overlap
+        sub.prop(uvedit, "overlap_opacity", text="Intensity", slider=True)
+        col.prop(uvedit, "show_flipped")
+
         # Faces
         row = col.row()
-        row.active = not uvedit.show_stretch
+        row.active = not (sima.show_uvedit and uvedit.show_stretch)
         row.prop(uvedit, "show_faces", text="Faces")
 
 
@@ -1730,7 +1739,7 @@ class IMAGE_PT_overlay_uv_display(Panel):
     @classmethod
     def poll(cls, context):
         sima = context.space_data
-        return (sima and sima.mode in {'UV', 'PAINT'} and not (sima.show_uvedit or sima.show_render))
+        return (sima and sima.mode == 'PAINT' and not (sima.show_uvedit or sima.show_render))
 
     def draw(self, context):
         layout = self.layout
@@ -1764,6 +1773,10 @@ class IMAGE_PT_overlay_image(Panel):
         overlay = sima.overlay
 
         layout.active = overlay.show_overlays
+        if sima.mode == 'UV':
+            row = layout.row()
+            row.active = sima.image is not None
+            row.prop(uvedit, "image_opacity", text="Opacity", slider=True)
         layout.prop(uvedit, "show_metadata")
 
 

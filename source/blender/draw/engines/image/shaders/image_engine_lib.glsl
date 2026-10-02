@@ -17,7 +17,8 @@ float4 image_engine_apply_parameters(float4 color,
                                      bool is_image_premultiplied,
                                      float4 shuffle_color,
                                      float far_distance,
-                                     float near_distance)
+                                     float near_distance,
+                                     float opacity)
 {
   float4 result = color;
   if ((flags & IMAGE_DRAW_FLAG_APPLY_ALPHA) != 0) {
@@ -35,5 +36,5 @@ float4 image_engine_apply_parameters(float4 color,
   if ((flags & IMAGE_DRAW_FLAG_SHOW_ALPHA) == 0) {
     result.a = 1.0f;
   }
-  return result;
+  return result * opacity;
 }

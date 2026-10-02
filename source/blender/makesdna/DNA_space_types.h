@@ -630,6 +630,8 @@ struct FileDirEntryArr {
 struct SpaceImageOverlay {
   eSpaceImageOverlay_Flag flag = {};
   float passepartout_alpha = 0;
+  float uv_overlap_opacity = 1.0f;
+  float image_opacity = 1.0f;
 };
 
 struct SpaceImage {
@@ -680,7 +682,10 @@ struct SpaceImage {
   eSpaceImage_Gizmo_Flag gizmo_flag = {};
 
   eSpaceImage_GridShapeSource grid_shape_source = SI_GRID_SHAPE_DYNAMIC;
-  char _pad1[6] = {};
+  char _pad1[2] = {};
+  /** Display aspect of the UV canvas, independent of subsequent background images. Zero is unset.
+   */
+  float uv_view_aspect = 0;
 
   eSpaceImage_Flag flag = {};
 

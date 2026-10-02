@@ -691,7 +691,7 @@ struct DisplaceModifierData {
   DisplaceModifierTexMapping texmapping = MOD_DISP_MAP_LOCAL;
   /* end MappingInfoModifierData */
 
-  float strength = 1.0f;
+  float strength = 0.1f;
   DisplaceModifierDirection direction = MOD_DISP_DIR_NOR;
   char defgrp_name[/*MAX_VGROUP_NAME*/ 64] = "";
   float midlevel = 0.5f;
@@ -1931,7 +1931,7 @@ enum TriangulateModifierQuadMethod : int {
 struct TriangulateModifierData {
   ModifierData modifier;
 
-  TriangulateModifierFlag flag = {};
+  TriangulateModifierFlag flag = MOD_TRIANGULATE_KEEP_CUSTOMLOOP_NORMALS;
   TriangulateModifierQuadMethod quad_method = MOD_TRIANGULATE_QUAD_SHORTEDGE;
   TriangulateModifierNgonMethod ngon_method = MOD_TRIANGULATE_NGON_BEAUTY;
   int min_vertices = 4;
@@ -2403,8 +2403,8 @@ struct WeightedNormalModifierData {
   ModifierData modifier;
 
   char defgrp_name[/*MAX_VGROUP_NAME*/ 64] = "";
-  WeightedNormalModifierMode mode = MOD_WEIGHTEDNORMAL_MODE_FACE;
-  WeightedNormalModifierFlag flag = {};
+  WeightedNormalModifierMode mode = MOD_WEIGHTEDNORMAL_MODE_FACE_ANGLE;
+  WeightedNormalModifierFlag flag = MOD_WEIGHTEDNORMAL_KEEP_SHARP;
   short weight = 50;
   float thresh = 0.01f;
 };

@@ -132,7 +132,7 @@ static void sima_zoom_set(
     float aspx, aspy, w, h;
 
     ED_space_image_get_size(sima, &width, &height);
-    ED_space_image_get_aspect(sima, &aspx, &aspy);
+    ED_space_image_get_display_aspect(sima, &aspx, &aspy);
 
     w = width * aspx;
     h = height * aspy;
@@ -165,7 +165,7 @@ static void sima_zoom_set_from_bounds(SpaceImage *sima, ARegion *region, const r
   float aspx, aspy;
 
   ED_space_image_get_size(sima, &image_size[0], &image_size[1]);
-  ED_space_image_get_aspect(sima, &aspx, &aspy);
+  ED_space_image_get_display_aspect(sima, &aspx, &aspy);
 
   image_size[0] = image_size[0] * aspx;
   image_size[1] = image_size[1] * aspy;
@@ -285,7 +285,7 @@ static void image_view_all(SpaceImage *sima, ARegion *region, wmOperator *op)
   const bool fit_view = RNA_boolean_get(op->ptr, "fit_view");
 
   ED_space_image_get_size(sima, &width, &height);
-  ED_space_image_get_aspect(sima, &aspx, &aspy);
+  ED_space_image_get_display_aspect(sima, &aspx, &aspy);
 
   w = width * aspx;
   h = height * aspy;

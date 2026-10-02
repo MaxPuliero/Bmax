@@ -265,6 +265,7 @@ set(SRC
   engines/overlay/overlay_light.hh
   engines/overlay/overlay_lightprobe.hh
   engines/overlay/overlay_mesh.hh
+  engines/overlay/overlay_uv_diagnostics.hh
   engines/overlay/overlay_metaball.hh
   engines/overlay/overlay_mode_transfer.hh
   engines/overlay/overlay_motion_path.hh
@@ -673,6 +674,9 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_uv_edges_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_face_dots_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_faces_vert.glsl
+  engines/overlay/shaders/overlay_uv_diagnostics_vert.glsl
+  engines/overlay/shaders/overlay_uv_diagnostics_frag.glsl
+  engines/overlay/shaders/overlay_uv_diagnostics_resolve_frag.glsl
   engines/overlay/shaders/overlay_edit_uv_image_mask_frag.glsl
   engines/overlay/shaders/overlay_edit_uv_image_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_stretching_vert.glsl

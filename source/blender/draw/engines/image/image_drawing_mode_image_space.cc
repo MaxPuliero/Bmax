@@ -45,6 +45,7 @@ void ImageSpaceDrawingMode::draw_viewport() const
   pass.push_constant("image_matrix", float4x4(instance_.state.ss_to_texture));
   pass.push_constant("far_near_distances", instance_.state.sh_params.far_near);
   pass.push_constant("shuffle", instance_.state.sh_params.shuffle);
+  pass.push_constant("image_opacity", instance_.state.sh_params.image_opacity);
   pass.push_constant("draw_flags", int32_t(instance_.state.sh_params.flags));
   pass.push_constant("is_image_premultiplied", instance_.state.sh_params.use_premul_alpha);
 

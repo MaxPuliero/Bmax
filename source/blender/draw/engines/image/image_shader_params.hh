@@ -30,6 +30,7 @@ struct ShaderParameters {
   float4 shuffle;
   float2 far_near;
   bool use_premul_alpha = false;
+  float image_opacity = 1.0f;
 
   void update(AbstractSpaceAccessor *space,
               const Scene *scene,
@@ -37,6 +38,7 @@ struct ShaderParameters {
               ImBuf *image_buffer)
   {
     flags = IMAGE_DRAW_FLAG_DEFAULT;
+    image_opacity = 1.0f;
     shuffle = float4(1.0f);
     far_near = float2(100.0f, 0.0f);
 

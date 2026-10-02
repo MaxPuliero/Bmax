@@ -6,6 +6,8 @@
  * \ingroup edtransform
  */
 
+#include <cmath>
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
@@ -909,6 +911,39 @@ static void recalcData_objects(TransInfo *t)
 /** \name Special After Transform Object
  * \{ */
 
+/** Remove only a uniform, nonzero change from the Origins overlay after confirmation. */
+static void origin_axes_uniform_scale_commit(Object &ob, const TransDataExtension &td_ext)
+{
+  float ratio = 0.0f;
+  bool have_ratio = false;
+  for (int axis = 0; axis < 3; axis++) {
+    if (td_ext.iscale[axis] == 0.0f) {
+      if (ob.scale[axis] != 0.0f) {
+        return;
+      }
+      continue;
+    }
+    const float axis_ratio = ob.scale[axis] / td_ext.iscale[axis];
+    if (!std::isfinite(axis_ratio) || axis_ratio == 0.0f) {
+      return;
+    }
+    if (have_ratio &&
+        std::abs(axis_ratio - ratio) > 1.0e-5f * std::max(std::abs(ratio), std::abs(axis_ratio)))
+    {
+      return;
+    }
+    ratio = axis_ratio;
+    have_ratio = true;
+  }
+  if (have_ratio) {
+    const float previous = ob.origin_axis_scale > 0.0f ? ob.origin_axis_scale : 1.0f;
+    const float uniform_scale = previous * std::abs(ratio);
+    if (std::isfinite(uniform_scale) && uniform_scale > 0.0f) {
+      ob.origin_axis_scale = uniform_scale;
+    }
+  }
+}
+
 static void special_aftertrans_update__object(bContext *C, TransInfo *t)
 {
   BLI_assert(t->options & CTX_OBJECT);
@@ -931,6 +966,12 @@ static void special_aftertrans_update__object(bContext *C, TransInfo *t)
 
     if (td->flag & TD_SKIP) {
       continue;
+    }
+
+    if (!canceled && t->mode == TFM_RESIZE &&
+        (t->scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN))
+    {
+      origin_axes_uniform_scale_commit(*ob, *td_ext);
     }
 
     /* Flag object caches as outdated. */

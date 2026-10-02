@@ -513,6 +513,8 @@ class ShaderModule {
   StaticShader uv_brush_stencil = {"overlay_edit_uv_stencil_image"};
   StaticShader uv_edit_edge = {"overlay_edit_uv_edges"};
   StaticShader uv_edit_face = {"overlay_edit_uv_faces"};
+  StaticShader uv_diagnostics = {"overlay_uv_diagnostics"};
+  StaticShader uv_diagnostics_resolve = {"overlay_uv_diagnostics_resolve"};
   StaticShader uv_edit_facedot = {"overlay_edit_uv_face_dots"};
   StaticShader uv_edit_vert = {"overlay_edit_uv_verts"};
   StaticShader uv_image_borders = {"overlay_edit_uv_tiled_image_borders"};

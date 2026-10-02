@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <limits>
+
 #include "ED_image.hh"
 
 #include "DNA_screen_types.h"
@@ -19,12 +21,17 @@ namespace blender::image_engine {
 
 class SpaceImageAccessor : public AbstractSpaceAccessor {
   SpaceImage *sima;
+  float display_aspect_ = 1.0f;
 
  public:
   SpaceImageAccessor(SpaceImage *sima) : sima(sima) {}
 
   blender::Image *get_image(Main * /*bmain*/) override
   {
+    float aspx, aspy;
+    /* Resolve before acquiring the image buffer; image rendering can hold its lock. */
+    ED_space_image_get_display_aspect(sima, &aspx, &aspy);
+    display_aspect_ = aspy / aspx;
     return ED_space_image(sima);
   }
 
@@ -45,6 +52,8 @@ class SpaceImageAccessor : public AbstractSpaceAccessor {
 
   void get_shader_parameters(ShaderParameters &r_shader_parameters, ImBuf *image_buffer) override
   {
+    r_shader_parameters.image_opacity = sima->mode == SI_MODE_UV ? sima->overlay.image_opacity :
+                                                                   1.0f;
     const int sima_flag = sima->flag & ED_space_image_get_display_channel_mask(image_buffer);
     if ((sima_flag & SI_USE_ALPHA) != 0) {
       /* Show RGBA */
@@ -103,16 +112,19 @@ class SpaceImageAccessor : public AbstractSpaceAccessor {
 
   float get_aspect_ratio() const override
   {
-    float2 aspect_ratio;
-    ED_space_image_get_aspect(this->sima, &aspect_ratio.x, &aspect_ratio.y);
-    return aspect_ratio.y;
+    return display_aspect_;
   }
 
   float2 get_pan_offset() const override
   {
     /* The offsets are stored with zooming, so retrieve original offsets by multiplying the zoom.
      * Furthermore, take the negatives since we want the offset of the image, not the space. */
-    return -float2(sima->xof, sima->yof) * sima->zoom;
+    float2 offset = -float2(sima->xof, sima->yof) * sima->zoom;
+    if (sima->mode == SI_MODE_UV) {
+      const float pixel_offset = 0.5f - std::numeric_limits<float>::epsilon() * 10e3f;
+      offset.y += pixel_offset * sima->zoom * (display_aspect_ - 1.0f);
+    }
+    return offset;
   }
 };
 

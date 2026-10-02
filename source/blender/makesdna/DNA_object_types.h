@@ -482,7 +482,8 @@ struct Object {
   char parsubstr[/*MAX_NAME*/ 64] = "";
   struct Object *parent = nullptr, *track = nullptr;
   float parent_bone_head_tail_factor = 1.0f;
-  char _pad4[4] = {};
+  /** Accumulated uniform scale removed from the Affect Only Origins display axes. */
+  float origin_axis_scale = 1.0f;
   /* Proxy pointer are deprecated, only kept for conversion to liboverrides. */
   DNA_DEPRECATED struct Object *proxy = nullptr;
   DNA_DEPRECATED struct Object *proxy_group = nullptr;

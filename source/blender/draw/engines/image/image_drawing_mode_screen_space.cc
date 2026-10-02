@@ -23,6 +23,7 @@ void ScreenSpaceDrawingMode::add_shgroups() const
   pass.shader_set(shader);
   pass.push_constant("far_near_distances", sh_params.far_near);
   pass.push_constant("shuffle", sh_params.shuffle);
+  pass.push_constant("image_opacity", sh_params.image_opacity);
   pass.push_constant("draw_flags", int32_t(sh_params.flags));
   pass.push_constant("is_image_premultiplied", sh_params.use_premul_alpha);
   pass.bind_texture("depth_tx", dtxl->depth);

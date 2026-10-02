@@ -23,6 +23,7 @@
 #endif
 
 #include "overlay_common_infos.hh"
+#include "overlay_fullscreen_infos.hh"
 
 GPU_SHADER_INTERFACE_INFO(overlay_edit_flat_wire_iface)
 NO_PERSPECTIVE(float2, edge_pos)
@@ -351,6 +352,38 @@ ADDITIONAL_INFO(draw_object_infos)
 ADDITIONAL_INFO(draw_resource_id_varying)
 ADDITIONAL_INFO(gpu_index_buffer_load)
 ADDITIONAL_INFO(draw_globals)
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_INTERFACE_INFO(overlay_uv_diagnostics_iface)
+FLAT(int, shell_root)
+FLAT(uint, flipped)
+GPU_SHADER_INTERFACE_END()
+
+GPU_SHADER_CREATE_INFO(overlay_uv_diagnostics)
+DO_STATIC_COMPILATION()
+STORAGE_BUF(0, read, UVDiagnosticVertex, vertices[])
+STORAGE_BUF(1, read, UVDiagnosticNode, boundary_nodes[])
+STORAGE_BUF(2, read, float4, boundary_edges[])
+PUSH_CONSTANT(bool, show_outline)
+VERTEX_OUT(overlay_uv_diagnostics_iface)
+FRAGMENT_OUT(0, float4, frag_color)
+VERTEX_SOURCE("overlay_uv_diagnostics_vert.glsl")
+FRAGMENT_SOURCE("overlay_uv_diagnostics_frag.glsl")
+TYPEDEF_SOURCE("overlay_shader_shared.hh")
+ADDITIONAL_INFO(draw_view)
+ADDITIONAL_INFO(draw_globals)
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_CREATE_INFO(overlay_uv_diagnostics_resolve)
+DO_STATIC_COMPILATION()
+SAMPLER(0, sampler2D, coverage_tx)
+PUSH_CONSTANT(bool, show_overlap)
+PUSH_CONSTANT(bool, show_flipped)
+PUSH_CONSTANT(bool, outline_pass)
+PUSH_CONSTANT(float, overlap_opacity)
+FRAGMENT_OUT(0, float4, frag_color)
+FRAGMENT_SOURCE("overlay_uv_diagnostics_resolve_frag.glsl")
+ADDITIONAL_INFO(overlay_fullscreen)
 GPU_SHADER_CREATE_END()
 
 GPU_SHADER_CREATE_INFO(overlay_edit_uv_faces)

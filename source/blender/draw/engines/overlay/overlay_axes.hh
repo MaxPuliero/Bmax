@@ -67,6 +67,10 @@ class Axes : Overlay {
 
     ExtraInstanceData data(ob->object_to_world(), res.object_wire_color(ob_ref, state), 1.0f);
     if (use_xform_origins_axis) {
+      /* Keep single-axis scaling visible, but remove confirmed uniform scaling.
+       * The factor is updated only on confirmation, so modal scaling remains visible. */
+      const float uniform_scale = ob->origin_axis_scale > 0.0f ? ob->origin_axis_scale : 1.0f;
+      data.object_to_world[3][3] = 0.2f / uniform_scale;
       data.color_ = float4(0.15f, 0.15f, 0.15f, 0.7f);
       xform_origins_buf.append(data, select::SelectMap::select_invalid_id());
     }

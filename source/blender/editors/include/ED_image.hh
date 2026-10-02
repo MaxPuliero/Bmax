@@ -83,6 +83,8 @@ bool ED_space_image_has_buffer(SpaceImage *sima);
 void ED_space_image_get_size(SpaceImage *sima, int *r_width, int *r_height);
 void ED_space_image_get_size_fl(SpaceImage *sima, float r_size[2]);
 void ED_space_image_get_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy);
+/** Pixel aspect used for drawing and navigating the UV canvas. */
+void ED_space_image_get_display_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy);
 void ED_space_image_get_zoom(SpaceImage *sima,
                              const ARegion *region,
                              float *r_zoomx,

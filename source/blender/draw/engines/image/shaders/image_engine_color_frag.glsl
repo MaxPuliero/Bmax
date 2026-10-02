@@ -18,6 +18,11 @@ void main()
 
   float4 tex_color = texelFetch(image_tx, uvs_clamped - offset, 0);
 
-  out_color = image_engine_apply_parameters(
-      tex_color, draw_flags, is_image_premultiplied, shuffle, FAR_DISTANCE, NEAR_DISTANCE);
+  out_color = image_engine_apply_parameters(tex_color,
+                                            draw_flags,
+                                            is_image_premultiplied,
+                                            shuffle,
+                                            FAR_DISTANCE,
+                                            NEAR_DISTANCE,
+                                            image_opacity);
 }

@@ -33,6 +33,7 @@
 #include "draw_cache_impl.hh"
 #include "draw_manager_text.hh"
 #include "overlay_base.hh"
+#include "overlay_uv_diagnostics.hh"
 
 namespace blender::draw::overlay {
 
@@ -484,6 +485,7 @@ class Meshes : Overlay {
  */
 class MeshUVs : Overlay {
  private:
+  UVDiagnostics diagnostics_;
   PassSimple analysis_ps_ = {"Mesh Analysis"};
 
   /* TODO(fclem): Should be its own Overlay?. */
@@ -548,6 +550,7 @@ class MeshUVs : Overlay {
  public:
   void begin_sync(Resources &res, const State &state) final
   {
+    diagnostics_.begin_sync(res, state);
     enabled_ = state.is_space_image();
 
     if (!enabled_) {
@@ -643,6 +646,11 @@ class MeshUVs : Overlay {
         show_wireframe_ = show_wireframe_uv_edit;
         show_face_overlay_ = !(space_image->flag & SI_NO_DRAWFACES);
       }
+      else if (space_mode_is_uv) {
+        /* Object and Edit Mode share geometry visibility and opacity in the UV Editor. */
+        show_wireframe_ = true;
+        show_face_overlay_ = !(space_image->flag & SI_NO_DRAWFACES);
+      }
       else {
         show_wireframe_ = show_wireframe_uv_guide;
         /* The face overlay is always enabled when showing wire-frame. */
@@ -677,7 +685,8 @@ class MeshUVs : Overlay {
       pass.shader_set(res.shaders->uv_wireframe.get());
       pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
       pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
-      pass.push_constant("alpha", space_image->uv_edge_opacity);
+      pass.push_constant(
+          "alpha", space_mode_is_uv ? space_image->uv_opacity : space_image->uv_edge_opacity);
       pass.push_constant("do_smooth_wire", do_smooth_wire);
     }
 
@@ -738,9 +747,8 @@ class MeshUVs : Overlay {
     }
 
     if (show_face_overlay_ || select_face_) {
-      const float opacity = (object_mode_is_edit && space_mode_is_uv) ?
-                                space_image->uv_opacity :
-                                space_image->uv_face_opacity;
+      const float opacity = space_mode_is_uv ? space_image->uv_opacity :
+                                               space_image->uv_face_opacity;
 
       auto &pass = faces_ps_;
       pass.init();
@@ -790,13 +798,20 @@ class MeshUVs : Overlay {
         active_uv_map);
     const bool has_active_object_uvmap = bke::mesh::is_uv_map(meta_data);
 
+    const Object *ob_orig = DEG_get_original(ob);
+    const Mesh &mesh_orig = *id_cast<Mesh *>(ob_orig->data);
+    diagnostics_.object_sync_object(mesh_orig, mesh_orig.active_or_default_uv_map_name());
+
     ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
 
     if (show_wireframe_ && has_active_object_uvmap) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_all_uv_wireframe(*ob, mesh);
       wireframe_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
-    if (show_face_overlay_ && has_active_object_uvmap && space_image->uv_face_opacity > 0.0f) {
+    if (show_face_overlay_ && has_active_object_uvmap &&
+        (space_image->mode == SI_MODE_UV ? space_image->uv_opacity :
+                                           space_image->uv_face_opacity) > 0.0f)
+    {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_faces(*ob, mesh);
       faces_ps_.draw(geom, res_handle);
     }
@@ -837,6 +852,8 @@ class MeshUVs : Overlay {
                                                              active_uv_map);
 
     ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
+
+    diagnostics_.object_sync(mesh_orig, active_uv_map, state);
 
     /* Fully editable UVs in the UV Editor. */
     if (has_active_edit_uvmap && is_uv_editable) {
@@ -924,6 +941,8 @@ class MeshUVs : Overlay {
       }
       total_area_ratio_ = total_3d * math::safe_rcp(total_2d);
     }
+
+    diagnostics_.end_sync();
 
     const ToolSettings *tool_setting = state.scene->toolsettings;
     const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
@@ -1056,6 +1075,7 @@ class MeshUVs : Overlay {
     if (show_face_overlay_ || select_face_) {
       manager.submit(faces_ps_, view);
     }
+    diagnostics_.draw(framebuffer, manager, view);
     if (show_uv_edit_) {
       manager.submit(edges_ps_, view);
     }
@@ -1065,6 +1085,7 @@ class MeshUVs : Overlay {
     if (select_vert_) {
       manager.submit(verts_ps_, view);
     }
+    diagnostics_.draw_outline(framebuffer, manager);
     if (show_stencil_) {
       manager.submit(brush_stencil_ps_, view);
     }

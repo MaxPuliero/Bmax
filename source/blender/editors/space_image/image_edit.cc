@@ -11,6 +11,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include <limits>
+
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 
@@ -47,6 +49,14 @@ Image *ED_space_image(const SpaceImage *sima)
 
 void ED_space_image_set(Main *bmain, SpaceImage *sima, Image *ima, bool automatic)
 {
+  const bool preserve_uv_view = sima->mode == SI_MODE_UV && sima->image != ima;
+  int old_width = 0, old_height = 0;
+  if (preserve_uv_view) {
+    float aspx, aspy;
+    ED_space_image_get_size(sima, &old_width, &old_height);
+    ED_space_image_get_display_aspect(sima, &aspx, &aspy);
+  }
+
   /* Automatically pin image when manually assigned, otherwise it follows object. */
   if (!automatic && sima->image != ima && sima->mode == SI_MODE_UV) {
     sima->pin = true;
@@ -66,7 +76,16 @@ void ED_space_image_set(Main *bmain, SpaceImage *sima, Image *ima, bool automati
 
   id_us_ensure_real(id_cast<ID *>(sima->image));
 
-  if (ima) {
+  if (preserve_uv_view) {
+    int width, height;
+    ED_space_image_get_size(sima, &width, &height);
+    const float size_ratio = float(width) / float(old_width);
+    const float pixel_offset = 0.5f - std::numeric_limits<float>::epsilon() * 10e3f;
+    sima->xof = (sima->xof + pixel_offset) * size_ratio - pixel_offset;
+    sima->yof = (sima->yof + pixel_offset) * size_ratio - pixel_offset;
+    sima->zoom /= size_ratio;
+  }
+  else if (ima && sima->mode != SI_MODE_UV) {
     sima->xof = ima->runtime->view_offset[0];
     sima->yof = ima->runtime->view_offset[1];
     sima->zoom = ima->runtime->view_zoom;
@@ -123,13 +142,7 @@ void ED_space_image_auto_set(const bContext *C, SpaceImage *sima)
   ED_object_get_active_image(ob, efa->mat_nr + 1, &ima, nullptr, nullptr, nullptr);
 
   if (ima != sima->image) {
-    sima->image = ima;
-
-    if (sima->image) {
-      Main *bmain = CTX_data_main(C);
-      BKE_image_signal(bmain, sima->image, &sima->iuser, IMA_SIGNAL_USER_NEW_IMAGE);
-      WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, sima);
-    }
+    ED_space_image_set(CTX_data_main(C), sima, ima, true);
   }
 }
 
@@ -285,6 +298,21 @@ void ED_space_image_get_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy)
   else {
     BKE_image_get_aspect(ima, r_aspx, r_aspy);
   }
+}
+
+void ED_space_image_get_display_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy)
+{
+  ED_space_image_get_aspect(sima, r_aspx, r_aspy);
+  if (sima->mode != SI_MODE_UV) {
+    return;
+  }
+  int width, height;
+  ED_space_image_get_size(sima, &width, &height);
+  if (sima->uv_view_aspect <= 0.0f) {
+    sima->uv_view_aspect = float(height) * *r_aspy / (float(width) * *r_aspx);
+  }
+  *r_aspx = 1.0f;
+  *r_aspy = sima->uv_view_aspect * float(width) / float(height);
 }
 
 void ED_space_image_get_zoom(SpaceImage *sima,

@@ -28,6 +28,19 @@ enum [[host_shared]] OVERLAY_UVLineStyle : uint32_t {
   OVERLAY_UV_LINE_STYLE_SHADOW,
 };
 
+/** One UV triangle corner. Positions deliberately ignore object transforms. */
+struct [[host_shared]] UVDiagnosticVertex {
+  float2 uv;
+  int shell_root;
+  uint flipped;
+};
+
+/** Stackless boundary BVH in UV space. data = {escape, edge_start, edge_count, pad}. */
+struct [[host_shared]] UVDiagnosticNode {
+  float4 bounds;
+  int4 data;
+};
+
 enum [[host_shared]] OVERLAY_GridBits : uint32_t {
   SHOW_GRID = (1u << 0u),
   SHOW_AXES = (1u << 1u),

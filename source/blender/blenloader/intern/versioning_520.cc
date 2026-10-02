@@ -23,6 +23,7 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_xr_types.h"
 
@@ -567,6 +568,38 @@ static void version_bone_axis_size(ListBaseT<Bone> &bones)
 
 void blo_do_versions_520(FileData *fd, Library * /*lib*/, Main *bmain)
 {
+  /* Fork-specific settings must also migrate upstream files at the same subversion. */
+  if (!DNA_struct_member_exists(fd->filesdna, "Object", "float", "origin_axis_scale")) {
+    for (Object &object : bmain->objects) {
+      object.origin_axis_scale = 1.0f;
+    }
+  }
+
+  if (!DNA_struct_member_exists(fd->filesdna, "SpaceImageOverlay", "float", "uv_overlap_opacity"))
+  {
+    for (bScreen &screen : bmain->screens) {
+      for (ScrArea &area : screen.areabase) {
+        for (SpaceLink &space : area.spacedata) {
+          if (space.spacetype == SPACE_IMAGE) {
+            reinterpret_cast<SpaceImage &>(space).overlay.uv_overlap_opacity = 1.0f;
+          }
+        }
+      }
+    }
+  }
+
+  if (!DNA_struct_member_exists(fd->filesdna, "SpaceImageOverlay", "float", "image_opacity")) {
+    for (bScreen &screen : bmain->screens) {
+      for (ScrArea &area : screen.areabase) {
+        for (SpaceLink &space : area.spacedata) {
+          if (space.spacetype == SPACE_IMAGE) {
+            reinterpret_cast<SpaceImage &>(space).overlay.image_opacity = 1.0f;
+          }
+        }
+      }
+    }
+  }
+
   if (!DNA_struct_member_exists(fd->filesdna, "Bone", "float", "axis_size")) {
     for (bArmature &armature : bmain->armatures) {
       version_bone_axis_size(armature.bonebase);

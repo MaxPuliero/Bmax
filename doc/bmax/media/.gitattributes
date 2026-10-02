@@ -1,1 +1,2 @@
 *.webp -filter -diff -merge -text
+*.gif -filter -diff -merge -text

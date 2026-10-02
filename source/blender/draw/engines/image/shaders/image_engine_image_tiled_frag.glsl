@@ -19,7 +19,12 @@ void main()
   }
 
   const float4 image_color = texture(image_tile_array, tiled_coordinates);
-  out_color = image_engine_apply_parameters(
-      image_color, draw_flags, is_image_premultiplied, shuffle, FAR_DISTANCE, NEAR_DISTANCE);
+  out_color = image_engine_apply_parameters(image_color,
+                                            draw_flags,
+                                            is_image_premultiplied,
+                                            shuffle,
+                                            FAR_DISTANCE,
+                                            NEAR_DISTANCE,
+                                            image_opacity);
   gl_FragDepth = Z_DEPTH_IMAGE;
 }

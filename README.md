@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization and a more convenient rigging interface. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, and UV inspection tools. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -36,9 +36,51 @@ Bone hide state transfers between Pose and Edit Mode when switching modes. Hidde
 
 For the mode pie opened with **Tab for Pie Menu**, tapping and releasing Tab allows selection by moving past the outer edge of an enabled menu item without clicking. This adjustment is scoped to the mode pie opened with Tab.
 
+### Origin axes during transforms
+
+With **Options > Affect Only > Origins** enabled, the origin axes default to **0.2 Blender units** (20 cm with standard metric units).
+
+Uniform scaling remains visible while dragging. On confirmation, the axes return to their previous display lengths, retaining any differences between axes. Scaling an individual axis remains visible after confirmation: for example, scaling X by 2 changes its displayed length from 20 cm to 40 cm while Y and Z remain at 20 cm. Cancelling a transform restores the previous display. This adjustment is specific to the Affect Only Origins axes; the standard Object > Viewport Display > Axes display retains its existing behavior.
+
+The uniform-scale compensation is stored per object in the `.blend` file.
+
+### Modifier defaults
+
+New **Weighted Normal** modifiers use **Face Area & Angle** with **Keep Sharp** enabled. New **Triangulate** modifiers have **Keep Normals** enabled. New **Displace** modifiers use **Strength = 0.1**. These defaults apply when adding modifiers; saved modifier settings remain unchanged.
+
+### UV shell outlines and diagnostics
+
+In **UV Editor > Overlays > Geometry**, three controls help inspect visible UVs in both **Object Mode and Edit Mode**. In Object Mode they inspect the selected mesh objects:
+
+- **Shell Outline** draws a white outline **2 physical pixels inward** along each UV shell boundary, including holes. Its width stays constant when zooming, and internal UV edges are excluded.
+- **Overlap** highlights the intersecting area of overlapping UV faces in red, including partial intersections and overlaps between objects. **Intensity** controls the opacity from 0 to 1; 1 gives solid red.
+- **Flipped UVs** highlights UV faces with reversed orientation in magenta.
+
+When both diagnostics are enabled, red takes priority in overlapping areas. White shell outlines appear above the diagnostics. The main Overlays toggle hides these UV diagnostics. Both modes use the same Geometry panel, diagnostic flags, overlap intensity, UV opacity, and face visibility settings. Changing a control in either mode is reflected when switching to the other. Diagnostics use the original UV map, so modifiers that repeat geometry do not create false UV overlaps.
+
+#### Partial UV overlap
+
+The overlap color updates while UV shells move; only the intersecting area turns red. These demonstrations also show the inward shell outlines.
+
+<img src="doc/bmax/media/uvoverlap.gif" alt="Partial UV overlap highlighted in red while moving a UV shell" width="448">
+
+#### Flipped UVs
+
+Mirroring a UV shell immediately marks its reversed orientation in magenta.
+
+<img src="doc/bmax/media/uvflip.gif" alt="Flipped UV shell highlighted in magenta" width="448">
+
+### UV background opacity and stable framing
+
+**UV Editor > Overlays > Image > Opacity** controls the background image's opacity independently of the UVs. At 0 the image is transparent; at 1 it is fully visible. This setting remains effective when the main Overlays toggle is off.
+
+<img src="doc/bmax/media/imageopacity.gif" alt="Adjusting the UV background image opacity independently of the UV geometry" width="700">
+
+Adding, removing, or switching the background image preserves the UVs' size and position on screen, including switches between 512-pixel and 4K images or images with different aspect ratios. Automatic image changes from the active material also preserve the view. Pan and zoom continue to work after an image change.
+
 ### Branding and Windows executable
 
-Bmax includes a custom splash logo and Windows icons. The executable is deliberately named **blender.exe**, with **blender-launcher.exe** as its launcher. It uses the existing Blender 5.2 preferences and startup configuration.
+Bmax includes a custom splash logo and Windows icons. The executable is named **blender.exe**. It uses the existing Blender 5.2 preferences and startup configuration.
 
 ## Included addon
 
@@ -48,7 +90,7 @@ The intermittent custom-pie input issue is still under investigation; no definit
 
 ## File compatibility
 
-Bmax uses Blender's `.blend` format. Its custom Octahedral Radius and Axis Size values are stored in Bmax files. Official Blender does not expose these properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
+Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, origin-axis uniform-scale compensation, UV diagnostic settings, background opacity, and UV view aspect are stored in Bmax files. Older files open with the new UV diagnostic flags disabled and overlap intensity and background opacity set to 1. Explicit zero values survive saving and reopening. Official Blender does not expose the Bmax-specific properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
 
 ## Build and source
 
@@ -58,7 +100,13 @@ Use [Blender's Windows build instructions](https://developer.blender.org/docs/ha
 
 The Windows Release build has compiled successfully using Visual Studio 2022 / MSVC v143. The current local build omits precompiled CUDA, HIP, and oneAPI kernels. This publication contains source code rather than a packaged Windows binary.
 
-The demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping.
+Origin axes were checked in 19 viewport captures on both OpenGL and Vulkan, including old-file migration, 20 cm defaults, uniform scaling during the modal gesture and after confirmation, per-axis scaling, cancellation, negative uniform scaling, Undo/Redo, and save/reload in a new session. The object geometry retained its world-space position throughout the origin transforms.
+
+Object Mode UV diagnostics were additionally checked in 15 cases on each backend, including holes, UV seams, hidden faces, partial overlap, flipped UVs, and the 2-pixel outline at two zoom levels. Ten captures per backend verified shared panel availability, repeated mode switches, settings and framing preservation, changes made in either mode, the main Overlays toggle, and original UV diagnostics with Array modifiers.
+
+The UV changes were checked in the running editor on both OpenGL and Vulkan: 15 diagnostic cases, including the exact 2-pixel outline at two zoom levels, and 21 background/view cases covering 4K images, rectangular images, removal, automatic image changes, pan, zoom, opacity, and save/reload. Image switches produced no change in the measured UV screen coordinates. Old-file migration and persistence were also verified.
+
+The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
 
 ## Planned work
 
