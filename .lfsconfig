@@ -1,2 +1,3 @@
 [lfs]
 	url = https://projects.blender.org/blender/blender.git/info/lfs
+	pushurl = https://github.com/MaxPuliero/Bmax.git/info/lfs

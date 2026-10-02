@@ -96,7 +96,7 @@ Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, or
 
 This repository publishes a source snapshot based on Blender **v5.2.2**, upstream commit **d13f752e3b9c4f8c261cda552b1021f8bcc0382c**, plus the Bmax changes. It does not include Blender's complete upstream Git history. Bmax development is published on a dedicated `codex/bmax-publication` branch; `main` points to the published version.
 
-Use [Blender's Windows build instructions](https://developer.blender.org/docs/handbook/building_blender/windows/). Git LFS is required: `.lfsconfig` points to Blender's public LFS server for inherited assets. Bmax-owned artwork and the animated demonstrations are stored directly in this repository. Dependency submodules retain their upstream Blender URLs. Precompiled libraries and local build output are not committed.
+Use [Blender's Windows build instructions](https://developer.blender.org/docs/handbook/building_blender/windows/). Git LFS is required: `.lfsconfig` downloads inherited assets from Blender's public LFS server and routes LFS uploads to MaxPuliero/Bmax on GitHub. Bmax-owned artwork and the animated demonstrations are stored directly in this repository. Dependency submodules retain their upstream Blender URLs. Precompiled libraries and local build output are not committed.
 
 The Windows Release build has compiled successfully using Visual Studio 2022 / MSVC v143. The current local build omits precompiled CUDA, HIP, and oneAPI kernels. This publication contains source code rather than a packaged Windows binary.
 
