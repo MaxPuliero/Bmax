@@ -82,12 +82,6 @@ Adding, removing, or switching the background image preserves the UVs' size and 
 
 Bmax includes a custom splash logo and Windows icons. The executable is named **blender.exe**. It uses the existing Blender 5.2 preferences and startup configuration.
 
-## Included addon
-
-The corrected **Max Puliero Pie Menu List 1.0.1** is included in [extras/addons/MaxPuliero_Pies_5_1](extras/addons/MaxPuliero_Pies_5_1). It adds registration guards and shortcut deduplication, improves unregister cleanup, removes a duplicate selection operator, and gives the Multires decrease operator a unique identifier. Existing shortcut combinations and PRESS bindings are retained. Install the folder as a legacy addon, or ZIP that folder before installing it through Preferences.
-
-The intermittent custom-pie input issue is still under investigation; no definitive cause has been established for the observed executable-name differences.
-
 ## File compatibility
 
 Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, origin-axis uniform-scale compensation, UV diagnostic settings, background opacity, and UV view aspect are stored in Bmax files. Older files open with the new UV diagnostic flags disabled and overlap intensity and background opacity set to 1. Explicit zero values survive saving and reopening. Official Blender does not expose the Bmax-specific properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
@@ -118,6 +112,6 @@ These items are not implemented in this published version.
 
 ## License and attribution
 
-Bmax is derived from Blender, developed by the Blender Foundation and its contributors. Blender is licensed under the **GNU General Public License, version 3**; see [COPYING](COPYING) and the existing source-file notices for applicable terms. Bundled third-party components retain their respective licenses. Addon author credits remain in its source files.
+Bmax is derived from Blender, developed by the Blender Foundation and its contributors. Blender is licensed under the **GNU General Public License, version 3**; see [COPYING](COPYING) and the existing source-file notices for applicable terms. Bundled third-party components retain their respective licenses.
 
 This is an independent custom build. See the [original Blender README](doc/bmax/README_BLENDER_UPSTREAM.md) for upstream project links.
