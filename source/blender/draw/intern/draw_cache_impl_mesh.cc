@@ -718,6 +718,13 @@ gpu::Batch *DRW_mesh_batch_cache_get_edge_detection(Mesh &mesh, bool *r_is_manif
   return DRW_batch_request(&cache.batch.edge_detection);
 }
 
+gpu::Batch *DRW_mesh_batch_cache_get_boundary_edges(Mesh &mesh)
+{
+  MeshBatchCache &cache = *mesh_batch_cache_get(mesh);
+  cache.batch_requested |= MBC_BOUNDARY_EDGES;
+  return DRW_batch_request(&cache.batch.boundary_edges);
+}
+
 gpu::Batch *DRW_mesh_batch_cache_get_wireframes_face(Mesh &mesh)
 {
   MeshBatchCache &cache = *mesh_batch_cache_get(mesh);
@@ -1311,6 +1318,13 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
                          GPU_PRIM_LINES,
                          list,
                          IBOType::LinesLoose,
+                         {VBOType::Position}});
+    }
+    if (batches_to_create & MBC_BOUNDARY_EDGES) {
+      batch_info.append({*cache.batch.boundary_edges,
+                         GPU_PRIM_LINES,
+                         list,
+                         IBOType::LinesBoundary,
                          {VBOType::Position}});
     }
     if (batches_to_create & MBC_EDGE_DETECTION) {

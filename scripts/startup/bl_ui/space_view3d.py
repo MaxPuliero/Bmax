@@ -7156,6 +7156,9 @@ class VIEW3D_PT_overlay_object(Panel):
         subsub.prop(overlay, "show_light_colors")
         sub.prop(overlay, "show_relationship_lines")
         sub.prop(overlay, "show_outline_selected")
+        subsub = sub.column(align=True)
+        subsub.active = overlay.show_outline_selected
+        subsub.prop(overlay, "show_mesh_holes")
 
         sub = split.column(align=True)
         sub.prop(overlay, "show_bones", text="Bones")

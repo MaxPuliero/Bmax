@@ -337,6 +337,9 @@ gpu::IndexBufPtr extract_lines_paint_mask(const MeshRenderData &mr);
 gpu::IndexBufPtr extract_lines_paint_mask_subdiv(const MeshRenderData &mr,
                                                  const DRWSubdivCache &subdiv_cache);
 
+gpu::IndexBufPtr extract_lines_boundary(const MeshRenderData &mr);
+gpu::IndexBufPtr extract_lines_boundary_subdiv(const MeshRenderData &mr,
+                                               const DRWSubdivCache &subdiv_cache);
 gpu::IndexBufPtr extract_lines_adjacency(const MeshRenderData &mr, bool &r_is_manifold);
 gpu::IndexBufPtr extract_lines_adjacency_subdiv(const DRWSubdivCache &subdiv_cache,
                                                 bool &r_is_manifold);

@@ -199,6 +199,7 @@ gpu::Batch *DRW_mesh_batch_cache_get_paint_overlay_verts(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_all_edges(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_loose_edges(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_edge_detection(Mesh &mesh, bool *r_is_manifold);
+gpu::Batch *DRW_mesh_batch_cache_get_boundary_edges(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_surface(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_paint_overlay_surface(Mesh &mesh);
 gpu::Batch *DRW_mesh_batch_cache_get_paint_overlay_edges(Mesh &mesh);

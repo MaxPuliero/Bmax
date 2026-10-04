@@ -40,6 +40,10 @@ class Outline : Overlay {
   Framebuffer prepass_fb_ = {"outline.prepass_fb"};
 
   Vector<FlatObjectRef> flat_objects_;
+  PassMain mesh_holes_ps_ = {"MeshHoles"};
+  PassMain::Sub *mesh_holes_regular_ps_ = nullptr;
+  PassMain::Sub *mesh_holes_in_front_ps_ = nullptr;
+  bool show_mesh_holes_ = false;
 
   PassMain outline_prepass_flat_ps_ = {"PrepassFlat"};
 
@@ -59,6 +63,26 @@ class Outline : Overlay {
     const bool do_smooth_lines = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0;
     const bool do_expand = (U.pixelsize > 1.0) || (outline_width > 2.0f);
     const bool is_transform = (G.moving & G_TRANSFORM_OBJ) != 0;
+    show_mesh_holes_ = !state.hide_overlays && !(state.overlay.flag & V3D_OVERLAY_HIDE_MESH_HOLES);
+    mesh_holes_ps_.init();
+    if (show_mesh_holes_) {
+      auto &pass = mesh_holes_ps_;
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL,
+                     state.clipping_plane_count);
+      pass.shader_set(res.shaders->mesh_holes.get());
+      pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
+      pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
+      pass.bind_texture("scene_depth_tx", &res.depth_tx);
+      pass.push_constant("line_width", outline_width * U.pixelsize * 0.5f);
+      pass.push_constant("is_transform", is_transform);
+      pass.push_constant("do_smooth_lines", do_smooth_lines);
+      auto &regular = pass.sub("Regular");
+      regular.push_constant("use_occlusion", !state.xray_enabled);
+      mesh_holes_regular_ps_ = &regular;
+      auto &in_front = pass.sub("InFront");
+      in_front.push_constant("use_occlusion", false);
+      mesh_holes_in_front_ps_ = &in_front;
+    }
 
     {
       auto &pass = outline_prepass_ps_;
@@ -154,6 +178,12 @@ class Outline : Overlay {
             res, *prepass_gpencil_ps_, state.scene, ob_ref.object, manager.unique_handle(ob_ref));
         break;
       case OB_MESH:
+        if (show_mesh_holes_) {
+          geom = DRW_cache_mesh_boundary_edges_get(ob_ref.object);
+          auto *pass = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? mesh_holes_in_front_ps_ :
+                                                                 mesh_holes_regular_ps_;
+          pass->draw_expand(geom, GPU_PRIM_TRIS, 2, 1, manager.unique_handle(ob_ref));
+        }
         if (state.xray_enabled_and_not_wire) {
           geom = DRW_cache_mesh_edge_detection_get(ob_ref.object, nullptr);
           prepass_wire_ps_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, manager.unique_handle(ob_ref));
@@ -227,6 +257,9 @@ class Outline : Overlay {
       return;
     }
 
+    if (show_mesh_holes_) {
+      manager.generate_commands(mesh_holes_ps_, view);
+    }
     manager.generate_commands(outline_prepass_ps_, view);
     manager.generate_commands(outline_prepass_flat_ps_, view);
   }
@@ -254,6 +287,9 @@ class Outline : Overlay {
 
     GPU_framebuffer_bind(framebuffer);
     manager.submit(outline_resolve_ps_, view);
+    if (show_mesh_holes_) {
+      manager.submit(mesh_holes_ps_, view);
+    }
 
     tmp_depth_tx_.release();
     object_id_tx_.release();

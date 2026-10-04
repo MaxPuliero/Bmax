@@ -262,6 +262,84 @@ gpu::IndexBufPtr extract_lines_adjacency_subdiv(const DRWSubdivCache &subdiv_cac
   return gpu::IndexBufPtr(GPU_indexbuf_build(&builder));
 }
 
+/* Count face users independently of winding: flipped normals and triangulation edges
+ * must not be mistaken for holes. The compact result is cached until the mesh changes. */
+gpu::IndexBufPtr extract_lines_boundary(const MeshRenderData &mr)
+{
+  Array<int> users(mr.edges_num, 0);
+  Array<int2> corners(mr.edges_num);
+  if (mr.extract_type == MeshExtractType::Mesh) {
+    for (const int face_index : mr.faces.index_range()) {
+      const IndexRange face = mr.faces[face_index];
+      for (const int corner : face) {
+        const int edge = mr.corner_edges[corner];
+        users[edge]++;
+        if ((mr.hide_poly.is_empty() || !mr.hide_poly[face_index]) &&
+            (mr.hide_edge.is_empty() || !mr.hide_edge[edge]))
+        {
+          corners[edge] = int2(corner, bke::mesh::face_corner_next(face, corner));
+        }
+        else {
+          corners[edge] = int2(-1);
+        }
+      }
+    }
+  }
+  else {
+    BMFace *face;
+    BMIter iter;
+    BM_ITER_MESH (face, &iter, mr.bm, BM_FACES_OF_MESH) {
+      BMLoop *loop = BM_FACE_FIRST_LOOP(face);
+      BMLoop *first = loop;
+      do {
+        const int edge = BM_elem_index_get(loop->e);
+        users[edge]++;
+        corners[edge] = (BM_elem_flag_test(face, BM_ELEM_HIDDEN) ||
+                         BM_elem_flag_test(loop->e, BM_ELEM_HIDDEN)) ?
+                            int2(-1) :
+                            int2(BM_elem_index_get(loop), BM_elem_index_get(loop->next));
+      } while ((loop = loop->next) != first);
+    }
+  }
+
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, mr.edges_num, mr.corners_num);
+  for (const int edge : users.index_range()) {
+    if (users[edge] == 1 && corners[edge].x != -1) {
+      GPU_indexbuf_add_line_verts(&builder, corners[edge].x, corners[edge].y);
+    }
+  }
+  return gpu::IndexBufPtr(GPU_indexbuf_build(&builder));
+}
+
+gpu::IndexBufPtr extract_lines_boundary_subdiv(const MeshRenderData &mr,
+                                               const DRWSubdivCache &subdiv_cache)
+{
+  Array<int> users(subdiv_cache.num_subdiv_edges, 0);
+  Array<int2> corners(subdiv_cache.num_subdiv_edges);
+  for (const int quad : IndexRange(subdiv_cache.num_subdiv_quads)) {
+    const int first = quad * 4;
+    const int face = subdiv_cache.subdiv_loop_face_index[first];
+    for (const int offset : IndexRange(4)) {
+      const int corner = first + offset;
+      const int edge = subdiv_cache.subdiv_loop_subdiv_edge_index[corner];
+      users[edge]++;
+      corners[edge] = (mr.hide_poly.is_empty() || !mr.hide_poly[face]) ?
+                          int2(corner, first + (offset + 1) % 4) :
+                          int2(-1);
+    }
+  }
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(
+      &builder, GPU_PRIM_LINES, subdiv_cache.num_subdiv_edges, subdiv_cache.num_subdiv_loops);
+  for (const int edge : users.index_range()) {
+    if (users[edge] == 1 && corners[edge].x != -1) {
+      GPU_indexbuf_add_line_verts(&builder, corners[edge].x, corners[edge].y);
+    }
+  }
+  return gpu::IndexBufPtr(GPU_indexbuf_build(&builder));
+}
+
 #undef EDGE_IS_UNSET
 #undef EDGE_IS_HANDLED
 #undef EDGE_IS_CHECK

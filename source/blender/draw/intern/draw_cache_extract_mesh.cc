@@ -190,6 +190,9 @@ void mesh_buffer_cache_create_requested(TaskGraph & /*task_graph*/,
       case IBOType::LinesPaintMask:
         created_ibos[i] = extract_lines_paint_mask(mr);
         break;
+      case IBOType::LinesBoundary:
+        created_ibos[i] = extract_lines_boundary(mr);
+        break;
       case IBOType::LinesAdjacency:
         created_ibos[i] = extract_lines_adjacency(mr, cache.is_manifold);
         break;
@@ -467,6 +470,9 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   if (ibos_to_create.contains(IBOType::LinesPaintMask)) {
     buffers.ibos.add_new(IBOType::LinesPaintMask,
                          extract_lines_paint_mask_subdiv(mr, subdiv_cache));
+  }
+  if (ibos_to_create.contains(IBOType::LinesBoundary)) {
+    buffers.ibos.add_new(IBOType::LinesBoundary, extract_lines_boundary_subdiv(mr, subdiv_cache));
   }
   if (ibos_to_create.contains(IBOType::LinesAdjacency)) {
     buffers.ibos.add_new(IBOType::LinesAdjacency,

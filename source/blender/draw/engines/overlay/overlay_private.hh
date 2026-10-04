@@ -489,6 +489,7 @@ class ShaderModule {
   StaticShader motion_path_line = shader_clippable("overlay_motion_path_line");
   StaticShader motion_path_vert = shader_clippable("overlay_motion_path_point");
   StaticShader outline_detect = {"overlay_outline_detect"};
+  StaticShader mesh_holes = shader_clippable("overlay_mesh_holes");
   StaticShader outline_prepass_curves = shader_clippable("overlay_outline_prepass_curves");
   StaticShader outline_prepass_gpencil = shader_clippable("overlay_outline_prepass_gpencil");
   StaticShader outline_prepass_mesh = shader_clippable("overlay_outline_prepass_mesh");
@@ -745,6 +746,7 @@ struct Resources : public select::SelectMap {
     shaders->motion_path_line.ensure_compile_async();
     shaders->motion_path_vert.ensure_compile_async();
     shaders->outline_detect.ensure_compile_async();
+    shaders->mesh_holes.ensure_compile_async();
     shaders->outline_prepass_curves.ensure_compile_async();
     shaders->outline_prepass_gpencil.ensure_compile_async();
     shaders->outline_prepass_mesh.ensure_compile_async();

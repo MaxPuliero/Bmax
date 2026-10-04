@@ -703,6 +703,8 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_motion_path_line_frag.glsl
   engines/overlay/shaders/overlay_motion_path_line_vert.glsl
   engines/overlay/shaders/overlay_motion_path_point_vert.glsl
+  engines/overlay/shaders/overlay_mesh_holes_vert.glsl
+  engines/overlay/shaders/overlay_mesh_holes_frag.glsl
   engines/overlay/shaders/overlay_outline_detect_frag.glsl
   engines/overlay/shaders/overlay_outline_prepass_curves_vert.glsl
   engines/overlay/shaders/overlay_outline_prepass_frag.glsl
@@ -890,6 +892,7 @@ if(WITH_GTESTS)
   if(WITH_GPU_DRAW_TESTS)
     set(TEST_SRC
       tests/draw_curves_test.cc
+      tests/draw_mesh_boundary_test.cc
       tests/draw_pass_test.cc
       tests/eevee_test.cc
 

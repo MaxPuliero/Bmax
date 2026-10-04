@@ -129,6 +129,7 @@ enum class IBOType : int8_t {
   FaceDots,
   LinesPaintMask,
   LinesAdjacency,
+  LinesBoundary,
   UVTris,
   AllUVLines,
   UVLines,
@@ -190,6 +191,7 @@ struct MeshBatchList {
   gpu::Batch *surface_viewer_attribute;
   gpu::Batch *paint_overlay_verts;
   gpu::Batch *paint_overlay_surface;
+  gpu::Batch *boundary_edges;
 };
 
 #define MBC_BATCH_LEN (sizeof(MeshBatchList) / sizeof(void *))
@@ -231,6 +233,7 @@ enum DRWBatchFlag : uint64_t {
   MBC_VIEWER_ATTRIBUTE_OVERLAY = (1u << MBC_BATCH_INDEX(surface_viewer_attribute)),
   MBC_PAINT_OVERLAY_VERTS = (uint64_t(1u) << MBC_BATCH_INDEX(paint_overlay_verts)),
   MBC_PAINT_OVERLAY_SURFACE = (uint64_t(1u) << MBC_BATCH_INDEX(paint_overlay_surface)),
+  MBC_BOUNDARY_EDGES = (uint64_t(1u) << MBC_BATCH_INDEX(boundary_edges)),
   MBC_SURFACE_PER_MAT = (uint64_t(1u) << MBC_BATCH_LEN),
 };
 ENUM_OPERATORS(DRWBatchFlag);

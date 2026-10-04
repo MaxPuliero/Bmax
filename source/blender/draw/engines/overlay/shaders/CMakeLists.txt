@@ -83,6 +83,7 @@ set(SRC_GLSL_VERT
   overlay_outline_prepass_gpencil_vert.glsl
   overlay_outline_prepass_pointcloud_vert.glsl
   overlay_outline_prepass_vert.glsl
+  overlay_mesh_holes_vert.glsl
   overlay_outline_prepass_wire_vert.glsl
   overlay_paint_face_vert.glsl
   overlay_paint_point_vert.glsl
@@ -127,6 +128,7 @@ set(SRC_GLSL_FRAG
   overlay_grid_frag.glsl
   overlay_image_frag.glsl
   overlay_motion_path_line_frag.glsl
+  overlay_mesh_holes_frag.glsl
   overlay_outline_detect_frag.glsl
   overlay_outline_prepass_frag.glsl
   overlay_outline_prepass_gpencil_frag.glsl

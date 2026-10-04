@@ -155,6 +155,34 @@ CREATE_INFO_VARIANT(overlay_outline_prepass_pointcloud_clipped,
 /** \name Outline Rendering
  * \{ */
 
+GPU_SHADER_NAMED_INTERFACE_INFO(overlay_mesh_holes_iface, hole)
+NO_PERSPECTIVE(float, distance)
+NO_PERSPECTIVE(float4, color)
+GPU_SHADER_NAMED_INTERFACE_END(hole)
+
+GPU_SHADER_CREATE_INFO(overlay_mesh_holes)
+DO_STATIC_COMPILATION()
+VERTEX_OUT(overlay_mesh_holes_iface)
+ADDITIONAL_INFO(draw_view)
+ADDITIONAL_INFO(draw_mesh)
+ADDITIONAL_INFO(draw_globals)
+ADDITIONAL_INFO(draw_object_infos)
+ADDITIONAL_INFO(gpu_index_buffer_load)
+STORAGE_BUF_FREQ(0, read, float, pos[], GEOMETRY)
+PUSH_CONSTANT(int2, gpu_attr_0)
+PUSH_CONSTANT(float, line_width)
+PUSH_CONSTANT(bool, is_transform)
+PUSH_CONSTANT(bool, use_occlusion)
+PUSH_CONSTANT(bool, do_smooth_lines)
+SAMPLER(0, sampler2DDepth, scene_depth_tx)
+FRAGMENT_OUT(0, float4, frag_color)
+FRAGMENT_OUT(1, float4, line_output)
+VERTEX_SOURCE("overlay_mesh_holes_vert.glsl")
+FRAGMENT_SOURCE("overlay_mesh_holes_frag.glsl")
+GPU_SHADER_CREATE_END()
+
+CREATE_INFO_VARIANT(overlay_mesh_holes_clipped, overlay_mesh_holes, drw_clipped)
+
 GPU_SHADER_CREATE_INFO(overlay_outline_detect)
 DO_STATIC_COMPILATION()
 PUSH_CONSTANT(float, alpha_occlu)
