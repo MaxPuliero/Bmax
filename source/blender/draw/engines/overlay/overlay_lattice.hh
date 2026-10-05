@@ -20,9 +20,9 @@ namespace blender::draw::overlay {
  */
 class Lattices : Overlay {
  private:
-  PassMain ps_ = {"Lattice"};
+  PassMain ps_[3] = {{"Lattice"}, {"SelectedLattice"}, {"ActiveLattice"}};
 
-  PassMain::Sub *lattice_ps_;
+  PassMain::Sub *lattice_ps_[3];
   PassMain::Sub *edit_lattice_wire_ps_;
   PassMain::Sub *edit_lattice_point_ps_;
 
@@ -34,26 +34,32 @@ class Lattices : Overlay {
       return;
     }
 
-    auto create_sub_pass = [&](const char *name, gpu::Shader *shader, bool add_weight_tex) {
-      PassMain::Sub &sub_pass = ps_.sub(name);
-      sub_pass.shader_set(shader);
-      if (add_weight_tex) {
-        sub_pass.bind_texture("weight_tx", &res.weight_ramp_tx);
-      }
-      return &sub_pass;
-    };
+    for (int priority : IndexRange(3)) {
+      auto &pass = ps_[priority];
+      auto create_sub_pass = [&](const char *name, gpu::Shader *shader, bool add_weight_tex) {
+        PassMain::Sub &sub_pass = pass.sub(name);
+        sub_pass.shader_set(shader);
+        if (add_weight_tex) {
+          sub_pass.bind_texture("weight_tx", &res.weight_ramp_tx);
+        }
+        return &sub_pass;
+      };
 
-    ps_.init();
-    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL,
-                  state.clipping_plane_count);
-    ps_.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
-    ps_.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
-    res.select_bind(ps_);
-    edit_lattice_wire_ps_ = create_sub_pass(
-        "edit_lattice_wire", res.shaders->lattice_wire.get(), true);
-    edit_lattice_point_ps_ = create_sub_pass(
-        "edit_lattice_points", res.shaders->lattice_points.get(), false);
-    lattice_ps_ = create_sub_pass("lattice", res.shaders->extra_wire_object.get(), false);
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL,
+                     state.clipping_plane_count);
+      pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
+      pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
+      res.select_bind(pass);
+      if (priority == 0) {
+        edit_lattice_wire_ps_ = create_sub_pass(
+            "edit_lattice_wire", res.shaders->lattice_wire.get(), true);
+        edit_lattice_point_ps_ = create_sub_pass(
+            "edit_lattice_points", res.shaders->lattice_points.get(), false);
+      }
+      lattice_ps_[priority] = create_sub_pass(
+          "lattice", res.shaders->extra_wire_object.get(), false);
+    }
   }
 
   void edit_object_sync(Manager &manager,
@@ -99,7 +105,8 @@ class Lattices : Overlay {
       draw_mat[3][3] = 0.0f /* No stipples. */;
       ResourceHandleRange res_handle = manager.resource_handle(
           ob_ref, &draw_mat, nullptr, nullptr);
-      lattice_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+      lattice_ps_[res.object_wire_selection_priority(ob_ref, state)]->draw(
+          geom, res_handle, res.select_id(ob_ref).get());
     }
   }
 
@@ -109,7 +116,9 @@ class Lattices : Overlay {
       return;
     }
 
-    manager.generate_commands(ps_, view);
+    for (PassMain &pass : ps_) {
+      manager.generate_commands(pass, view);
+    }
   }
 
   void draw_line(Framebuffer &framebuffer, Manager &manager, View &view) final
@@ -118,8 +127,18 @@ class Lattices : Overlay {
       return;
     }
 
+    for (int priority : IndexRange(3)) {
+      draw_line_priority(framebuffer, manager, view, priority);
+    }
+  }
+
+  void draw_line_priority(Framebuffer &framebuffer, Manager &manager, View &view, int priority)
+  {
+    if (!enabled_) {
+      return;
+    }
     GPU_framebuffer_bind(framebuffer);
-    manager.submit_only(ps_, view);
+    manager.submit_only(ps_[priority], view);
   }
 };
 }  // namespace blender::draw::overlay

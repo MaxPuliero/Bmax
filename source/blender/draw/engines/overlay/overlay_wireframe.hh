@@ -31,7 +31,7 @@ namespace blender::draw::overlay {
  */
 class Wireframe : Overlay {
  private:
-  PassMain wireframe_ps_ = {"Wireframe"};
+  PassMain wireframe_ps_[3] = {{"Wireframe"}, {"SelectedWireframe"}, {"ActiveWireframe"}};
   struct ColoringPass {
     PassMain::Sub *curves_ps_ = nullptr;
     PassMain::Sub *mesh_ps_ = nullptr;
@@ -39,7 +39,7 @@ class Wireframe : Overlay {
     PassMain::Sub *mesh_all_edges_ps_ = nullptr;
     PassMain::Sub *points_ps_ = nullptr;
     PassMain::Sub *pointcloud_ps_ = nullptr;
-  } colored, non_colored;
+  } colored[3], non_colored;
 
   /* Copy of the depth buffer to be able to read it during wireframe rendering. */
   TextureFromPool tmp_depth_tx_ = {"tmp_depth_tx"};
@@ -71,8 +71,8 @@ class Wireframe : Overlay {
     /* Note: Depth buffer has different format when doing selection. Avoid copy in this case. */
     do_depth_copy_workaround_ = !is_selection && (depth_tex == &tmp_depth_tx_);
 
-    {
-      auto &pass = wireframe_ps_;
+    for (int priority : IndexRange(3)) {
+      auto &pass = wireframe_ps_[priority];
       pass.init();
       pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
       pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
@@ -109,8 +109,10 @@ class Wireframe : Overlay {
         ps.curves_ps_ = shader_pass(sh.wireframe_curve.get(), "Curve", use_color, 1.0f);
       };
 
-      coloring_pass(non_colored, false);
-      coloring_pass(colored, true);
+      if (priority == 0) {
+        coloring_pass(non_colored, false);
+      }
+      coloring_pass(colored[priority], true);
     }
   }
 
@@ -133,7 +135,9 @@ class Wireframe : Overlay {
     const bool show_surface_wire = show_wire_ || (ob_ref.object->dtx & OB_DRAWWIRE) ||
                                    (ob_ref.object->dt == OB_WIRE);
 
-    ColoringPass &coloring = in_edit_paint_mode ? non_colored : colored;
+    ColoringPass &coloring = in_edit_paint_mode ?
+                                 non_colored :
+                                 colored[res.object_wire_selection_priority(ob_ref, state)];
     switch (ob_ref.object->type) {
       case OB_CURVES_LEGACY: {
         gpu::Batch *geom = DRW_cache_curve_edge_wire_get(ob_ref.object);
@@ -252,7 +256,9 @@ class Wireframe : Overlay {
       return;
     }
 
-    manager.generate_commands(wireframe_ps_, view);
+    for (PassMain &pass : wireframe_ps_) {
+      manager.generate_commands(pass, view);
+    }
   }
 
   void copy_depth(TextureRef &depth_tx)
@@ -276,10 +282,21 @@ class Wireframe : Overlay {
       return;
     }
 
-    GPU_framebuffer_bind(framebuffer);
-    manager.submit_only(wireframe_ps_, view);
+    for (int priority : IndexRange(3)) {
+      draw_line_priority(framebuffer, manager, view, priority);
+    }
+  }
 
-    tmp_depth_tx_.release();
+  void draw_line_priority(Framebuffer &framebuffer, Manager &manager, View &view, int priority)
+  {
+    if (!enabled_) {
+      return;
+    }
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit_only(wireframe_ps_[priority], view);
+    if (priority == 2) {
+      tmp_depth_tx_.release();
+    }
   }
 
  private:

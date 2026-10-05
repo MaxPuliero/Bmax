@@ -864,6 +864,17 @@ struct Resources : public select::SelectMap {
     free_movieclips_textures();
   }
 
+  /** Draw coincident object wires in selection order, without changing depth or picking. */
+  int object_wire_selection_priority(const ObjectRef &ob_ref, const State &state) const
+  {
+    if (is_selection() || (ob_ref.object->base_flag & BASE_FROM_SET) ||
+        !(ob_ref.object->base_flag & BASE_SELECTED))
+    {
+      return 0;
+    }
+    return ob_ref.is_active(state.object_active) ? 2 : 1;
+  }
+
   ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const
   {
     const bool is_edit = (state.object_mode & OB_MODE_EDIT) &&

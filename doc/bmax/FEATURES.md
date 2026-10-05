@@ -43,7 +43,7 @@ Initial Mesh Holes commit: `a5cd97e8`. The 20 cm bone defaults and coincident se
 | --- | --- |
 | Mesh Holes | 3D Viewport > Overlays > Objects > Mesh Holes highlights open boundary edges of selected meshes in Object Mode. Enabled by default, including older saved viewports. Uses the selection color and half the selection-outline width. Supports evaluated and subdivision meshes, X-Ray, In Front, clipping, and scene occlusion. Closed geometry, internal shared edges, loose edges, and edges incident to more than two faces receive no extra boundary lines. |
 | Default new bone length | New armatures and Add Bone in Edit Mode default to 20 cm, adjusted for scene unit scale (`0.2` Blender units at standard metric scale). Explicit sizes are respected; existing bones, duplicates, and extrusions are unchanged. Armature object scale still applies. |
-| Coincident selection outlines | Armature display submits unselected elements first, selected elements next, and selected active elements last. Selection outlines no longer depend on bone creation order at equal depth; existing depth tests and picking are retained. Coincident selected mesh-object outlines were also verified. |
+| Coincident selection outlines | Armature display submits unselected elements first, selected elements next, and selected active elements last. Selection outlines no longer depend on bone creation order at equal depth; existing depth tests and picking are retained. Object Mode also orders empty shapes/image frames, legacy curve wires, lattice cages, and loose mesh edges/points across their overlay passes. Coincident selected mesh-object outlines were also verified. |
 
 See [Mesh Holes implementation and validation notes](mesh_holes.md).
 

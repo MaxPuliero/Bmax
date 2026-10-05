@@ -36,7 +36,7 @@ class Empties : Overlay {
    * Object property "In Front" unchecked. */
   PassSortable images_blend_ps_ = {"images_blend_ps_"};
 
-  PassSimple ps_ = {"Empties"};
+  PassSimple ps_[3] = {{"Empties"}, {"SelectedEmpties"}, {"ActiveEmpties"}};
 
   struct CallBuffers {
     const SelectionType selection_type_;
@@ -48,13 +48,16 @@ class Empties : Overlay {
     EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
     EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
     EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
-  } call_buffers_;
+  } call_buffers_[3];
 
   View::OffsetData offset_data_;
   float4x4 depth_bias_winmat_;
 
  public:
-  Empties(const SelectionType selection_type) : call_buffers_{selection_type} {};
+  Empties(const SelectionType selection_type)
+      : call_buffers_{{selection_type}, {selection_type}, {selection_type}}
+  {
+  }
 
   void begin_sync(Resources &res, const State &state) final
   {
@@ -95,7 +98,9 @@ class Empties : Overlay {
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
     init_sortable(images_front_ps_, draw_state);
 
-    begin_sync(call_buffers_);
+    for (CallBuffers &buffers : call_buffers_) {
+      begin_sync(buffers);
+    }
   }
 
   static void begin_sync(CallBuffers &call_buffers)
@@ -119,10 +124,11 @@ class Empties : Overlay {
       return;
     }
 
+    CallBuffers &buffers = call_buffers_[res.object_wire_selection_priority(ob_ref, state)];
     const float4 color = res.object_wire_color(ob_ref, state);
     const select::ID select_id = res.select_id(ob_ref);
     if (ob_ref.object->empty_drawtype == OB_EMPTY_IMAGE) {
-      image_sync(ob_ref, select_id, manager, res, state, call_buffers_.image_buf);
+      image_sync(ob_ref, select_id, manager, res, state, buffers.image_buf);
       return;
     }
     /* Only draw the empty overlay if it's not a collection instance and the evaluated geometry set
@@ -138,7 +144,7 @@ class Empties : Overlay {
                 ob_ref.object->empty_drawsize,
                 ob_ref.object->empty_drawtype,
                 color,
-                call_buffers_);
+                buffers);
   }
 
   static void object_sync(const select::ID select_id,
@@ -181,9 +187,11 @@ class Empties : Overlay {
       return;
     }
 
-    ps_.init();
-    res.select_bind(ps_);
-    end_sync(res, state, ps_, call_buffers_);
+    for (int priority : IndexRange(3)) {
+      ps_[priority].init();
+      res.select_bind(ps_[priority]);
+      end_sync(res, state, ps_[priority], call_buffers_[priority]);
+    }
   }
 
   static void end_sync(Resources &res,
@@ -227,8 +235,18 @@ class Empties : Overlay {
       return;
     }
 
+    for (int priority : IndexRange(3)) {
+      draw_line_priority(framebuffer, manager, view, priority);
+    }
+  }
+
+  void draw_line_priority(Framebuffer &framebuffer, Manager &manager, View &view, int priority)
+  {
+    if (!enabled_) {
+      return;
+    }
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(ps_, view);
+    manager.submit(ps_[priority], view);
   }
 
   void draw_background_images(Framebuffer &framebuffer, Manager &manager, View &view)

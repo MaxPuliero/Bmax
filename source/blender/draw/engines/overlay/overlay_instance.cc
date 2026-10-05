@@ -855,15 +855,22 @@ void Instance::draw_v3d(Manager &manager, View &view)
 
   auto draw_line = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.bounds.draw_line(framebuffer, manager, view);
-    layer.wireframe.draw_line(framebuffer, manager, view);
+    layer.wireframe.draw_line_priority(framebuffer, manager, view, 0);
     layer.cameras.draw_line(framebuffer, manager, view);
-    layer.empties.draw_line(framebuffer, manager, view);
+    layer.empties.draw_line_priority(framebuffer, manager, view, 0);
     layer.axes.draw_line(framebuffer, manager, view);
     layer.force_fields.draw_line(framebuffer, manager, view);
     layer.lights.draw_line(framebuffer, manager, view);
     layer.light_probes.draw_line(framebuffer, manager, view);
     layer.speakers.draw_line(framebuffer, manager, view);
-    layer.lattices.draw_line(framebuffer, manager, view);
+    layer.lattices.draw_line_priority(framebuffer, manager, view, 0);
+    /* Keep coincident wires selected even when the objects use different overlay types.
+     * Priority zero retains the original submission order for GPU picking. */
+    for (int priority : IndexRange(1, 2)) {
+      layer.wireframe.draw_line_priority(framebuffer, manager, view, priority);
+      layer.empties.draw_line_priority(framebuffer, manager, view, priority);
+      layer.lattices.draw_line_priority(framebuffer, manager, view, priority);
+    }
     layer.metaballs.draw_line(framebuffer, manager, view);
     layer.pointclouds.draw_line(framebuffer, manager, view);
     layer.relations.draw_line(framebuffer, manager, view);
