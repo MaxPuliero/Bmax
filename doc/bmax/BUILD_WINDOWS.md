@@ -1,10 +1,10 @@
 # Building Bmax on Windows
 
-See the [complete feature inventory](FEATURES.md) for the implemented additions and planned work.
+See the [complete feature inventory](FEATURES.md) for the implemented additions.
 
 ## Branch and source
 
-`main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, and modifier defaults. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
+`main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, modifier defaults, 20 cm new bones, and coincident selection outlines. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
 
 The retired branches are preserved by tags `archive/armature-ui-2026-10-05` and `archive/bmax-publication-2026-10-05`. These tags are historical snapshots, not the default build source.
 
@@ -64,4 +64,4 @@ The Bmax-specific development tests were removed from Git and their CMake regist
 
 ## Last verified build
 
-On 2026-10-05, source commit `5b8675ae7948` on `main` compiled and installed successfully as **Bmax 5.2.2 LTS**, Windows Release, using Visual Studio 2022. Background startup confirmed the matching source hash, Mesh Holes enabled by default, Octahedral Radius `0.02`, and Axis Size `0.03`. No persistent test files were created, and the temporary build log was removed.
+On 2026-10-05, `main` compiled and installed successfully as **Bmax 5.2.2 LTS**, Windows Release, using Visual Studio 2022. Background checks covered 25 assertions for the 20 cm defaults across metric, imperial, and unitless scenes, explicit sizes, and duplication. Invoked viewport operators also respected scene unit scale. Fifty viewport captures across OpenGL and Vulkan verified coincident selection outlines in Edit, Pose, and Object Mode, mesh-object outlines, occlusion, and In Front. Object-origin dots are a separate overlay and were excluded from the outline comparison. Verification scripts and captures were created outside the repository and removed afterward.
