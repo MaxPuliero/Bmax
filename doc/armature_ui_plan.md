@@ -8,7 +8,9 @@ Stato: Octahedral Radius, hide/unhide sincronizzato, Names/Axis sulle ossa selez
 
 ## Elenco aggiornato delle feature
 
-La lista completa delle funzionalita implementate in main dal 1 al 5 ottobre 2026 e in [Bmax feature inventory](bmax/FEATURES.md). Include le modifiche alle armature e al gesto Tab, gli assi dell'origine, i nuovi default dei modificatori, outline/overlap/flipped UV condivisi tra Object ed Edit Mode, opacita e inquadratura UV, Mesh Holes, branding, nuove ossa di 20 cm e contorni selezionati affidabili per elementi coincidenti. Il documento distingue le feature presenti, l'addon rimosso e gli interventi implementati.
+La lista completa delle funzionalita implementate in main dal 1 al 5 ottobre 2026 e in [Bmax feature inventory](bmax/FEATURES.md). Include le modifiche alle armature e al gesto Tab, gli assi dell'origine, i nuovi default dei modificatori, outline/overlap/flipped UV condivisi tra Object ed Edit Mode, opacita e inquadratura UV, Mesh Holes, branding, nuove ossa di 20 cm e contorni selezionati affidabili per elementi coincidenti, inclusi empty, curve, lattice e mesh con soli spigoli o punti in Object Mode. Il documento distingue le feature presenti, l'addon rimosso e gli interventi implementati.
+
+Le modifiche del 2026-10-05 sono implementate e verificate: nuove ossa di 20 cm (`cebe29eb`) e priorita dei contorni selezionati anche per oggetti senza facce (`9e6f22f9`). Per le regole operative dell'agente vedere [AGENTS.md](../AGENTS.md); per le verifiche correnti usare la guida di build, non gli script storici citati sotto.
 
 ## Requisiti confermati
 

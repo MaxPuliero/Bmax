@@ -8,9 +8,11 @@ Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, 
 
 Sorry I can't include the compiled Windows build directly in this GitHub repository: the package is too large. Please download it from Gumroad using the link above. The full Bmax source code is available here.
 
+For contributors and AI agents, see [the repository instructions](AGENTS.md) and [the Windows build guide](doc/bmax/BUILD_WINDOWS.md).
+
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-5, 2026, their source commits, and the separate list of planned work.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-5, 2026, their source commits, and removed items.
 
 ### Selected mesh openings
 

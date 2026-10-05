@@ -2,7 +2,7 @@
 
 This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-05**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
-For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md).
+For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
 ## Added to the published source on 2026-10-01
 
@@ -37,7 +37,7 @@ Commit: `ac5982c9`.
 
 ## Added to the published source on 2026-10-05
 
-Initial Mesh Holes commit: `a5cd97e8`. The 20 cm bone defaults and coincident selection ordering were added to this source on the same date.
+Source commits: Mesh Holes `a5cd97e8`; 20 cm bone defaults and armature selection ordering `cebe29eb`; Object Mode wire selection for empty, curve, lattice, and loose mesh geometry `9e6f22f9`.
 
 | Feature | Implemented behavior |
 | --- | --- |
