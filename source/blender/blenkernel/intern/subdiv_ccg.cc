@@ -397,6 +397,9 @@ std::unique_ptr<SubdivCCG> BKE_subdiv_to_ccg(Subdiv &subdiv,
       return nullptr;
     }
   }
+  if (coarse_mesh.active_color_attribute) {
+    BKE_subdiv_ccg_colors_ensure(coarse_mesh, *subdiv_ccg, coarse_mesh.active_color_attribute);
+  }
   stats_end(&subdiv.stats, SUBDIV_STATS_SUBDIV_TO_CCG);
   return subdiv_ccg;
 #else

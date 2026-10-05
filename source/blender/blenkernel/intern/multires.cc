@@ -67,12 +67,16 @@ void multires_customdata_delete(Mesh *mesh)
     if (CustomData_has_layer(&em->bm->ldata, CD_GRID_PAINT_MASK)) {
       BM_data_layer_free(em->bm, &em->bm->ldata, CD_GRID_PAINT_MASK);
     }
+    while (CustomData_has_layer(&em->bm->ldata, CD_GRID_PAINT_COLOR)) {
+      BM_data_layer_free(em->bm, &em->bm->ldata, CD_GRID_PAINT_COLOR);
+    }
   }
   else {
     CustomData_external_remove(&mesh->corner_data, &mesh->id, CD_MDISPS, mesh->corners_num);
     CustomData_free_layer_active(&mesh->corner_data, CD_MDISPS);
 
     CustomData_free_layer_active(&mesh->corner_data, CD_GRID_PAINT_MASK);
+    CustomData_free_layers(&mesh->corner_data, CD_GRID_PAINT_COLOR);
   }
 }
 
@@ -478,6 +482,9 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, const int
       CustomData_get_layer_for_write(&mesh->corner_data, CD_GRID_PAINT_MASK, mesh->corners_num));
 
   multires_force_sculpt_rebuild(ob);
+  if (levels > 0) {
+    BKE_subdiv_ccg_colors_downsample(*mesh, lvl);
+  }
 
   if (mdisps && levels > 0) {
     if (lvl > 0) {

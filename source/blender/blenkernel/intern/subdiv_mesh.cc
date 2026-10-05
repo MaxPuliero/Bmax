@@ -26,6 +26,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_subdiv.hh"
+#include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_deform.hh"
 #include "BKE_subdiv_eval.hh"
 #include "BKE_subdiv_foreach.hh"
@@ -88,6 +89,8 @@ struct SubdivMeshContext {
 
   /* UV maps on the result mesh. Base mesh data was prepared in #eval_begin_from_mesh. */
   Vector<bke::SpanAttributeWriter<float2>> uv_maps;
+  Vector<StringRef> multires_color_names;
+  Vector<bke::SpanAttributeWriter<ColorGeometry4f>> multires_colors;
 
   /* CD_ORCO/CD_CLOTH_ORCO interpolation. Base mesh data was prepared in #eval_begin_from_mesh. */
   float (*orco)[3];
@@ -880,6 +883,14 @@ static bool subdiv_mesh_topology_info(const ForeachContext *foreach_context,
   MutableAttributeAccessor attributes = subdiv_mesh.attributes_for_write();
 
   Set<StringRef> vert_skip_names{{"position"}};
+  for (const CustomDataLayer &layer :
+       Span(coarse_mesh.corner_data.layers, coarse_mesh.corner_data.totlayer))
+  {
+    if (layer.type == CD_GRID_PAINT_COLOR && coarse_attrs.contains(layer.name)) {
+      subdiv_context->multires_color_names.append(layer.name);
+      vert_skip_names.add(layer.name);
+    }
+  }
   for (const bDeformGroup &group : coarse_mesh.vertex_group_names) {
     vert_skip_names.add(group.name);
   }
@@ -914,6 +925,11 @@ static bool subdiv_mesh_topology_info(const ForeachContext *foreach_context,
    * These are converted into "custom_normals" afterwards, otherwise these normals
    * would interpolated without being normalized, see: #152277. */
   Set<StringRef> corner_skip_names{".corner_vert", ".corner_edge", "custom_normal"};
+  for (const StringRef name : subdiv_context->multires_color_names) {
+    corner_skip_names.add(name);
+    subdiv_context->multires_colors.append(
+        attributes.lookup_or_add_for_write_only_span<ColorGeometry4f>(name, AttrDomain::Corner));
+  }
   /* UV map names are interpolated separately. */
   for (const StringRef name : coarse_mesh.uv_map_names()) {
     corner_skip_names.add_new(name);
@@ -1318,6 +1334,11 @@ static void subdiv_mesh_loop(const ForeachContext *foreach_context,
   subdiv_mesh_ensure_loop_interpolation(ctx, tls, coarse_face_index, coarse_corner);
   subdiv_interpolate_corner_data(ctx, subdiv_loop_index, tls->loop_interpolation, u, v);
   subdiv_eval_uv_layer(ctx, subdiv_loop_index, ptex_face_index, u, v);
+  for (const int i : ctx->multires_colors.index_range()) {
+    ctx->multires_colors[i]
+        .span[subdiv_loop_index] = ColorGeometry4f(BKE_subdiv_ccg_color_sample_ptex(
+        *ctx->coarse_mesh, ctx->multires_color_names[i], coarse_face_index, coarse_corner, u, v));
+  }
   ctx->subdiv_corner_verts[subdiv_loop_index] = subdiv_vert_index;
   ctx->subdiv_corner_edges[subdiv_loop_index] = subdiv_edge_index;
 }
@@ -1589,6 +1610,9 @@ Mesh *subdiv_to_mesh(Subdiv *subdiv, const ToMeshSettings *settings, const Mesh 
     result->runtime->bounds_cache = coarse_mesh->runtime->bounds_cache;
   }
 
+  for (bke::SpanAttributeWriter<ColorGeometry4f> &attr : subdiv_context.multires_colors) {
+    attr.finish();
+  }
   for (bke::SpanAttributeWriter<float2> &attr : subdiv_context.uv_maps) {
     attr.finish();
   }

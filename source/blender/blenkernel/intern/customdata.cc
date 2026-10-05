@@ -740,6 +740,29 @@ static void layerFree_bmesh_elem_py_ptr(void *data, const int count)
 /** \name Callbacks for (#GridPaintMask, #CD_GRID_PAINT_MASK)
  * \{ */
 
+static void layerCopy_grid_paint_color(const void *source, void *dest, const int count)
+{
+  const auto *src = static_cast<const GridPaintColor *>(source);
+  auto *dst = static_cast<GridPaintColor *>(dest);
+  for (int i = 0; i < count; i++) {
+    dst[i] = src[i];
+    dst[i].data = src[i].data ? MEM_dupalloc(src[i].data) : nullptr;
+  }
+}
+
+static void layerFree_grid_paint_color(void *data, const int count)
+{
+  for (GridPaintColor &grid : MutableSpan(static_cast<GridPaintColor *>(data), count)) {
+    MEM_SAFE_DELETE(grid.data);
+    grid.level = 0;
+  }
+}
+
+static void layerConstruct_grid_paint_color(void *data, const int count)
+{
+  std::fill_n(static_cast<GridPaintColor *>(data), count, GridPaintColor{});
+}
+
 static void layerCopy_grid_paint_mask(const void *source, void *dest, const int count)
 {
   const GridPaintMask *s = static_cast<const GridPaintMask *>(source);
@@ -1999,6 +2022,17 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
         .interp = layerInterp_propquaternion,
         .set_default_value = layerDefault_propquaternion,
     },
+    /* 53: CD_GRID_PAINT_COLOR */
+    {
+        .size = sizeof(GridPaintColor),
+        .alignment = alignof(GridPaintColor),
+        .structname = "GridPaintColor",
+        .structnum = 1,
+        .defaultname = N_("Color"),
+        .copy = layerCopy_grid_paint_color,
+        .free = layerFree_grid_paint_color,
+        .construct = layerConstruct_grid_paint_color,
+    },
 };
 
 static_assert(sizeof(mat4x4f) == sizeof(float4x4));
@@ -2059,6 +2093,7 @@ static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
     "CDPropBoolean",
     "CDHairLength",
     "CDPropQuaternion",
+    "CDGridPaintColor",
 };
 
 const CustomData_MeshMasks CD_MASK_BAREMESH = {
@@ -2083,7 +2118,7 @@ const CustomData_MeshMasks CD_MASK_MESH = {
     /*pmask*/
     CD_MASK_PROP_ALL,
     /*lmask*/
-    (CD_MASK_MDISPS | CD_MASK_GRID_PAINT_MASK | CD_MASK_PROP_ALL),
+    (CD_MASK_MDISPS | CD_MASK_GRID_PAINT_MASK | CD_MASK_GRID_PAINT_COLOR | CD_MASK_PROP_ALL),
 };
 const CustomData_MeshMasks CD_MASK_DERIVEDMESH = {
     /*vmask*/ (CD_MASK_ORIGINDEX | CD_MASK_MDEFORMVERT | CD_MASK_SHAPEKEY | CD_MASK_MVERT_SKIN |
@@ -2104,7 +2139,7 @@ const CustomData_MeshMasks CD_MASK_BMESH = {
     /*pmask*/
     CD_MASK_PROP_ALL,
     /*lmask*/
-    (CD_MASK_MDISPS | CD_MASK_GRID_PAINT_MASK | CD_MASK_PROP_ALL),
+    (CD_MASK_MDISPS | CD_MASK_GRID_PAINT_MASK | CD_MASK_GRID_PAINT_COLOR | CD_MASK_PROP_ALL),
 };
 const CustomData_MeshMasks CD_MASK_EVERYTHING = {
     /*vmask*/ (CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_MDEFORMVERT |
@@ -2119,7 +2154,8 @@ const CustomData_MeshMasks CD_MASK_EVERYTHING = {
     (CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_PROP_ALL),
     /*lmask*/
     (CD_MASK_BM_ELEM_PYPTR | CD_MASK_MDISPS | CD_MASK_NORMAL | CD_MASK_MLOOPTANGENT |
-     CD_MASK_ORIGSPACE_MLOOP | CD_MASK_GRID_PAINT_MASK | CD_MASK_PROP_ALL),
+     CD_MASK_ORIGSPACE_MLOOP | CD_MASK_GRID_PAINT_MASK | CD_MASK_GRID_PAINT_COLOR |
+     CD_MASK_PROP_ALL),
 };
 
 static const LayerTypeInfo *layerType_getInfo(const eCustomDataType type)
@@ -4850,6 +4886,17 @@ static void blend_write_layer_data(BlendWriter *writer,
     case CD_GRID_PAINT_MASK:
       write_grid_paint_mask(writer, count, static_cast<const GridPaintMask *>(layer.data));
       break;
+    case CD_GRID_PAINT_COLOR: {
+      const auto *grids = static_cast<const GridPaintColor *>(layer.data);
+      writer->write_struct_array(count, grids);
+      for (const GridPaintColor &grid : Span(grids, count)) {
+        if (grid.data && grid.level > 0 && grid.level < 16) {
+          const int size = CCG_grid_size(grid.level);
+          writer->write_float_array(size * size * 4, grid.data);
+        }
+      }
+      break;
+    }
     case CD_PROP_BOOL:
       BLI_STATIC_ASSERT(sizeof(bool) == sizeof(uint8_t),
                         "bool type is expected to have the same size as uint8_t")
@@ -4976,6 +5023,22 @@ static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &laye
         blend_read_paint_mask(reader, count, static_cast<GridPaintMask *>(layer.data));
       }
       break;
+    case CD_GRID_PAINT_COLOR: {
+      if (BLO_read_array(reader, reinterpret_cast<GridPaintColor **>(&layer.data), count)) {
+        auto *grids = static_cast<GridPaintColor *>(layer.data);
+        for (GridPaintColor &grid : MutableSpan(grids, count)) {
+          if (grid.level > 0 && grid.level < 16) {
+            const int size = CCG_grid_size(grid.level);
+            (void)BLO_read_array(reader, &grid.data, size * size * 4);
+          }
+          else {
+            grid.data = nullptr;
+            grid.level = 0;
+          }
+        }
+      }
+      break;
+    }
     case CD_PROP_BOOL:
       BLI_STATIC_ASSERT(sizeof(bool) == sizeof(uint8_t),
                         "bool type is expected to have the same size as uint8_t")

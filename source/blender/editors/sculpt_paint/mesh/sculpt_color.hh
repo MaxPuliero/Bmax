@@ -11,6 +11,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_generic_span.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
@@ -60,6 +61,9 @@ float4 color_vert_get(OffsetIndices<int> faces,
                       GSpan color_attribute,
                       bke::AttrDomain color_domain,
                       int vert);
+
+/** Brush nodes plus nodes owning duplicate samples across their grid boundaries. */
+IndexMask multires_color_nodes(Object &object, const IndexMask &nodes, IndexMaskMemory &memory);
 
 bke::GAttributeReader active_color_attribute(const Mesh &mesh);
 bke::GSpanAttributeWriter active_color_attribute_for_write(Mesh &mesh);

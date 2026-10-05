@@ -291,6 +291,14 @@ bool BKE_attribute_rename(AttributeOwner &owner,
         BKE_id_attributes_default_color_set(&mesh->id, result_name);
       }
 
+      /* Keep the multires color grids associated with their visible attribute. */
+      for (CustomData *data : {&mesh->corner_data, &em->bm->ldata}) {
+        for (CustomDataLayer &layer : MutableSpan(data->layers, data->totlayer)) {
+          if (layer.type == CD_GRID_PAINT_COLOR && layer.name == old_name) {
+            StringRef(result_name).copy_utf8_truncated(layer.name);
+          }
+        }
+      }
       StringRef(result_name).copy_utf8_truncated(const_cast<CustomDataLayer *>(attr.layer)->name);
 
       return true;
@@ -344,6 +352,15 @@ bool BKE_attribute_rename(AttributeOwner &owner,
     }
   }
 
+  if (owner.type() == AttributeOwnerType::Mesh) {
+    Mesh &mesh = *owner.get_mesh();
+    for (CustomDataLayer &layer : MutableSpan(mesh.corner_data.layers, mesh.corner_data.totlayer))
+    {
+      if (layer.type == CD_GRID_PAINT_COLOR && layer.name == old_name) {
+        new_name.copy_utf8_truncated(layer.name);
+      }
+    }
+  }
   attributes.rename(old_name, new_name);
   return true;
 }
@@ -500,6 +517,14 @@ bool BKE_attribute_remove(AttributeOwner &owner, const StringRef name, ReportLis
             BLI_assert_unreachable();
           }
 
+          if (CustomData_get_named_layer_index(&em->bm->ldata, CD_GRID_PAINT_COLOR, name_copy) !=
+              -1)
+          {
+            BM_data_layer_free_named(em->bm, &em->bm->ldata, name_copy.c_str());
+          }
+          if (CustomData_get_layer_named(&mesh->corner_data, CD_GRID_PAINT_COLOR, name_copy)) {
+            CustomData_free_layer_named(&mesh->corner_data, name_copy);
+          }
           if (is_active_color_attribute) {
             BKE_id_attributes_active_color_set(
                 &mesh->id,
@@ -552,6 +577,9 @@ bool BKE_attribute_remove(AttributeOwner &owner, const StringRef name, ReportLis
     const int active_uv_index = uv_name_to_index(owner, mesh->active_uv_map_name());
     const int default_uv_index = uv_name_to_index(owner, mesh->default_uv_map_name());
 
+    if (CustomData_get_layer_named(&mesh->corner_data, CD_GRID_PAINT_COLOR, name_copy)) {
+      CustomData_free_layer_named(&mesh->corner_data, name_copy);
+    }
     if (!attributes->remove(name_copy)) {
       BLI_assert_unreachable();
     }

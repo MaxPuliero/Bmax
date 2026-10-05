@@ -226,7 +226,13 @@ static Vector<MeshToBMeshLayerInfo> mesh_to_bm_copy_info_calc(const Mesh &mesh,
     MeshToBMeshLayerInfo info{};
     info.type = type;
     info.bmesh_offset = bm_layer.offset;
-    if (const bke::Attribute *attr = storage.lookup(layer_name)) {
+    /* Legacy layers can share a name with an attribute (for example multires colors).
+     * Only
+     * property layers are backed by the attribute storage. */
+    if (const bke::Attribute *attr = (CD_TYPE_AS_MASK(type) & CD_MASK_PROP_ALL) ?
+                                         storage.lookup(layer_name) :
+                                         nullptr)
+    {
       switch (attr->storage_type()) {
         case bke::AttrStorageType::Array: {
           const auto &array_data = std::get<bke::Attribute::ArrayData>(attr->data());

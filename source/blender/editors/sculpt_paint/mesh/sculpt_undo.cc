@@ -42,6 +42,7 @@
 #include "BLI_vector.hh"
 
 #include "DNA_key_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -159,6 +160,8 @@ struct Node {
   /** Indices of grids in the pbvh::Tree node. */
   Array<int, 0> grids;
   BitGroupVector<0> grid_hidden;
+  Vector<Array<float4>> grid_color_data;
+  Vector<int> grid_color_levels;
 
   /* Sculpt Face Sets */
   Array<int, 0> face_sets;
@@ -741,6 +744,60 @@ static void restore_hidden_face(Object &object,
     }
   }
   hide_poly.finish();
+}
+
+static void restore_color_grid_node(Object &object, Node &unode, const bool swap)
+{
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  SubdivCCG &ccg = *object.runtime->sculpt_session->subdiv_ccg;
+  auto *saved = swap ? static_cast<GridPaintColor *>(
+                           CustomData_get_layer_named_for_write(&mesh.corner_data,
+                                                                CD_GRID_PAINT_COLOR,
+                                                                mesh.active_color_attribute,
+                                                                mesh.corners_num)) :
+                       nullptr;
+  if (swap && !saved) {
+    return;
+  }
+  int offset = 0;
+  for (const int i : unode.grids.index_range()) {
+    const int grid = unode.grids[i];
+    MutableSpan<float4> colors = ccg.colors.as_mutable_span().slice(grid * ccg.grid_area,
+                                                                    ccg.grid_area);
+    for (const int j : colors.index_range()) {
+      if (swap) {
+        std::swap(colors[j], unode.col[offset + j]);
+      }
+      else {
+        colors[j] = unode.col[offset + j];
+      }
+    }
+    offset += ccg.grid_area;
+    /* During the stroke only runtime colors change. Anchoring and cancellation do not need
+     * to copy the unchanged persistent high-resolution arrays. */
+    if (!swap) {
+      continue;
+    }
+    GridPaintColor &dst = saved[grid];
+    Array<float4> previous;
+    const int level = dst.level;
+    if (swap && dst.data) {
+      const int size = CCG_grid_size(dst.level);
+      previous = Array<float4>(Span(reinterpret_cast<const float4 *>(dst.data), size * size));
+    }
+    MEM_SAFE_DELETE(dst.data);
+    const Span<float4> source = unode.grid_color_data[i];
+    dst.data = source.is_empty() ? nullptr :
+                                   MEM_new_array_uninitialized<float>(source.size() * 4, __func__);
+    if (dst.data) {
+      std::copy_n(source.data(), source.size(), reinterpret_cast<float4 *>(dst.data));
+    }
+    dst.level = unode.grid_color_levels[i];
+    if (swap) {
+      unode.grid_color_data[i] = std::move(previous);
+      unode.grid_color_levels[i] = level;
+    }
+  }
 }
 
 static void restore_color(Object &object,
@@ -1362,6 +1419,17 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         return;
       }
 
+      if (pbvh.type() == bke::pbvh::Type::Grids) {
+        Mesh &mesh = *id_cast<Mesh *>(object.data);
+        BKE_subdiv_ccg_colors_ensure(mesh, *ss.subdiv_ccg, mesh.active_color_attribute);
+        for (std::unique_ptr<Node> &unode : step_data.nodes) {
+          restore_color_grid_node(object, *unode, true);
+        }
+        BKE_subdiv_ccg_colors_sync_base(mesh, mesh.active_color_attribute);
+        pbvh.tag_attribute_changed(node_mask, mesh.active_color_attribute);
+        DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+        break;
+      }
       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
 
       const Mesh &mesh = *id_cast<const Mesh *>(object.data);
@@ -1712,7 +1780,22 @@ static void fill_node_data_grids(const Object &object,
       break;
     }
     case Type::Color: {
-      BLI_assert_unreachable();
+      unode.col.reinitialize(verts_num);
+      int offset = 0;
+      const auto *saved = static_cast<const GridPaintColor *>(CustomData_get_layer_named(
+          &base_mesh.corner_data, CD_GRID_PAINT_COLOR, base_mesh.active_color_attribute));
+      for (const int grid : unode.grids) {
+        unode.col.as_mutable_span()
+            .slice(offset, grid_area)
+            .copy_from(subdiv_ccg.colors.as_span().slice(grid * grid_area, grid_area));
+        offset += grid_area;
+        const int size = saved && saved[grid].data ? CCG_grid_size(saved[grid].level) : 0;
+        unode.grid_color_levels.append(size ? saved[grid].level : 0);
+        unode.grid_color_data.append(
+            size ? Array<float4>(
+                       Span(reinterpret_cast<const float4 *>(saved[grid].data), size * size)) :
+                   Array<float4>());
+      }
       break;
     }
     case Type::DyntopoBegin:
@@ -2060,6 +2143,10 @@ static size_t node_size_in_bytes(const Node &node)
   size += node.col.as_span().size_in_bytes();
   size += node.mask.as_span().size_in_bytes();
   size += node.loop_col.as_span().size_in_bytes();
+  size += node.grid_color_levels.as_span().size_in_bytes();
+  for (const Array<float4> &colors : node.grid_color_data) {
+    size += colors.as_span().size_in_bytes();
+  }
   size += node.vert_indices.as_span().size_in_bytes();
   size += node.corner_indices.as_span().size_in_bytes();
   size += node.vert_hidden.size() / 8;
@@ -2496,6 +2583,22 @@ void push_multires_mesh_end(bContext *C, const char *str)
 
 /** \} */
 
+void restore_color_grids_from_undo_step(Object &object)
+{
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  Array<bool> restored(nodes.size(), false);
+  for (const int i : nodes.index_range()) {
+    if (Node *unode = const_cast<Node *>(get_node(&nodes[i], Type::Color))) {
+      restore_color_grid_node(object, *unode, false);
+      restored[i] = true;
+    }
+  }
+  IndexMaskMemory memory;
+  pbvh.tag_attribute_changed(IndexMask::from_bools(restored, memory), mesh.active_color_attribute);
+}
+
 }  // namespace ed::sculpt_paint::undo
 
 namespace ed::sculpt_paint {
@@ -2550,6 +2653,12 @@ void orig_position_data_gather_bmesh(const BMLog &bm_log,
     }
     i++;
   }
+}
+
+std::optional<Span<float4>> orig_color_data_lookup_grids(const bke::pbvh::GridsNode &node)
+{
+  const undo::Node *unode = undo::get_node(&node, undo::Type::Color);
+  return unode ? std::optional<Span<float4>>(unode->col.as_span()) : std::nullopt;
 }
 
 std::optional<Span<float4>> orig_color_data_lookup_mesh(const Object & /*object*/,

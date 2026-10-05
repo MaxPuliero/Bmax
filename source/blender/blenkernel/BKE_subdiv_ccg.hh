@@ -18,8 +18,10 @@
 #include "BLI_ordered_edge.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
+#include <string>
 
 #include "BKE_ccg.hh"
 
@@ -152,6 +154,9 @@ struct SubdivCCG : NonCopyable {
   Array<float3> normals;
   /** Optional mask values with the same indexing as #positions. */
   Array<float> masks;
+  /** Active sculpt color attribute at this resolution. Persistent data lives on base corners. */
+  std::string color_name;
+  Array<float4> colors;
 
   /** Faces from which grids are emitted. Owned by base mesh. */
   OffsetIndices<int> faces;
@@ -226,6 +231,20 @@ std::unique_ptr<SubdivCCG> BKE_subdiv_to_ccg(bke::subdiv::Subdiv &subdiv,
 Mesh *BKE_subdiv_to_ccg_mesh(bke::subdiv::Subdiv &subdiv,
                              const SubdivToCCGSettings &settings,
                              const Mesh &coarse_mesh);
+
+/** Multires color storage and evaluation. UVs here address corner grids, not texture maps. */
+float4 BKE_subdiv_ccg_color_sample(const Mesh &mesh, StringRef name, int grid, float u, float v);
+float4 BKE_subdiv_ccg_color_sample_ptex(
+    const Mesh &mesh, StringRef name, int face, int corner, float u, float v);
+void BKE_subdiv_ccg_colors_ensure(const Mesh &mesh, SubdivCCG &ccg, StringRef name);
+/** Initialize only missing persistent grids before capturing color undo. */
+void BKE_subdiv_ccg_colors_storage_ensure(Mesh &mesh, const SubdivCCG &ccg, Span<int> grids);
+/** Commit touched runtime grids once at the end of the stroke. */
+void BKE_subdiv_ccg_colors_store(Mesh &mesh, const SubdivCCG &ccg, Span<int> grids);
+/** Stitch the boundaries of touched grids and return all grids written. */
+Vector<int> BKE_subdiv_ccg_colors_stitch(SubdivCCG &ccg, Span<int> grids);
+void BKE_subdiv_ccg_colors_downsample(Mesh &mesh, int level);
+void BKE_subdiv_ccg_colors_sync_base(Mesh &mesh, StringRef name);
 
 /** Create a key for accessing grid elements at a given level. */
 CCGKey BKE_subdiv_ccg_key(const SubdivCCG &subdiv_ccg, int level);

@@ -1088,6 +1088,10 @@ static void restore_mask_from_undo_step(Object &object)
 static void restore_color_from_undo_step(Object &object)
 {
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  if (pbvh.type() == bke::pbvh::Type::Grids) {
+    undo::restore_color_grids_from_undo_step(object);
+    return;
+  }
   MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
   IndexMaskMemory memory;
   const IndexMask node_mask = IndexMask::from_predicate(
@@ -3319,7 +3323,23 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Mask);
   }
   else if (brush_type_is_paint(brush.sculpt_brush_type)) {
-    undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
+    if (bke::object::pbvh_get(ob)->type() == bke::pbvh::Type::Grids) {
+      Mesh &mesh = *id_cast<Mesh *>(ob.data);
+      SubdivCCG &ccg = *ss.subdiv_ccg;
+      BKE_subdiv_ccg_colors_ensure(mesh, ccg, mesh.active_color_attribute);
+      /* Stitching can touch duplicate samples in adjacent nodes. Include their undo data. */
+      IndexMaskMemory memory;
+      const IndexMask affected = color::multires_color_nodes(ob, node_mask, memory);
+      Vector<int> grids;
+      const Span<bke::pbvh::GridsNode> nodes =
+          bke::object::pbvh_get(ob)->nodes<bke::pbvh::GridsNode>();
+      affected.foreach_index([&](const int node) { grids.extend(nodes[node].grids()); });
+      BKE_subdiv_ccg_colors_storage_ensure(mesh, ccg, grids);
+      undo::push_nodes(depsgraph, ob, affected, undo::Type::Color);
+    }
+    else {
+      undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
+    }
   }
   else {
     need_coords = true;
@@ -5200,6 +5220,7 @@ static void restore_from_undo_step_if_necessary(const Depsgraph &depsgraph,
        * See #129069. */
       ss.cache->layer_displacement_factor = {};
       ss.cache->paint_brush.mix_colors = {};
+      ss.cache->paint_brush.grid_mix_colors = {};
     }
   }
 }
@@ -5265,7 +5286,7 @@ void flush_update_step(ViewContext &vc, Object &object, const UpdateType update_
 
   const SculptSession &ss = *object.runtime->sculpt_session;
   const MultiresModifierData *mmd = ss.multires_modifier;
-  if (mmd != nullptr) {
+  if (mmd != nullptr && update_type != UpdateType::Color) {
     multires_mark_as_modified(vc.depsgraph, &object, MULTIRES_COORDS_MODIFIED);
   }
 
@@ -5316,7 +5337,11 @@ void flush_update_done(ViewContext &vc,
   const Mesh &mesh = *id_cast<Mesh *>(ob.data);
 
   /* Always needed for linked duplicates. */
-  bool need_tag = ID_REAL_USERS(&mesh.id) > 1;
+  /* Color-only Multires strokes update the PBVH buffers directly. Rebuilding the CCG here
+   * would make the next stroke pay for the whole surface. External render views still need
+   * evaluated mesh updates; leaving Sculpt Mode also flushes the evaluated geometry. */
+  bool need_tag = ID_REAL_USERS(&mesh.id) > 1 ||
+                  (update_type == UpdateType::Color && vc.rv3d && vc.rv3d->view_render);
 
   if (vc.rv3d) {
     vc.rv3d->rflag &= ~RV3D_PAINTING;
@@ -5339,6 +5364,7 @@ void flush_update_done(ViewContext &vc,
           const RegionView3D *other_rv3d = static_cast<RegionView3D *>(region.regiondata);
           if (other_rv3d != vc.rv3d) {
             need_tag |= !BKE_sculptsession_use_pbvh_draw(&ob, other_rv3d);
+            need_tag |= update_type == UpdateType::Color && other_rv3d->view_render;
           }
 
           ED_region_tag_redraw(&region);
@@ -5647,10 +5673,7 @@ bool color_supported_check(const Scene &scene, Object &object, ReportList *repor
     BKE_report(reports, RPT_ERROR, "Not supported in dynamic topology mode");
     return false;
   }
-  if (BKE_sculpt_multires_active(&scene, &object)) {
-    BKE_report(reports, RPT_ERROR, "Not supported in multiresolution mode");
-    return false;
-  }
+  UNUSED_VARS(scene);
 
   return true;
 }
@@ -6009,6 +6032,15 @@ void SculptPaintStroke::done(bool is_cancel, bool stroke_started)
     brush = BKE_paint_brush(&sd.paint);
   }
 
+  if (!is_cancel && stroke_started && ss.subdiv_ccg &&
+      !ss.cache->paint_brush.dirty_color_grids.is_empty())
+  {
+    Vector<int> grids;
+    for (const int grid : ss.cache->paint_brush.dirty_color_grids) {
+      grids.append(grid);
+    }
+    BKE_subdiv_ccg_colors_store(*id_cast<Mesh *>(ob.data), *ss.subdiv_ccg, grids);
+  }
   MEM_delete(ss.cache);
   ss.cache = nullptr;
 
@@ -6019,7 +6051,7 @@ void SculptPaintStroke::done(bool is_cancel, bool stroke_started)
   if (brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_MASK) {
     flush_update_done(this->vc, *wm_, ob, UpdateType::Mask);
   }
-  else if (brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_PAINT) {
+  else if (brush_type_is_paint(brush->sculpt_brush_type)) {
     if (SCULPT_use_image_paint_brush(*this->paint_mode_settings_, ob)) {
       flush_update_done(this->vc, *wm_, ob, UpdateType::Image);
     }

@@ -371,6 +371,10 @@ struct StrokeCache {
      */
     Array<float4> mix_colors;
     Array<float4> prev_colors;
+    /** Multires color state is allocated only for the grids reached by this stroke. */
+    Array<int> grid_to_node;
+    Vector<Array<float4>> grid_mix_colors;
+    Set<int> dirty_color_grids;
   } paint_brush;
 
   /* Pose brush */
@@ -865,6 +869,8 @@ void orig_position_data_gather_bmesh(const BMLog &bm_log,
                                      const Set<BMVert *, 0> &verts,
                                      MutableSpan<float3> positions,
                                      MutableSpan<float3> normals);
+
+std::optional<Span<float4>> orig_color_data_lookup_grids(const bke::pbvh::GridsNode &node);
 
 std::optional<Span<float4>> orig_color_data_lookup_mesh(const Object &object,
                                                         const bke::pbvh::MeshNode &node);

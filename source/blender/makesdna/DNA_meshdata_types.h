@@ -227,6 +227,13 @@ struct MDisps {
   unsigned int *hidden;
 };
 
+/** Persistent scene-linear RGBA samples, associated with a named mesh color attribute. */
+struct GridPaintColor {
+  float *data;
+  unsigned int level;
+  char _pad[4];
+};
+
 /** Multi-Resolution grid loop data. */
 struct GridPaintMask {
   /**

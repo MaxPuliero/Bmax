@@ -766,7 +766,11 @@ static wmOperatorStatus mask_by_color(bContext *C, wmOperator *op, const float2 
 
   ed::sculpt_paint::mask_overlay_check(*C, *op);
 
-  /* Color data is not available in multi-resolution or dynamic topology. */
+  if (BKE_sculpt_multires_active(&scene, &ob)) {
+    BKE_report(op->reports, RPT_ERROR, "Mask by Color is not supported on multiresolution grids");
+    return OPERATOR_CANCELLED;
+  }
+  /* Color data is not available in dynamic topology. */
   if (!color_supported_check(scene, ob, op->reports)) {
     return OPERATOR_CANCELLED;
   }

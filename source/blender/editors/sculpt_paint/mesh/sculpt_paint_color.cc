@@ -26,6 +26,7 @@
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "IMB_colormanagement.hh"
 
@@ -560,6 +561,265 @@ static void do_sample_wet_paint_task(const Depsgraph &depsgraph,
   }
 }
 
+IndexMask multires_color_nodes(Object &object, const IndexMask &node_mask, IndexMaskMemory &memory)
+{
+  SculptSession &ss = *object.runtime->sculpt_session;
+  const SubdivCCG &ccg = *ss.subdiv_ccg;
+  const Span<bke::pbvh::GridsNode> nodes =
+      bke::object::pbvh_get(object)->nodes<bke::pbvh::GridsNode>();
+  Array<int> &owners = ss.cache->paint_brush.grid_to_node;
+  if (owners.is_empty()) {
+    owners.reinitialize(ccg.grids_num);
+    for (const int node : nodes.index_range()) {
+      for (const int grid : nodes[node].grids()) {
+        owners[grid] = node;
+      }
+    }
+  }
+  Array<bool> included(nodes.size(), false);
+  node_mask.foreach_index([&](const int node) {
+    included[node] = true;
+    for (const int grid : nodes[node].grids()) {
+      /* A grid's four corners cover every adjacent grid, including vertex fans. */
+      for (const int y : {0, ccg.grid_size - 1}) {
+        for (const int x : {0, ccg.grid_size - 1}) {
+          SubdivCCGNeighbors neighbors;
+          BKE_subdiv_ccg_neighbor_coords_get(ccg, {grid, short(x), short(y)}, true, neighbors);
+          for (const SubdivCCGCoord &neighbor : neighbors.coords) {
+            included[owners[neighbor.grid_index]] = true;
+          }
+        }
+      }
+    }
+  });
+  return IndexMask::from_bools(included, memory);
+}
+
+static void do_color_brush_grids(const Depsgraph &depsgraph,
+                                 const Sculpt &sd,
+                                 Object &object,
+                                 const IndexMask &node_mask)
+{
+  SculptSession &ss = *object.runtime->sculpt_session;
+  StrokeCache &cache = *ss.cache;
+  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  SubdivCCG &ccg = *ss.subdiv_ccg;
+  BKE_subdiv_ccg_colors_ensure(mesh, ccg, mesh.active_color_attribute);
+  if (stroke_is_first_brush_step_of_symmetry_pass(cache)) {
+    return;
+  }
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(ccg);
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+  Vector<int> painted_grids;
+  node_mask.foreach_index([&](const int node) { painted_grids.extend(nodes[node].grids()); });
+  const bool needs_neighbors = ELEM(brush.sculpt_brush_type,
+                                    SCULPT_BRUSH_TYPE_BLUR,
+                                    SCULPT_BRUSH_TYPE_SMEAR) ||
+                               cache.toggle_settings.alt_smooth;
+  Array<int> previous_offsets;
+  Array<float4> previous;
+  if (needs_neighbors) {
+    previous_offsets = Array<int>(ccg.grids_num, -1);
+    previous.reinitialize(painted_grids.size() * ccg.grid_area);
+    int offset = 0;
+    for (const int grid : painted_grids) {
+      previous_offsets[grid] = offset;
+      previous.as_mutable_span()
+          .slice(offset, ccg.grid_area)
+          .copy_from(ccg.colors.as_span().slice(grid * ccg.grid_area, ccg.grid_area));
+      offset += ccg.grid_area;
+    }
+  }
+  const auto previous_color = [&](const int index) -> float4 {
+    const int grid = index / ccg.grid_area;
+    const int offset = previous_offsets[grid];
+    /* Grids outside the brush mask remain unchanged until stitching, after the workers finish. */
+    return offset < 0 ? ccg.colors[index] : previous[offset + index % ccg.grid_area];
+  };
+  if (cache.paint_brush.grid_mix_colors.is_empty()) {
+    cache.paint_brush.grid_mix_colors.resize(ccg.grids_num);
+  }
+  float3 rgb = cache.toggle_settings.invert ? BKE_brush_secondary_color_get(&sd.paint, &brush) :
+                                              BKE_brush_color_get(&sd.paint, &brush);
+  if (const auto jitter = BKE_brush_color_jitter_get_settings(&sd.paint, &brush)) {
+    rgb = BKE_paint_randomize_color(
+        *jitter, *cache.initial_hsv_jitter, cache.stroke_distance, cache.pressure, rgb);
+  }
+  float4 brush_color(rgb, 1.0f);
+  if (brush.flag & BRUSH_USE_GRADIENT) {
+    float t = cache.pressure;
+    if (brush.gradient_stroke_mode != BRUSH_GRADIENT_PRESSURE && brush.gradient_spacing > 0) {
+      t = cache.stroke_distance / brush.gradient_spacing;
+      t = brush.gradient_stroke_mode == BRUSH_GRADIENT_SPACING_REPEAT ? std::fmod(t, 1.0f) : t;
+    }
+    BKE_colorband_evaluate(brush.gradient, t, brush_color);
+  }
+  if (!cache.paint_brush.density_seed) {
+    cache.paint_brush.density_seed = BLI_hash_int_01(cache.location_symm[0] * 1000);
+  }
+  float4 wet(0);
+  int wet_count = 0;
+  if (cache.paint_brush.wet_mix > 0) {
+    node_mask.foreach_index([&](const int node_index) {
+      const bke::pbvh::GridsNode &node = nodes[node_index];
+      const Span<int> grids = node.grids();
+      Array<float> factors(grids.size() * ccg.grid_area);
+      fill_factor_from_hide_and_mask(ccg, grids, factors);
+      if (brush.flag & BRUSH_FRONTFACE) {
+        calc_front_face(cache.view_normal_symm, ccg, grids, factors);
+      }
+      auto_mask::calc_grids_factors(
+          depsgraph, object, cache.automasking.get(), node, grids, factors);
+      int local = 0;
+      for (const int grid : grids) {
+        for (const int i : IndexRange(grid * ccg.grid_area, ccg.grid_area)) {
+          if (factors[local] > 0 && math::distance(ccg.positions[i], cache.location_symm) <
+                                        cache.radius * brush.wet_paint_radius_factor)
+          {
+            wet += ccg.colors[i] * factors[local];
+            wet_count++;
+          }
+          local++;
+        }
+      }
+    });
+    if (wet_count) {
+      wet /= wet_count;
+      if (cache.first_time) {
+        cache.paint_brush.wet_mix_prev_color = wet;
+      }
+      blend_color_interpolate_float(
+          wet, wet, cache.paint_brush.wet_mix_prev_color, cache.paint_brush.wet_persistence);
+      cache.paint_brush.wet_mix_prev_color = wet;
+    }
+  }
+  float4x4 mat;
+  if (brush.tip_roundness < 1.0f) {
+    cube_tip_init(sd, object, brush, mat.ptr());
+    if (is_zero_m4(mat.ptr())) {
+      return;
+    }
+  }
+  threading::EnumerableThreadSpecific<ColorPaintLocalData> all_tls;
+  node_mask.foreach_index(
+      [&](const int node_index) {
+        const bke::pbvh::GridsNode &node = nodes[node_index];
+        ColorPaintLocalData &tls = all_tls.local();
+        const Span<int> grids = node.grids();
+        const MutableSpan<float3> positions = gather_grids_positions(ccg, grids, tls.positions);
+        tls.factors.resize(positions.size());
+        tls.distances.resize(positions.size());
+        MutableSpan<float> factors = tls.factors;
+        MutableSpan<float> distances = tls.distances;
+        fill_factor_from_hide_and_mask(ccg, grids, factors);
+        filter_region_clip_factors(ss, positions, factors);
+        if (brush.flag & BRUSH_FRONTFACE) {
+          calc_front_face(cache.view_normal_symm, ccg, grids, factors);
+        }
+        float radius = cache.radius;
+        if (brush.tip_roundness < 1.0f) {
+          tls.new_colors.resize(positions.size());
+          Vector<float3> local_positions(positions.size());
+          for (const int i : positions.index_range()) {
+            local_positions[i] = math::transform_point(mat, positions[i]);
+          }
+          calc_brush_cube_distances<float3>(brush, local_positions, distances);
+          radius = 1.0f;
+        }
+        else {
+          calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
+        }
+        filter_distances_with_radius(radius, distances, factors);
+        apply_hardness_to_distances(radius, cache.hardness, distances);
+        BKE_brush_calc_curve_factors(eBrushCurvePreset(brush.curve_distance_falloff_preset),
+                                     brush.curve_distance_falloff,
+                                     distances,
+                                     radius,
+                                     factors);
+        auto_mask::calc_grids_factors(
+            depsgraph, object, cache.automasking.get(), node, grids, factors);
+        calc_brush_texture_factors(ss, brush, positions, factors);
+        scale_factors(factors, std::abs(cache.bstrength));
+        const Span<float4> original = *orig_color_data_lookup_grids(node);
+        int local = 0;
+        for (const int grid : grids) {
+          Array<float4> &grid_mix = cache.paint_brush.grid_mix_colors[grid];
+          if (!needs_neighbors && grid_mix.is_empty()) {
+            grid_mix = Array<float4>(ccg.grid_area, float4(0));
+          }
+          for (int y = 0; y < key.grid_size; y++) {
+            for (int x = 0; x < key.grid_size; x++, local++) {
+              const int index = grid * ccg.grid_area + y * key.grid_size + x;
+              float factor = factors[local];
+              if (factor <= 0) {
+                continue;
+              }
+              if (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_BLUR ||
+                  brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_SMEAR ||
+                  cache.toggle_settings.alt_smooth)
+              {
+                SubdivCCGNeighbors neighbors;
+                BKE_subdiv_ccg_neighbor_coords_get(
+                    ccg, {grid, short(x), short(y)}, false, neighbors);
+                float4 sum(0);
+                float weight_sum = 0;
+                const float3 movement = cache.location_symm - cache.last_location_symm;
+                for (const SubdivCCGCoord &neighbor : neighbors.unique()) {
+                  const int ni = neighbor.to_index(key);
+                  float weight = 1.0f;
+                  if (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_SMEAR) {
+                    weight = std::max(
+                        0.0f,
+                        -math::dot(math::normalize(movement),
+                                   math::normalize(ccg.positions[ni] - ccg.positions[index])));
+                  }
+                  sum += previous_color(ni) * weight;
+                  weight_sum += weight;
+                }
+                if (weight_sum > 0) {
+                  ccg.colors[index] = math::interpolate(
+                      previous_color(index), sum / weight_sum, math::clamp(factor, 0.0f, 1.0f));
+                }
+              }
+              else {
+                if (cache.paint_brush.density < 1.0f) {
+                  const float noise = BLI_hash_int_01(*cache.paint_brush.density_seed * 1000 *
+                                                      index);
+                  if (noise > cache.paint_brush.density) {
+                    factor *= cache.paint_brush.density * noise;
+                  }
+                }
+                float4 pigment = brush_color * factor * cache.paint_brush.flow;
+                const float4 wet_pigment = wet * factor * cache.paint_brush.flow;
+                if (wet_count) {
+                  blend_color_interpolate_float(
+                      pigment, pigment, wet_pigment, cache.paint_brush.wet_mix);
+                }
+                float4 &mix = grid_mix[y * key.grid_size + x];
+                blend_color_mix_float(mix, mix, pigment);
+                const float4 buffer = mix * BKE_brush_alpha_get(&sd.paint, &brush);
+                IMB_blend_color_float(
+                    ccg.colors[index], original[local], buffer, IMB_BlendMode(brush.blend));
+                ccg.colors[index] = math::clamp(ccg.colors[index], 0.0f, 1.0f);
+              }
+            }
+          }
+        }
+      },
+      exec_mode::grain_size(1));
+  const Vector<int> changed_grids = BKE_subdiv_ccg_colors_stitch(ccg, painted_grids);
+  Array<bool> changed_nodes(nodes.size(), false);
+  for (const int grid : changed_grids) {
+    cache.paint_brush.dirty_color_grids.add(grid);
+    changed_nodes[cache.paint_brush.grid_to_node[grid]] = true;
+  }
+  IndexMaskMemory memory;
+  pbvh.tag_attribute_changed(IndexMask::from_bools(changed_nodes, memory),
+                             mesh.active_color_attribute);
+}
+
 void do_paint_brush(const Depsgraph &depsgraph,
                     PaintModeSettings &paint_mode_settings,
                     const Sculpt &sd,
@@ -572,6 +832,10 @@ void do_paint_brush(const Depsgraph &depsgraph,
     return;
   }
   PRF_scope(ProfileCategory::Editor);
+  if (bke::object::pbvh_get(ob)->type() == bke::pbvh::Type::Grids) {
+    do_color_brush_grids(depsgraph, sd, ob, node_mask);
+    return;
+  }
 
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.runtime->sculpt_session;
@@ -858,6 +1122,10 @@ void do_smear_brush(const Depsgraph &depsgraph,
                     const IndexMask &node_mask)
 {
   PRF_scope(ProfileCategory::Editor);
+  if (bke::object::pbvh_get(ob)->type() == bke::pbvh::Type::Grids) {
+    do_color_brush_grids(depsgraph, sd, ob, node_mask);
+    return;
+  }
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.runtime->sculpt_session;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
@@ -936,6 +1204,10 @@ void do_blur_brush(const Depsgraph &depsgraph,
                    const IndexMask &node_mask)
 {
   PRF_scope(ProfileCategory::Editor);
+  if (bke::object::pbvh_get(ob)->type() == bke::pbvh::Type::Grids) {
+    do_color_brush_grids(depsgraph, sd, ob, node_mask);
+    return;
+  }
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.runtime->sculpt_session;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);

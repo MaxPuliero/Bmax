@@ -788,6 +788,55 @@ BLI_NOINLINE static void fill_positions_grids(const Object &object,
       exec_mode::grain_size(1));
 }
 
+BLI_NOINLINE static void fill_colors_grids(const Object &object,
+                                           const OrigMeshData &orig_mesh_data,
+                                           const BitSpan use_flat_layout,
+                                           const IndexMask &node_mask,
+                                           const StringRef name,
+                                           const MutableSpan<gpu::VertBufPtr> vbos)
+{
+  const auto &pbvh = *bke::object::pbvh_get(object);
+  const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+  const SubdivCCG &ccg = *object.runtime->sculpt_session->subdiv_ccg;
+  const Mesh &mesh = *id_cast<const Mesh *>(object.data);
+  ensure_vbos_allocated_grids(object,
+                              attribute_format(orig_mesh_data, name, bke::AttrType::ColorFloat),
+                              use_flat_layout,
+                              node_mask,
+                              vbos);
+  node_mask.foreach_index(
+      [&](const int i) {
+        float4 *data = vbos[i]->data<float4>().data();
+        const auto get = [&](const int grid, const int x, const int y) -> float4 {
+          if (name == ccg.color_name && !ccg.colors.is_empty()) {
+            return ccg.colors[grid * ccg.grid_area + y * ccg.grid_size + x];
+          }
+          return BKE_subdiv_ccg_color_sample(
+              mesh, name, grid, float(x) / (ccg.grid_size - 1), float(y) / (ccg.grid_size - 1));
+        };
+        for (const int grid : nodes[i].grids()) {
+          if (use_flat_layout[i]) {
+            for (int y = 0; y < ccg.grid_size - 1; y++) {
+              for (int x = 0; x < ccg.grid_size - 1; x++) {
+                *data++ = get(grid, x, y);
+                *data++ = get(grid, x + 1, y);
+                *data++ = get(grid, x + 1, y + 1);
+                *data++ = get(grid, x, y + 1);
+              }
+            }
+          }
+          else {
+            for (int y = 0; y < ccg.grid_size; y++) {
+              for (int x = 0; x < ccg.grid_size; x++) {
+                *data++ = get(grid, x, y);
+              }
+            }
+          }
+        }
+      },
+      exec_mode::grain_size(1));
+}
+
 BLI_NOINLINE static void fill_normals_grids(const Object &object,
                                             const OrigMeshData &orig_mesh_data,
                                             const BitSpan use_flat_layout,
@@ -1764,6 +1813,15 @@ Span<gpu::VertBufPtr> DrawCacheImpl::ensure_attribute_data(const Object &object,
             fill_face_sets_grids(object, orig_mesh_data, use_flat_layout_, mask, vbos);
             break;
         }
+      }
+      else if (const auto attribute = orig_mesh_data.attributes.lookup(
+                   std::get<GenericRequest>(attr));
+               attribute &&
+               bke::mesh::is_color_attribute(
+                   {attribute.domain, bke::cpp_type_to_attribute_type(attribute.varray.type())}))
+      {
+        fill_colors_grids(
+            object, orig_mesh_data, use_flat_layout_, mask, std::get<GenericRequest>(attr), vbos);
       }
       else {
         ensure_vbos_allocated_grids(

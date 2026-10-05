@@ -20,9 +20,11 @@
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
+#include "BKE_multires.hh"
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
+#include "BKE_report.hh"
 
 #include "IMB_colormanagement.hh"
 
@@ -556,7 +558,11 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     }
   }
 
-  /* Disable for multires and dyntopo for now */
+  if (BKE_sculpt_multires_active(&scene, &ob)) {
+    BKE_report(op->reports, RPT_ERROR, "Color Filter is not supported on multiresolution grids");
+    return OPERATOR_CANCELLED;
+  }
+  /* Disable for dyntopo for now. */
   if (!color_supported_check(scene, ob, op->reports)) {
     return OPERATOR_CANCELLED;
   }
