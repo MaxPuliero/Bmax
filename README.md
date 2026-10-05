@@ -14,7 +14,7 @@ Sorry I can't include the compiled Windows build directly in this GitHub reposit
 
 **3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.
 
-The boundary geometry is cached until the mesh changes and supports evaluated meshes and subdivision. See [the implementation and validation notes](doc/bmax/mesh_holes.md) and run [the demonstration script](tests/python/overlay/mesh_holes_demo.py) with the modified Blender to compare an open box with a closed box.
+The boundary geometry is cached until the mesh changes and supports evaluated meshes and subdivision. See [the implementation and validation notes](doc/bmax/mesh_holes.md).
 
 ### Absolute Octahedral Radius
 

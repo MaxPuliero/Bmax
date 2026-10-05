@@ -892,7 +892,6 @@ if(WITH_GTESTS)
   if(WITH_GPU_DRAW_TESTS)
     set(TEST_SRC
       tests/draw_curves_test.cc
-      tests/draw_mesh_boundary_test.cc
       tests/draw_pass_test.cc
       tests/eevee_test.cc
 

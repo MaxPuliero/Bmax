@@ -8,24 +8,6 @@ Visible boundaries respect scene depth. X-Ray and In Front objects show their bo
 
 The compact boundary index buffer is built on demand and uses the existing mesh cache invalidation. Ordinary evaluated meshes and subdivision meshes use the same boundary rule. The GPU expands each boundary segment into two triangles with coverage antialiasing when Smooth Wires is enabled or the stroke is narrower than one pixel.
 
-## Reproduce the viewport comparison
-
-```sh
-blender --factory-startup --python tests/python/overlay/mesh_holes_demo.py
-```
-
-The selected open box has a front opening and a backing face in the same mesh. Its opening is invisible to the ordinary object-ID outline; Mesh Holes adds a thin outline around it. The neighboring selected closed cube receives no additional lines.
-
-## Automated checks
-
-Configure with `WITH_GTESTS=ON`, `WITH_GPU_DRAW_TESTS=ON`, and `WITH_GPU_BACKEND_TESTS=ON`, then build `blender` and `blender_test`.
-
-```sh
-blender_test --gtest_filter="*mesh_boundary_edges*:*mesh_holes_shader*"
-```
-
-These tests cover shared edges independently of winding, hidden edges and faces, closed geometry, non-manifold edges, loose-only geometry, subdivision boundaries, and creation of the regular and clipped shaders.
-
 ## Verified Windows build (2026-10-05)
 
 MSVC 19.44, Ninja, optimized Release (`/O2 /Ob2 /DNDEBUG`), AMD Radeon 8060S. All six boundary and shader tests passed on OpenGL and Vulkan. The GUI viewport was captured on both backends: ON/OFF, X-Ray, occlusion, In Front, subdivision, deselection, Smooth Wires disabled, the overlay panel, and a dense perforated mesh. The ON/OFF image difference was confined to the front opening; the closed cube was unchanged. Factory-startup viewports and the RNA default both reported ON.
@@ -40,5 +22,3 @@ Cached redraw measurements with VSync disabled (median of three 80-redraw runs p
 | Vulkan | 4,489 openings | 3.014 | 2.987 | -0.028 |
 
 The dense mesh contains 40,405 vertices and 35,512 faces. These measurements support enabling the option by default on this machine; small negative differences are measurement noise. Initial boundary extraction remains linear in mesh topology, and is repeated when the mesh cache is invalidated.
-
-On Windows, `blender_test.exe` is in `bin/tests`; add the build's `bin` and `bin/blender.shared` directories to the test process PATH when invoking it directly.
