@@ -4,7 +4,7 @@ See the [complete feature inventory](FEATURES.md) for the implemented additions,
 
 ## Branch and source
 
-`main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, modifier defaults, 20 cm new bones, and coincident selection outlines. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
+`main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, modifier defaults, 20 cm new bones, coincident selection outlines, and Multires Sculpt color painting. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
 
 The retired branches are preserved by tags `archive/armature-ui-2026-10-05` and `archive/bmax-publication-2026-10-05`. These tags are historical snapshots, not the default build source.
 
@@ -35,9 +35,11 @@ cmake -S D:\blender_prj -B D:\blender_build\octahedral_radius `
 if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed' }
 
 cmake --build D:\blender_build\octahedral_radius `
-  --config Release --target INSTALL --parallel 8
+  --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
 if ($LASTEXITCODE -ne 0) { throw 'Bmax build failed' }
 ```
+
+The conservative parallelism also limits MSVC compilation within each project; a full rebuild at higher parallelism exhausted the precompiled-header heap on this machine.
 
 `INSTALL` updates the executable and runtime files in `bin`. Close any process running from that output directory before installing. A separately copied desktop package is not updated by this command. Run or distribute the complete installed runtime directory, not the executable alone.
 
@@ -67,3 +69,7 @@ The Bmax-specific development tests were removed from Git and their CMake regist
 On 2026-10-05, `main` at source commit `9e6f22f93ed9` compiled and installed successfully as **Bmax 5.2.2 LTS**, Windows Release, using Visual Studio 2022. Background checks covered 25 assertions for the 20 cm defaults across metric, imperial, and unitless scenes, explicit sizes, and duplication. Invoked viewport operators also respected scene unit scale. Fifty viewport captures across OpenGL and Vulkan verified coincident selection outlines in Edit, Pose, and Object Mode, mesh-object outlines, occlusion, and In Front. Object-origin dots are a separate overlay and were excluded from the outline comparison. Verification scripts and captures were created outside the repository and removed afterward.
 
 The Object Mode wire-selection follow-up was verified with 144 viewport captures across OpenGL and Vulkan: empty axes/cubes/circles/image frames, legacy curves, lattice cages, loose mesh edges and vertices, and coincident pairs across these overlay types. Forty-eight first/last-order comparisons matched, including selected-active priority. Sixteen GPU picking checks selected the expected objects. Solid-mode occlusion, In Front, and Wireframe were checked for empties, curves, lattices, and loose edges. Object-origin markers were excluded from the contour comparisons. All verification files were temporary and removed after the checks.
+
+The Multires Sculpt color implementation in source commit `92db31e2b2c8` was compiled and installed on 2026-10-05; compilation and validation took place before committing the tested source changes. Validation covered Paint/Blur/Smear, Multires levels, exact color undo/redo, save/reload, modifier application, Float/Byte and Point/Corner attributes, triangles/ngons, masks, separate attributes, Edit Mode lifecycle, OpenGL/Vulkan viewport display, and a Cycles CPU color-attribute material render. See [Multires color notes](multires_color.md) for scope and limitations. This does not update the separately copied Desktop package or the published download.
+
+The local Multires color performance correction was compiled and verified on 2026-10-05. The final regression includes localized undo and anchored strokes; OpenGL/Vulkan viewport checks and Cycles renders from Sculpt Mode passed. A before/after benchmark measured about 24x and 44x lower synchronous stroke time on 98,304 and 393,216 evaluated quads respectively. See [Multires color performance notes](multires_color.md) for the exact method and limits. Temporary verification files were removed; compilation caches and runtime dependencies were preserved.

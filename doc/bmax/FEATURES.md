@@ -47,9 +47,19 @@ Source commits: Mesh Holes `a5cd97e8`; 20 cm bone defaults and armature selectio
 
 See [Mesh Holes implementation and validation notes](mesh_holes.md).
 
+## Multires Sculpt color painting added on 2026-10-05
+
+Implementation commit: `92db31e2b2c8`.
+
+Bmax implements Sculpt Mode color painting with Multires: Paint, Blur, Smear, per-attribute RGBA grid storage, seam stitching, level changes, undo/redo, save/reload, and transfer to a regular evaluated color attribute when applying the modifier. Float/Byte and Point/Corner attributes are supported. Sculpt masks block painting. Color Filter and Mask by Color report that Multires is unsupported. Classic Vertex Paint mode is unchanged. Color brush processing, GPU updates, and undo are localized to affected grids and their neighbors; persistent colors are committed once per stroke, and color-only strokes avoid geometry rebuilds between strokes.
+
+The local benchmark measured median stroke times of 3.55 ms on 98,304 evaluated quads and 5.39 ms on 393,216 quads, versus 85.62 ms and 236.18 ms before optimization. These synchronous operator measurements exclude interactive GPU redraw and are specific to the documented test setup. See [Multires color implementation and validation](multires_color.md) for usage, persistence, compatibility, performance, and current limits.
+
+This feature is part of the source on `main`; source publication does not update a separately copied Desktop build or publish a new Windows download.
+
 ## Compatibility and persistence
 
-The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero intensity and opacity values survive saving and reopening. Official Blender may discard Bmax-specific properties when re-saving a file.
+The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Multires Sculpt color uses named per-attribute RGBA grids saved with the base mesh; applying Multires materializes the detail as a regular evaluated color attribute. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero intensity and opacity values survive saving and reopening. Official Blender may discard Bmax-specific properties when re-saving a file.
 
 ## Removed items
 

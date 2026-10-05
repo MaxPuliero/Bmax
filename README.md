@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, and UV inspection tools. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -13,6 +13,12 @@ For contributors and AI agents, see [the repository instructions](AGENTS.md) and
 ## Features
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-5, 2026, their source commits, and removed items.
+
+### Multires color painting in Sculpt Mode
+
+Paint, Blur, and Smear can edit color at the current Multires sculpt resolution. RGBA grids are saved with the active color attribute; changing levels retains the highest painted detail, and lower-level strokes update that detail. Undo/redo and saving/reopening preserve the grids. Applying Multires produces a regular color attribute on the evaluated mesh.
+
+Brush updates and undo are restricted to the affected grids and their boundaries, and color storage is committed at stroke completion to keep painting responsive. This implementation supports Float and Byte attributes on Point and Face Corner domains. Color Filter and Mask by Color remain unavailable with Multires. The classic Vertex Paint mode retains its existing behavior. See [usage, storage, and validation notes](doc/bmax/multires_color.md). Publishing this source update does not publish a new Windows download.
 
 ### Selected mesh openings
 

@@ -24,6 +24,23 @@
 - Preservare profondità, occlusione, clipping, In Front, X-Ray e picking GPU. Non cambiare la matematica di valutazione delle ossa per correggere la visualizzazione.
 - Per modifiche ai contorni, verificare l'ordine inverso di creazione, la selezione multipla con oggetto attivo e le coppie di tipi diversi coinvolti. Verificare OpenGL/Vulkan, l'occlusione e il picking quando disponibili, usando solo artefatti temporanei.
 
+## Colore Multires in Sculpt Mode
+
+- Leggere `doc/bmax/multires_color.md` prima di intervenire sul colore Multires. La feature comprende Paint, Blur e Smear dentro Sculpt Mode; il Vertex Paint classico resta separato. Color Filter, Mask by Color e Dynamic Topology non sono supportati da questo percorso.
+- Il colore persistente usa `CD_GRID_PAINT_COLOR` e `GridPaintColor`, associati per nome all'attributo visibile. Preservare RGBA, copia e liberazione dei buffer annidati, serializzazione, rinomina/rimozione degli attributi e conversione Mesh/BMesh. I layer legacy possono avere lo stesso nome degli attributi ordinari: risolverli anche per tipo, senza interpretarli come array di colori della mesh base.
+- Supportare Float/Byte e Point/Face Corner. I campioni Multires sono float RGBA anche per un attributo base Byte; applicare il modificatore produce un normale attributo Float Color sul dominio Face Corner.
+- Cambiare livello senza dipingere deve conservare il dettaglio massimo. Una pennellata a livello inferiore propaga il delta al dettaglio conservato a fine gesto; Delete Higher elimina esplicitamente i livelli superiori. Undo/redo deve ripristinare esattamente sia i campioni correnti sia gli array persistenti ad alta risoluzione.
+- Limitare elaborazione, undo e aggiornamenti GPU ai nodi raggiunti dal pennello e ai vicini necessari per i confini delle griglie. Non reintrodurre copie dell'intera superficie, salvataggi di tutte le griglie o ridisegni globali a ogni passo del pennello. Riutilizzare i buffer e salvare le griglie modificate a fine pennellata.
+- Una pennellata solo colore non modifica le coordinate Multires e non deve provocare la ricostruzione completa del CCG tra pennellate. Preservare gli aggiornamenti necessari per rendering esterno, mesh condivise e uscita da Sculpt Mode. Ancoraggio e annullamento ripristinano i colori runtime senza riscrivere il dettaglio persistente a ogni passo.
+- Per modifiche a questo percorso, verificare su una mesh con molti nodi PBVH: confini continui, maschere, undo/redo locale, livelli e pittura a livello inferiore, Blur/Smear, ancoraggio, attributi separati, rinomina/rimozione, salvataggio e applicazione del modificatore. Verificare viewport OpenGL/Vulkan e lettura del colore dal materiale quando il disegno o l'invalidazione cambiano.
+- Confrontare le prestazioni con la stessa scena e pennellata, indicando riscaldamento, numero di misure e mediana. Il benchmark documentato misura l'operatore sincrono, non il frame rate interattivo; i risultati non sono una garanzia universale. Usare solo artefatti temporanei esterni al repository e rimuoverli dopo la verifica.
+
+## Commit e pubblicazione
+
+- Seguire lo stile dei commit recenti: titolo concreto in inglese, all'imperativo, per esempio `Add performant Multires color painting in Sculpt Mode`. Descrivere il comportamento finale; separare implementazione e aggiornamento documentale quando serve a citare l'hash della feature nell'inventario.
+- Committare e pubblicare quando richiesto dall'utente. Controllare diff, branch e remoto; usare `origin` sul repository Bmax e verificare l'allineamento del branch remoto dopo il push. Non usare force push o pubblicare su `upstream` senza istruzioni esplicite.
+- I commit del sorgente, il binario installato localmente, le copie sul Desktop e il download pubblico hanno stati distinti. Aggiornare README, inventario, note tecniche e guida di build senza confonderli. Non committare binari, cache di compilazione o artefatti temporanei.
+
 ## Ambiente Windows locale
 
 - Checkout sorgenti: `D:\blender_prj`. Build: `D:\blender_build\octahedral_radius`. Eseguibile installato: `D:\blender_build\octahedral_radius\bin\blender.exe`.
