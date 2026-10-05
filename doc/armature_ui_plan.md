@@ -151,7 +151,7 @@ Parametro RNA octahedral_radius su Bone/EditBone, etichetta Octahedral Radius in
 
 La matrice comune di disegno resta invariata: l'Octahedral usa una copia con scala trasversale dedicata; le sfere usano matrici uniformi centrate sulle estremita. Le stesse geometrie alimentano il picking. Il raggio e copiato nei passaggi Bone/EditBone. La migrazione usa la presenza del membro DNA per distinguere un file standard da un file gia salvato con la build personalizzata; inizializza il raggio con la semilarghezza Octahedral precedente, una sola volta.
 
-Regressioni preparate in tests/python/bl_armature_octahedral_radius.py: trasformazioni rest/pose con constraint invarianti, raggio conservato nei passaggi di modo e nei cambi di lunghezza, duplicazione, salvataggio/riapertura. Il test e registrato nel CMake dei test Python.
+Verifiche eseguite durante lo sviluppo: trasformazioni rest/pose con constraint invarianti, raggio conservato nei passaggi di modo e nei cambi di lunghezza, duplicazione, salvataggio/riapertura. Lo script temporaneo di verifica e stato rimosso dalla distribuzione e dal CMake dei test Python.
 
 ## Esito della prima build
 
