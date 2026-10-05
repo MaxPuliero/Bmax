@@ -1,7 +1,9 @@
 # Armature UI: analisi e piano per Blender 5.2.2
 
+Documento storico: i percorsi, gli script e gli stati delle verifiche riportati nelle sezioni del piano descrivono lo sviluppo iniziale. Dal 2026-10-05 il branch attivo e `main`; `codex/armature-ui` e `codex/bmax-publication` sono archiviati tramite tag. Per le prossime compilazioni seguire [Building Bmax on Windows](bmax/BUILD_WINDOWS.md).
+
 Base: tag v5.2.2, commit d13f752e3b9c4f8c261cda552b1021f8bcc0382c.
-Repository: D:\blender_prj. Branch: codex/armature-ui.
+Repository: D:\blender_prj. Branch attivo: main (branch storico iniziale: codex/armature-ui).
 Stato: Octahedral Radius, hide/unhide sincronizzato, Names/Axis sulle ossa selezionate e Axis Size indipendente implementati. Bmax integra il logo fornito e usa le preferenze di Blender 5.2. Build Bmax precedente compilata e installata, sette regressioni precedentemente superate. Nuova build con Axis Size compilata e installata con successo. Verifica grafica interattiva ancora da eseguire.
 
 ## Requisiti confermati
@@ -273,4 +275,4 @@ file da Blender ufficiale. La scala dell'oggetto si applica alla visualizzazione
 
 ## Publication status (supersedes earlier historical notes)
 
-Published as MaxPuliero/Bmax. The current executables are blender.exe and blender-launcher.exe; branding remains Bmax. Axis Size is independent, default 0.03 units. The corrected Max Puliero Pie Menu List 1.0.1 addon is included under extras/addons. Relationship filtering, 0.2-unit new-bone length and coincident selection outlines remain planned. See the English root README for the current feature list.
+Published as MaxPuliero/Bmax. The current executables are blender.exe and blender-launcher.exe; branding remains Bmax. Axis Size is independent, default 0.03 units. The previously bundled Max Puliero Pie Menu List addon has been removed. Relationship filtering, 0.2-unit new-bone length and coincident selection outlines remain planned. See the English root README for the current feature list.
