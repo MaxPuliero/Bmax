@@ -1380,6 +1380,12 @@ static wmOperatorStatus object_armature_add_exec(bContext *C, wmOperator *op)
   float loc[3], rot[3], dia;
   bool view_aligned = rv3d && (U.flag & USER_ADD_VIEWALIGNED);
 
+  /* Bmax: use a physical 20 cm default instead of the viewport grid size. */
+  if (!RNA_struct_property_is_set(op->ptr, "radius")) {
+    const float unit_scale = scene->unit.system == USER_UNIT_NONE ? 1.0f :
+                                                                  scene->unit.scale_length;
+    RNA_float_set(op->ptr, "radius", 0.2f / max_ff(unit_scale, 1e-9f));
+  }
   WM_operator_view3d_unit_defaults(C, op);
   add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, &enter_editmode, &local_view_bits, nullptr);
 
@@ -1428,7 +1434,7 @@ void OBJECT_OT_armature_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  add_unit_props_radius(ot);
+  add_unit_props_radius_ex(ot, 0.2f);
   add_generic_props(ot, true);
 }
 

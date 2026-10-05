@@ -2037,6 +2037,7 @@ void Armatures::draw_armature_edit(Armatures::DrawContext *ctx)
     const eArmature_Drawtype drawtype = eBone->drawtype == ARM_DRAW_TYPE_ARMATURE_DEFINED ?
                                             arm_drawtype :
                                             eArmature_Drawtype(eBone->drawtype);
+    set_selection_buffer(*ctx, boneflag);
     bone_draw_update_display_matrix(drawtype, false, bone, arm);
     bone_draw(drawtype, false, ctx, bone, boneflag, select_id);
 
@@ -2177,6 +2178,7 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     const eArmature_Drawtype drawtype = bone->drawtype == ARM_DRAW_TYPE_ARMATURE_DEFINED ?
                                             arm_drawtype :
                                             eArmature_Drawtype(bone->drawtype);
+    set_selection_buffer(*ctx, boneflag);
     bone_draw_update_display_matrix(drawtype, use_custom_shape, bone_ptr, arm);
     bone_draw(drawtype, use_custom_shape, ctx, bone_ptr, boneflag, select_id);
 

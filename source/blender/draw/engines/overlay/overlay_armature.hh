@@ -133,11 +133,35 @@ class Armatures : Overlay {
       });
     }
 
+    /* Selection buckets share the render state; only their submission order differs. */
+    void bind_passes_from(const BoneBuffers &source)
+    {
+      sphere_fill = source.sphere_fill;
+      sphere_outline = source.sphere_outline;
+      shape_fill = source.shape_fill;
+      shape_outline = source.shape_outline;
+      shape_wire = source.shape_wire;
+      shape_wire_strip = source.shape_wire_strip;
+      envelope_fill = source.envelope_fill;
+      envelope_outline = source.envelope_outline;
+      envelope_distance = source.envelope_distance;
+      stick = source.stick;
+      wire = source.wire;
+      arrows = source.arrows;
+      degrees_of_freedom_fill = source.degrees_of_freedom_fill;
+      degrees_of_freedom_wire = source.degrees_of_freedom_wire;
+      relations = source.relations;
+    }
+
     BoneBuffers(const SelectionType selection_type) : selection_type_(selection_type) {};
   };
 
   BoneBuffers opaque_ = {selection_type_};
   BoneBuffers transparent_ = {selection_type_};
+  BoneBuffers opaque_selected_ = {selection_type_};
+  BoneBuffers transparent_selected_ = {selection_type_};
+  BoneBuffers opaque_active_ = {selection_type_};
+  BoneBuffers transparent_active_ = {selection_type_};
 
  public:
   Armatures(const SelectionType selection_type) : selection_type_(selection_type) {};
@@ -467,8 +491,17 @@ class Armatures : Overlay {
       bb.custom_shape_wire_strip.clear();
     };
 
+    opaque_selected_.bind_passes_from(opaque_);
+    opaque_active_.bind_passes_from(opaque_);
+    transparent_selected_.bind_passes_from(transparent_);
+    transparent_active_.bind_passes_from(transparent_);
+
     shape_instance_bufs_begin_sync(transparent_);
     shape_instance_bufs_begin_sync(opaque_);
+    shape_instance_bufs_begin_sync(transparent_selected_);
+    shape_instance_bufs_begin_sync(opaque_selected_);
+    shape_instance_bufs_begin_sync(transparent_active_);
+    shape_instance_bufs_begin_sync(opaque_active_);
   }
 
   struct DrawContext {
@@ -482,6 +515,7 @@ class Armatures : Overlay {
     eArmature_Drawtype drawtype = ARM_DRAW_TYPE_OCTA;
 
     Armatures::BoneBuffers *bone_buf = nullptr;
+    Armatures::BoneBuffers *selection_buffers[3] = {};
     Resources *res = nullptr;
     DRWTextStore *dt = nullptr;
 
@@ -498,6 +532,7 @@ class Armatures : Overlay {
     bool show_text = false;
     /* Draw the inner part of the bones, otherwise render just outlines. */
     bool is_filled = false;
+    bool is_active_object = false;
 
     const ThemeWireColor *bcolor = nullptr; /* Pose-channel color. */
 
@@ -514,6 +549,7 @@ class Armatures : Overlay {
     DrawContext ctx;
     ctx.ob = ob_ref.object;
     ctx.ob_ref = &ob_ref;
+    ctx.is_active_object = ob_ref.is_active(state.object_active);
     ctx.armature = &arm;
     ctx.res = &res;
     ctx.dt = state.dt;
@@ -524,7 +560,10 @@ class Armatures : Overlay {
     const bool draw_as_wire = (ctx.ob->dt < OB_SOLID);
     const bool is_transparent = draw_transparent || (draw_as_wire && is_edit_or_pose_mode);
 
-    ctx.bone_buf = is_transparent ? &transparent_ : &opaque_;
+    ctx.selection_buffers[0] = is_transparent ? &transparent_ : &opaque_;
+    ctx.selection_buffers[1] = is_transparent ? &transparent_selected_ : &opaque_selected_;
+    ctx.selection_buffers[2] = is_transparent ? &transparent_active_ : &opaque_active_;
+    ctx.bone_buf = ctx.selection_buffers[0];
 
     ctx.is_filled = (!draw_transparent && !draw_as_wire) || is_edit_or_pose_mode;
     ctx.show_relations = show_relations;
@@ -538,6 +577,24 @@ class Armatures : Overlay {
       ctx.const_wire = 1.5f;
     }
     return ctx;
+  }
+
+  static void set_selection_buffer(DrawContext &ctx, const eBone_Flag boneflag)
+  {
+    /* Keep hit-testing in its original order. For display, selected outlines must not
+     * be overwritten by later unselected instances at exactly the same depth. */
+    int priority = 0;
+    if (!ctx.res->is_selection()) {
+      const int selection_flags = ctx.draw_mode == ARM_DRAW_MODE_EDIT ?
+                                      BONE_SELECTED | BONE_ROOTSEL | BONE_TIPSEL :
+                                      BONE_SELECTED;
+      const bool selected = ctx.const_color ? ctx.const_wire > 1.0f :
+                                             (boneflag & selection_flags);
+      const bool active = ctx.const_color ? ctx.is_active_object :
+                                           (boneflag & BONE_DRAW_ACTIVE);
+      priority = selected ? (active ? 2 : 1) : 0;
+    }
+    ctx.bone_buf = ctx.selection_buffers[priority];
   }
 
   void edit_object_sync(Manager & /*manager*/,
@@ -635,6 +692,10 @@ class Armatures : Overlay {
 
     end_sync(transparent_);
     end_sync(opaque_);
+    end_sync(transparent_selected_);
+    end_sync(opaque_selected_);
+    end_sync(transparent_active_);
+    end_sync(opaque_active_);
   }
 
   void draw_line(Framebuffer &framebuffer, Manager &manager, View &view) final

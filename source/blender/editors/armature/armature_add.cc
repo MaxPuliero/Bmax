@@ -1939,6 +1939,14 @@ static wmOperatorStatus armature_bone_primitive_add_exec(bContext *C, wmOperator
   EditBone *bone = ED_armature_ebone_add(id_cast<bArmature *>(obedit->data), name);
   ANIM_armature_bonecoll_assign_active(id_cast<bArmature *>(obedit->data), bone);
 
+  /* Bmax: initialize new bones to 20 cm without changing explicitly supplied lengths. */
+  if (!RNA_struct_property_is_set(op->ptr, "length")) {
+    const Scene *scene = CTX_data_scene(C);
+    const float unit_scale = scene->unit.system == USER_UNIT_NONE ? 1.0f :
+                                                                  scene->unit.scale_length;
+    RNA_float_set(op->ptr, "length", 0.2f / max_ff(unit_scale, 1e-9f));
+  }
+
   /* Scale B-Bone display width and Bone Envelope based on length. */
   const float length = RNA_float_get(op->ptr, "length");
   BLI_assert(length > 0.0f);
@@ -2072,7 +2080,7 @@ void ARMATURE_OT_bone_primitive_add(wmOperatorType *ot)
 
   RNA_def_float(ot->srna,
                 "length",
-                1.0f,
+                0.2f,
                 0.001f,
                 FLT_MAX,
                 "Length",

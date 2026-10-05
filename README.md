@@ -30,6 +30,14 @@ Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > It
 
 ![Axis Size demonstration](doc/bmax/media/bmax_axis.webp)
 
+### Default new bone length
+
+New armatures and **Add Bone** in Edit Mode start with a bone length of **20 cm**: `0.2` Blender units with standard metric units, adjusted for the scene's unit scale. Explicit operator lengths and radii are respected. Existing bones, duplicates, and extrusions keep their existing lengths and behavior; armature object scale still applies.
+
+### Selection outlines for coincident elements
+
+When armature elements coincide at the same depth, unselected elements are drawn first, selected elements next, and the selected active element last. This prevents a later unselected bone from replacing the selection outline and gives the active bone priority among coincident selected bones. The ordering applies to Pose and Edit Mode and selected armature objects. Existing depth tests, X-Ray/In Front behavior, and picking remain in place. Selected mesh objects also retain their outlines when coincident with unselected meshes.
+
 ### Names and axes for selected bones
 
 The armature's **Names** and **Axes** toggles display these overlays only for selected bones. In Edit Mode, selecting a head or tail also qualifies the bone. Existing master toggles still enable or disable each overlay.
@@ -111,14 +119,6 @@ Object Mode UV diagnostics were additionally checked in 15 cases on each backend
 The UV changes were checked in the running editor on both OpenGL and Vulkan: 15 diagnostic cases, including the exact 2-pixel outline at two zoom levels, and 21 background/view cases covering 4K images, rectangular images, removal, automatic image changes, pan, zoom, opacity, and save/reload. Image switches produced no change in the measured UV screen coordinates. Old-file migration and persistence were also verified.
 
 The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
-
-## Planned work
-
-- Relationship lines restricted to selected bones.
-- Default newly created bone length of 0.2 Blender units (20 cm in standard metric scenes).
-- Reliable selection outlines for coincident bones/objects, after further viewport investigation.
-
-These items are not implemented in this published version.
 
 ## License and attribution
 

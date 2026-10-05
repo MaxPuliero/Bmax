@@ -37,11 +37,13 @@ Commit: `ac5982c9`.
 
 ## Added to the published source on 2026-10-05
 
-Commit: `a5cd97e8`.
+Initial Mesh Holes commit: `a5cd97e8`. The 20 cm bone defaults and coincident selection ordering were added to this source on the same date.
 
 | Feature | Implemented behavior |
 | --- | --- |
 | Mesh Holes | 3D Viewport > Overlays > Objects > Mesh Holes highlights open boundary edges of selected meshes in Object Mode. Enabled by default, including older saved viewports. Uses the selection color and half the selection-outline width. Supports evaluated and subdivision meshes, X-Ray, In Front, clipping, and scene occlusion. Closed geometry, internal shared edges, loose edges, and edges incident to more than two faces receive no extra boundary lines. |
+| Default new bone length | New armatures and Add Bone in Edit Mode default to 20 cm, adjusted for scene unit scale (`0.2` Blender units at standard metric scale). Explicit sizes are respected; existing bones, duplicates, and extrusions are unchanged. Armature object scale still applies. |
+| Coincident selection outlines | Armature display submits unselected elements first, selected elements next, and selected active elements last. Selection outlines no longer depend on bone creation order at equal depth; existing depth tests and picking are retained. Coincident selected mesh-object outlines were also verified. |
 
 See [Mesh Holes implementation and validation notes](mesh_holes.md).
 
@@ -49,14 +51,8 @@ See [Mesh Holes implementation and validation notes](mesh_holes.md).
 
 The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero intensity and opacity values survive saving and reopening. Official Blender may discard Bmax-specific properties when re-saving a file.
 
-## Removed or still planned
+## Removed items
 
 The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list. The built-in Tab mode pie gesture remains implemented.
-
-These items remain planned and are not implemented in `main`:
-
-- Relationship lines restricted to selected bones.
-- Default newly created bone length of `0.2` Blender units.
-- Reliable selection outlines for coincident bones/objects.
 
 The removal of development tests and the branch cleanup are maintenance changes, not feature removals. All features listed above remain in `main`.

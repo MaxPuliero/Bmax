@@ -8,14 +8,13 @@ Stato: Octahedral Radius, hide/unhide sincronizzato, Names/Axis sulle ossa selez
 
 ## Elenco aggiornato delle feature
 
-La lista completa delle funzionalita implementate in main dal 1 al 5 ottobre 2026 e in [Bmax feature inventory](bmax/FEATURES.md). Include le modifiche alle armature e al gesto Tab, gli assi dell'origine, i nuovi default dei modificatori, outline/overlap/flipped UV condivisi tra Object ed Edit Mode, opacita e inquadratura UV, Mesh Holes e branding. Il documento distingue le feature presenti, l'addon rimosso e le richieste ancora pianificate.
+La lista completa delle funzionalita implementate in main dal 1 al 5 ottobre 2026 e in [Bmax feature inventory](bmax/FEATURES.md). Include le modifiche alle armature e al gesto Tab, gli assi dell'origine, i nuovi default dei modificatori, outline/overlap/flipped UV condivisi tra Object ed Edit Mode, opacita e inquadratura UV, Mesh Holes, branding, nuove ossa di 20 cm e contorni selezionati affidabili per elementi coincidenti. Il documento distingue le feature presenti, l'addon rimosso e gli interventi implementati.
 
 ## Requisiti confermati
 
 - Modifiche di interfaccia e visualizzazione delle armature.
 - Nomi e assi filtrabili sulle ossa selezionate.
 - Un raggio di visualizzazione assoluto per osso, condiviso da Octahedral e dalle due sfere alle estremita. Head e Root indicano queste sfere, non nuovi tipi di visualizzazione.
-- Linee di relazione filtrabili sulle ossa selezionate.
 - Sincronizzazione di selezione e stato nascosto tra Pose ed Edit Mode, dopo proposta del comportamento.
 - Nuove ossa: 0,2 unita Blender, equivalenti a 20 cm nella scena metrica standard.
 - Elementi coincidenti: il contorno selezionato deve restare visibile; per piu elementi selezionati basta un contorno comune.
@@ -59,16 +58,6 @@ Il valore deve passare da Bone a EditBone e viceversa; verificare duplicazione, 
 Fattibilita alta; richiede modifica dei dati salvati e migrazione dei vecchi file. Una sola misura applicata identicamente a larghezza e sfere cambia le proporzioni visive storiche, quindi non e possibile mantenere entrambe identiche al passato. La migrazione deve esplicitare questa scelta e inizializzare il valore una sola volta, senza legarlo dinamicamente alla lunghezza. Proposta iniziale per nuovi ossi di 0,2: raggio 0,02, modificabile per osso.
 
 Casi delicati: osso molto corto con raggio grande, pose con scale non uniformi/negative, oggetti scalati, endpoint connessi che Blender normalmente omette, file aperti in Blender standard che non dispone della nuova proprieta.
-
-## 3. Linee delle sole ossa selezionate
-
-Funzioni principali in overlay_armature.cc: should_draw_relation_to_parent, draw_bone_relations e pchan_draw_ik_lines.
-
-Oggi in Edit le relazioni tra ossa non connesse sono visibili indipendentemente dalla selezione; in Pose basta che sia selezionato il figlio oppure il suo genitore. Le linee delle catene IK gia richiedono la selezione dell'osso relativo.
-
-Proposta: un'opzione Selected Only separata dal filtro nomi/assi. Con l'opzione attiva, mostrare la relazione dell'osso selezionato verso il suo genitore; selezionare soltanto il genitore non deve far comparire tutte le relazioni dei figli. Mantenere il controllo globale Relationship Lines e le regole di visibilita. Verificare a parte gli overlay dei target constraint e le relazioni degli oggetti per non ampliarvi accidentalmente il filtro delle ossa.
-
-Fattibilita alta. Possibile effetto: si vedono meno collegamenti rispetto all'attuale Pose Mode; e il comportamento richiesto, da rendere chiaro nell'etichetta.
 
 ## 4. Stato attuale e proposta Pose/Edit
 
@@ -279,4 +268,4 @@ file da Blender ufficiale. La scala dell'oggetto si applica alla visualizzazione
 
 ## Publication status (supersedes earlier historical notes)
 
-Published as MaxPuliero/Bmax. The current executables are blender.exe and blender-launcher.exe; branding remains Bmax. Axis Size is independent, default 0.03 units. The previously bundled Max Puliero Pie Menu List addon has been removed. Relationship filtering, 0.2-unit new-bone length and coincident selection outlines remain planned. See the English root README for the current feature list.
+Published as MaxPuliero/Bmax. The current executables are blender.exe and blender-launcher.exe; branding remains Bmax. Axis Size is independent, default 0.03 units. The previously bundled Max Puliero Pie Menu List addon has been removed. New bones now default to 20 cm and coincident armature selection outlines use selected/active drawing priority. See the English root README for the current feature list.
