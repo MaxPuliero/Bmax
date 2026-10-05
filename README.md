@@ -10,6 +10,8 @@ Sorry I can't include the compiled Windows build directly in this GitHub reposit
 
 ## Features
 
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-5, 2026, their source commits, and the separate list of planned work.
+
 ### Selected mesh openings
 
 **3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.

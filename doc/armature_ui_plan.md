@@ -6,6 +6,10 @@ Base: tag v5.2.2, commit d13f752e3b9c4f8c261cda552b1021f8bcc0382c.
 Repository: D:\blender_prj. Branch attivo: main (branch storico iniziale: codex/armature-ui).
 Stato: Octahedral Radius, hide/unhide sincronizzato, Names/Axis sulle ossa selezionate e Axis Size indipendente implementati. Bmax integra il logo fornito e usa le preferenze di Blender 5.2. Build Bmax precedente compilata e installata, sette regressioni precedentemente superate. Nuova build con Axis Size compilata e installata con successo. Verifica grafica interattiva ancora da eseguire.
 
+## Elenco aggiornato delle feature
+
+La lista completa delle funzionalita implementate in main dal 1 al 5 ottobre 2026 e in [Bmax feature inventory](bmax/FEATURES.md). Include le modifiche alle armature e al gesto Tab, gli assi dell'origine, i nuovi default dei modificatori, outline/overlap/flipped UV condivisi tra Object ed Edit Mode, opacita e inquadratura UV, Mesh Holes e branding. Il documento distingue le feature presenti, l'addon rimosso e le richieste ancora pianificate.
+
 ## Requisiti confermati
 
 - Modifiche di interfaccia e visualizzazione delle armature.

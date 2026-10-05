@@ -1,5 +1,7 @@
 # Building Bmax on Windows
 
+See the [complete feature inventory](FEATURES.md) for the implemented additions and planned work.
+
 ## Branch and source
 
 `main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, and modifier defaults. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
