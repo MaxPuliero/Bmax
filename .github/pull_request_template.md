@@ -1,4 +1,3 @@
-This repository is only used as a mirror. Blender development happens on projects.blender.org.
+Describe the Bmax problem and resulting behavior. Link the related Bmax issue, if any.
 
-To get started with contributing code, please see:
-https://developer.blender.org/docs/handbook/contributing/
+Include the relevant validation and any remaining limitations. See [AGENTS.md](../AGENTS.md) for contributor instructions.

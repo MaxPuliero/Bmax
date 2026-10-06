@@ -1,6 +1,6 @@
 # Bmax feature inventory
 
-This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-05**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
+This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-06**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
@@ -70,6 +70,12 @@ Implementation commit: `ee9bcdf37b32`. Source publication does not update the se
 | Default bone rotation mode | Newly created pose channels and the Rotation Mode property default use XYZ Euler. Existing channels and copied bone rotation modes are preserved. |
 
 Bendy Bone compatibility of this update was verified on 2026-10-06: newly created bones using XYZ Euler display segmented curvature in Wire and B-Bone modes, in Edit and Pose Mode. Set B-Bone Segments above 1 to enable the curved display; the creation default remains one segment. This preserves existing support rather than adding a new deformation feature.
+
+## Bmax bug reporting
+
+Implementation commit: `2334bd5436b8`.
+
+**Help > Report a Bmax Bug**, the standalone system-information launcher, and Windows debug helpers direct Bmax reports to [GitHub Bmax issues](https://github.com/MaxPuliero/Bmax/issues). Runtime and standalone forms pre-fill version and system information and ask for an official Blender comparison. This routes custom-build reports through Bmax rather than Blender's upstream tracker.
 
 ## Compatibility and persistence
 

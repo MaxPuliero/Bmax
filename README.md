@@ -10,6 +10,10 @@ Sorry I can't include the compiled Windows build directly in this GitHub reposit
 
 For contributors and AI agents, see [the repository instructions](AGENTS.md) and [the Windows build guide](doc/bmax/BUILD_WINDOWS.md).
 
+## Bug reports
+
+Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub tracker](https://github.com/MaxPuliero/Bmax/issues). The system-information launcher used when Bmax cannot start opens the same tracker. Include whether the issue also occurs in official Blender and which version was tested; Bmax reports are investigated here first.
+
 ## Features
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-6, 2026, their source commits, and removed items.

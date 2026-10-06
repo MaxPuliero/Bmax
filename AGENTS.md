@@ -47,3 +47,4 @@
 - Il nome della directory di build è storico; compila l'intero Bmax. Usare Visual Studio 2022/MSVC v143 e il target CMake `INSTALL`, seguendo la guida; i target di test locali sono disabilitati.
 - Una copia sul Desktop non viene aggiornata dall'installazione in questa directory. Non chiudere un'istanza dell'utente senza autorizzazione.
 - Con modifiche locali non pubblicate, i metadati Blender possono indicare il commit del branch di tracking. Controllare sorgente, stato Git e build; non modificare il tracking o il sistema di build solo per cambiare la stringa della versione.
+- Dopo modifiche al layout DNA o a strutture C++ condivise, ricompilare tutti i componenti con `/t:Rebuild` prima di INSTALL, senza eliminare la directory e le dipendenze della build. Verificare anche Boolean Manifold e Sculpt Trim: librerie compilate con layout precedenti possono linkare ma causare crash.
