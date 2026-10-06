@@ -625,7 +625,7 @@ class TOPBAR_MT_help(Menu):
 
         layout.separator()
 
-        layout.operator("wm.url_open_preset", text="Report a Bug", icon='URL').type = 'BUG'
+        layout.operator("wm.url_open_preset", text="Report a Bmax Bug", icon='URL').type = 'BUG'
         layout.operator("wm.sysinfo")
 
 

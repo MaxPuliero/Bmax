@@ -16,10 +16,7 @@ def url_from_blender():
     import platform
     import urllib.parse
 
-    query_params = {
-        "type": "bug_report",
-        "project": "blender",
-    }
+    query_params = {}
 
     query_params["os"] = "{:s} {:d} Bits".format(
         platform.platform(),
@@ -52,5 +49,18 @@ def url_from_blender():
         bpy.app.build_hash.decode('ascii'),
     )
 
-    query_str = urllib.parse.urlencode(query_params)
-    return "https://redirect.blender.org/?" + query_str
+    body = (
+        "## Bmax build\n{broken_version}\n\n"
+        "## System information\n"
+        "Operating system: {os}\nGraphics: {gpu}\n\n"
+        "## Description\nDescribe the problem and the expected behavior.\n\n"
+        "## Steps to reproduce\n1. \n\n"
+        "## Official Blender comparison\n"
+        "Does the same issue occur in official Blender? Include its version and the result, "
+        "or say if it has not been tested.\n\n"
+        "## Attachments\nAttach a small reproducing .blend file and relevant crash/debug logs if available.\n"
+    ).format(**query_params)
+    return "https://github.com/MaxPuliero/Bmax/issues/new?" + urllib.parse.urlencode({
+        "title": "[Bmax] ",
+        "body": body,
+    })

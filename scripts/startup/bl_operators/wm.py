@@ -1129,7 +1129,7 @@ class WM_OT_url_open_preset(Operator):
     preset_items = [
         # Dynamic URL's.
         (('BUG', iface_("Bug"),
-          tip_("Report a bug with pre-filled version information")),
+          tip_("Report a Bmax bug on GitHub with pre-filled system and version information")),
          _url_from_bug),
         (('RELEASE_NOTES', iface_("Release Notes"),
           tip_("Read about what's new in this version of Blender")),

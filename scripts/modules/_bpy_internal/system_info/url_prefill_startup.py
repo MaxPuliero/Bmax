@@ -24,7 +24,7 @@ def url_from_blender() -> str:
 
     print("Collecting system information...")
 
-    query_params = {"type": "bug_report", "project": "blender"}
+    query_params = {}
 
     query_params["os"] = "{:s} {:d} Bits".format(
         platform.platform(),
@@ -70,7 +70,7 @@ def url_from_blender() -> str:
 
     # Gather Blender version information.
     values: dict[str, str] = {
-        "version": re_group_or_unknown(re.search(r"^Blender (.*)", text, flags=re.MULTILINE)),
+        "version": re_group_or_unknown(re.search(r"^(?:Blender|Bmax) (.*)", text, flags=re.MULTILINE)),
         "branch": re_group_or_unknown(re.search(r"^\s+build branch: (.*)", text, flags=re.MULTILINE)),
         "commit_date": re_group_or_unknown(re.search(r"^\s+build commit date: (.*)", text, flags=re.MULTILINE)),
         "commit_time": re_group_or_unknown(re.search(r"^\s+build commit time: (.*)", text, flags=re.MULTILINE)),
@@ -89,7 +89,21 @@ def url_from_blender() -> str:
         )
     )
 
-    return "https://redirect.blender.org/?{:s}".format(urllib.parse.urlencode(query_params))
+    body = (
+        "## Bmax build\n{broken_version}\n\n"
+        "## System information\n"
+        "Operating system: {os}\nGraphics: {gpu}\n\n"
+        "## Description\nDescribe the problem and the expected behavior.\n\n"
+        "## Steps to reproduce\n1. \n\n"
+        "## Official Blender comparison\n"
+        "Does the same issue occur in official Blender? Include its version and the result, "
+        "or say if it has not been tested.\n\n"
+        "## Attachments\nAttach a small reproducing .blend file and relevant crash/debug logs if available.\n"
+    ).format(**query_params)
+    return "https://github.com/MaxPuliero/Bmax/issues/new?" + urllib.parse.urlencode({
+        "title": "[Bmax] ",
+        "body": body,
+    })
 
 
 def main() -> int:
