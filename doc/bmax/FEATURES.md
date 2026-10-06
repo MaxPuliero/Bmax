@@ -57,6 +57,20 @@ The local benchmark measured median stroke times of 3.55 ms on 98,304 evaluated 
 
 This feature is part of the source on `main`; source publication does not update a separately copied Desktop build or publish a new Windows download.
 
+## Bone display and UV overlay updates added on 2026-10-06
+
+Implementation commit: `ee9bcdf37b32`. Source publication does not update the separately copied Desktop package or the public Windows download.
+
+| Feature | Implemented behavior |
+| --- | --- |
+| Octahedral Bendy Bone display | For bones with multiple B-Bone segments, Octahedral draws a body per evaluated segment along the curve in Edit and Pose Mode. Octahedral Radius controls transverse size independently of B-Bone display widths, with spline and pose scaling retained. Only real bone endpoints get spheres; segment picking selects the whole bone. Single-segment display is preserved. |
+| Independent UV fill opacities | Overlap, Flipped UVs, and Faces have separate opacity sliders in the shared Geometry panel, defaulting to 0.5 (50%) for new settings. Faces opacity is independent of UV lines and paint-mode face opacity. Saved values, including zero, are retained; missing properties migrate to the new defaults. |
+| Object Mode UV line priority | UV wire lines are submitted after Faces and Flipped/Overlap diagnostic fills, keeping the lines visible above their colors at the chosen UV line opacity, without automatic quarter-strength fading. Edit Mode keeps its existing line order and white shell outlines remain on top. |
+| Wire endpoint radius | Head and Tail spheres in Wire Edit Mode use the per-bone Octahedral Radius independently of rest-bone length. Selection and endpoint picking use the same sphere geometry. |
+| Default bone rotation mode | Newly created pose channels and the Rotation Mode property default use XYZ Euler. Existing channels and copied bone rotation modes are preserved. |
+
+Bendy Bone compatibility of this update was verified on 2026-10-06: newly created bones using XYZ Euler display segmented curvature in Wire and B-Bone modes, in Edit and Pose Mode. Set B-Bone Segments above 1 to enable the curved display; the creation default remains one segment. This preserves existing support rather than adding a new deformation feature.
+
 ## Compatibility and persistence
 
 The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Multires Sculpt color uses named per-attribute RGBA grids saved with the base mesh; applying Multires materializes the detail as a regular evaluated color attribute. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero intensity and opacity values survive saving and reopening. Official Blender may discard Bmax-specific properties when re-saving a file.

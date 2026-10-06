@@ -12,7 +12,7 @@ For contributors and AI agents, see [the repository instructions](AGENTS.md) and
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-5, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-6, 2026, their source commits, and removed items.
 
 ### Multires color painting in Sculpt Mode
 
@@ -28,9 +28,13 @@ The boundary geometry is cached until the mesh changes and supports evaluated me
 
 ### Absolute Octahedral Radius
 
-Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > Item**, available in Edit and Pose Mode. One absolute radius controls the octahedral body's half-width and both endpoint spheres, independently of rest-bone length. The default for newly created bones is 0.02 Blender units (2 cm with standard metric units). In Pose Mode, evaluated pose scaling and shear remain visible, including nonuniform scaling.
+Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > Item**, available in Edit and Pose Mode. One absolute radius controls the octahedral body's half-width and both endpoint spheres, independently of rest-bone length. In Wire display, the Head and Tail spheres shown in Edit Mode use this same radius. The default for newly created bones is 0.02 Blender units (2 cm with standard metric units). In Pose Mode, evaluated pose scaling and shear remain visible, including nonuniform scaling.
 
 ![Octahedral Radius demonstration](doc/bmax/media/bmax_radius.webp)
+
+### Octahedral Bendy Bone display
+
+With **B-Bone Segments** above 1, Octahedral display follows Bendy Bone curvature in Edit and Pose Mode. Each segment uses **Octahedral Radius** as its transverse radius before spline and pose scaling; B-Bone Display X/Z Width does not control the octahedra. Head and Tail spheres remain at the two real bone endpoints. Selecting any segment selects its bone. With one segment, the existing Octahedral display is preserved.
 
 ### Independent Axis Size
 
@@ -41,6 +45,12 @@ Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > It
 ### Default new bone length
 
 New armatures and **Add Bone** in Edit Mode start with a bone length of **20 cm**: `0.2` Blender units with standard metric units, adjusted for the scene's unit scale. Explicit operator lengths and radii are respected. Existing bones, duplicates, and extrusions keep their existing lengths and behavior; armature object scale still applies.
+
+### Default new bone rotation mode
+
+New bones use **XYZ Euler** rotation by default, including new armatures and bones added in Edit Mode or through Python. Resetting Rotation Mode to its default also selects XYZ Euler. Existing bones keep their rotation modes; duplicates retain the source bone's mode.
+
+Bendy Bones remain supported with XYZ Euler. Set **Bone Properties > Bendy Bones > Segments** above 1 (for example, 8) to display curvature: **Wire** follows the segmented centerline, **B-Bone** shows the segment boxes, and **Octahedral** draws one octahedron per segment along the curve, in both Edit and Pose Mode. Wire endpoint spheres in Edit Mode continue to use Octahedral Radius.
 
 ### Selection outlines for coincident elements
 
@@ -77,10 +87,12 @@ New **Weighted Normal** modifiers use **Face Area & Angle** with **Keep Sharp** 
 In **UV Editor > Overlays > Geometry**, three controls help inspect visible UVs in both **Object Mode and Edit Mode**. In Object Mode they inspect the selected mesh objects:
 
 - **Shell Outline** draws a white outline **2 physical pixels inward** along each UV shell boundary, including holes. Its width stays constant when zooming, and internal UV edges are excluded.
-- **Overlap** highlights the intersecting area of overlapping UV faces in red, including partial intersections and overlaps between objects. **Intensity** controls the opacity from 0 to 1; 1 gives solid red.
-- **Flipped UVs** highlights UV faces with reversed orientation in magenta.
+- **Overlap** highlights the intersecting area of overlapping UV faces in red, including partial intersections and overlaps between objects. **Opacity** controls the opacity from 0 to 1; its default is **0.5 (50%)**, and 1 gives solid red.
+- **Flipped UVs** highlights UV faces with reversed orientation in magenta, with its own **Opacity** slider defaulting to **0.5 (50%)**.
 
-When both diagnostics are enabled, red takes priority in overlapping areas. White shell outlines appear above the diagnostics. The main Overlays toggle hides these UV diagnostics. Both modes use the same Geometry panel, diagnostic flags, overlap intensity, UV opacity, and face visibility settings. Changing a control in either mode is reflected when switching to the other. Diagnostics use the original UV map, so modifiers that repeat geometry do not create false UV overlaps.
+**Faces** has a separate **Opacity** slider, also defaulting to **0.5 (50%)**. It controls the face fill independently of UV line opacity. All three fill opacity controls work in Object and Edit Mode.
+
+When both diagnostics are enabled, red takes priority in overlapping areas. In Object Mode, UV lines are drawn after the face and diagnostic fills so Flipped and Overlap do not cover the lines. Object Mode lines use the chosen UV line opacity without the automatic quarter-strength fading of modifier/paint guides. White shell outlines appear above the diagnostics. The main Overlays toggle hides these UV diagnostics. Both modes use the same Geometry panel, diagnostic flags, fill opacities, UV line opacity, and face visibility settings. Changing a control in either mode is reflected when switching to the other. Diagnostics use the original UV map, so modifiers that repeat geometry do not create false UV overlaps.
 
 #### Partial UV overlap
 
@@ -108,7 +120,7 @@ Bmax includes a custom splash logo and Windows icons. The executable is named **
 
 ## File compatibility
 
-Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, origin-axis uniform-scale compensation, UV diagnostic settings, background opacity, and UV view aspect are stored in Bmax files. Older files open with the new UV diagnostic flags disabled and overlap intensity and background opacity set to 1. Explicit zero values survive saving and reopening. Official Blender does not expose the Bmax-specific properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
+Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, origin-axis uniform-scale compensation, UV diagnostic settings, background opacity, and UV view aspect are stored in Bmax files. Files lacking the UV diagnostic settings open with those flags disabled and missing fill opacities set to 0.5; missing background-image opacity defaults to 1. Saved opacity values are retained. Explicit zero values survive saving and reopening. Official Blender does not expose the Bmax-specific properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
 
 ## Build and source
 
