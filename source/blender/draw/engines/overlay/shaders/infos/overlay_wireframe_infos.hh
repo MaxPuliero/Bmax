@@ -146,6 +146,7 @@ COMPILATION_CONSTANT(uint, dash_length, 1 /* Not use by this style. */)
 COMPILATION_CONSTANT(bool, use_edge_select, false)
 PUSH_CONSTANT(bool, do_smooth_wire)
 PUSH_CONSTANT(float, alpha)
+PUSH_CONSTANT(bool, wireframe_on_top)
 VERTEX_OUT(overlay_edit_uv_iface_wireframe)
 FRAGMENT_OUT(0, float4, frag_color)
 /* Note: Reuse edit mode shader as it is mostly the same. */

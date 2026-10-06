@@ -518,6 +518,7 @@ class MeshUVs : Overlay {
   /* Draw final evaluated UVs (modifier stack applied) as grayed out wire-frame. */
   /* TODO(fclem): Maybe should be its own Overlay?. */
   bool show_wireframe_ = false;
+  bool wireframe_on_top_ = false;
 
   /** Brush stencil. */
   /* TODO(fclem): Maybe should be its own Overlay?. */
@@ -563,6 +564,7 @@ class MeshUVs : Overlay {
     const bool space_mode_is_paint = space_image->mode == SI_MODE_PAINT;
     const bool space_mode_is_mask = space_image->mode == SI_MODE_MASK;
     const bool space_mode_is_uv = space_image->mode == SI_MODE_UV;
+    wireframe_on_top_ = space_mode_is_uv && state.object_mode == OB_MODE_OBJECT;
 
     const bool object_mode_is_edit = state.object_mode & OB_MODE_EDIT;
 
@@ -688,6 +690,7 @@ class MeshUVs : Overlay {
       pass.push_constant(
           "alpha", space_mode_is_uv ? space_image->uv_opacity : space_image->uv_edge_opacity);
       pass.push_constant("do_smooth_wire", do_smooth_wire);
+      pass.push_constant("wireframe_on_top", wireframe_on_top_);
     }
 
     if (show_uv_edit_) {
@@ -747,7 +750,7 @@ class MeshUVs : Overlay {
     }
 
     if (show_face_overlay_ || select_face_) {
-      const float opacity = space_mode_is_uv ? space_image->uv_opacity :
+      const float opacity = space_mode_is_uv ? space_image->overlay.uv_faces_opacity :
                                                space_image->uv_face_opacity;
 
       auto &pass = faces_ps_;
@@ -809,7 +812,7 @@ class MeshUVs : Overlay {
       wireframe_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
     if (show_face_overlay_ && has_active_object_uvmap &&
-        (space_image->mode == SI_MODE_UV ? space_image->uv_opacity :
+        (space_image->mode == SI_MODE_UV ? space_image->overlay.uv_faces_opacity :
                                            space_image->uv_face_opacity) > 0.0f)
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_faces(*ob, mesh);
@@ -1066,7 +1069,7 @@ class MeshUVs : Overlay {
     if (show_tiled_image_border_) {
       manager.submit(image_border_ps_, view);
     }
-    if (show_wireframe_) {
+    if (show_wireframe_ && !wireframe_on_top_) {
       manager.submit(wireframe_ps_, view);
     }
     if (show_mesh_analysis_) {
@@ -1076,6 +1079,9 @@ class MeshUVs : Overlay {
       manager.submit(faces_ps_, view);
     }
     diagnostics_.draw(framebuffer, manager, view);
+    if (show_wireframe_ && wireframe_on_top_) {
+      manager.submit(wireframe_ps_, view);
+    }
     if (show_uv_edit_) {
       manager.submit(edges_ps_, view);
     }

@@ -215,6 +215,11 @@ class UnifiedBonePtr {
     return is_editbone_ ? eBone_->octahedral_radius : bone_->octahedral_radius;
   }
 
+  int segments() const
+  {
+    return is_editbone_ ? eBone_->segments : bone_->segments;
+  }
+
   float axis_size() const
   {
     return is_editbone_ ? eBone_->axis_size : bone_->axis_size;
@@ -1190,8 +1195,10 @@ static void ebone_spline_preview(EditBone *ebone, const float result_array[MAX_B
   ebone->segments = BKE_pchan_bbone_spline_compute(&param, false, (Mat4 *)result_array);
 }
 
-/* This function is used for both B-Bone and Wire matrix updates. */
-static void draw_bone_update_disp_matrix_bbone(UnifiedBonePtr bone, bArmature &armature)
+/* Segment matrices for B-Bone, Wire, and segmented Octahedral display. */
+static void draw_bone_update_disp_matrix_bbone(UnifiedBonePtr bone,
+                                               bArmature &armature,
+                                               const bool use_octahedral_radius = false)
 {
   float s[4][4], ebmat[4][4];
   float length, xwidth, zwidth;
@@ -1220,6 +1227,12 @@ static void draw_bone_update_disp_matrix_bbone(UnifiedBonePtr bone, bArmature &a
     zwidth = eBone->zwidth;
     bone_mat = ebmat;
     bbone_segments = eBone->segments;
+  }
+
+  if (use_octahedral_radius) {
+    /* Octahedral geometry has transverse half-width 0.1. Apply the absolute radius
+     * before spline and pose deformation, independently of B-Bone display widths. */
+    xwidth = zwidth = max_ff(bone.octahedral_radius(), 0.000001f) / 0.1f;
   }
 
   const float3 size_vec = {xwidth, length / bbone_segments, zwidth};
@@ -1449,31 +1462,50 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
   auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
-  float display_mat[4][4];
-  copy_m4_m4(display_mat, bone.disp_mat());
-  /* The cached Octahedral geometry has X/Z half-width 0.1. Change only the transverse
-   * display axes: keep the head/tail positions and the common matrix used by other overlays. */
-  const float transverse_scale = max_ff(bone.octahedral_radius(), 0.000001f) / 0.1f;
-  if (bone.is_posebone()) {
-    /* Use the evaluated basis instead of normalizing away pose scale. The cached geometry
-     * receives the absolute rest radius, then the same pose deformation as the actual bone. */
-    const bPoseChannel *pchan = bone.as_posebone();
-    mul_v3_v3fl(display_mat[0], pchan->pose_mat[0], transverse_scale);
-    mul_v3_v3fl(display_mat[2], pchan->pose_mat[2], transverse_scale);
+  auto draw_body = [&](const float4x4 &display_mat) {
+    float4x4 bone_mat = ctx->ob->object_to_world() * display_mat;
+    if (ctx->is_filled) {
+      ctx->bone_buf->octahedral_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
+    }
+    if (col_wire[3] > 0.0f) {
+      ctx->bone_buf->octahedral_outline_buf.append({bone_mat, col_wire}, sel_id);
+    }
+  };
+
+  if (bone.segments() > 1) {
+    /* Keep the whole bone's selection ID, but draw each evaluated B-Bone segment. */
+    if (bone.is_posebone()) {
+      for (const Mat4 &segment : Span<Mat4>(
+               reinterpret_cast<Mat4 *>(bone.as_posebone()->draw_data->bbone_matrix),
+               bone.segments()))
+      {
+        draw_body(float4x4(segment.mat));
+      }
+    }
+    else {
+      for (int i = 0; i < bone.segments(); i++) {
+        draw_body(float4x4(bone.as_editbone()->disp_bbone_mat[i]));
+      }
+    }
   }
   else {
-    normalize_v3_length(display_mat[0], transverse_scale);
-    normalize_v3_length(display_mat[2], transverse_scale);
+    float display_mat[4][4];
+    copy_m4_m4(display_mat, bone.disp_mat());
+    /* Keep the original single-segment display and its evaluated pose basis. */
+    const float transverse_scale = max_ff(bone.octahedral_radius(), 0.000001f) / 0.1f;
+    if (bone.is_posebone()) {
+      const bPoseChannel *pchan = bone.as_posebone();
+      mul_v3_v3fl(display_mat[0], pchan->pose_mat[0], transverse_scale);
+      mul_v3_v3fl(display_mat[2], pchan->pose_mat[2], transverse_scale);
+    }
+    else {
+      normalize_v3_length(display_mat[0], transverse_scale);
+      normalize_v3_length(display_mat[2], transverse_scale);
+    }
+    draw_body(float4x4(display_mat));
   }
-  float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(display_mat);
 
-  if (ctx->is_filled) {
-    ctx->bone_buf->octahedral_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
-  }
-  if (col_wire[3] > 0.0f) {
-    ctx->bone_buf->octahedral_outline_buf.append({bone_mat, col_wire}, sel_id);
-  }
-
+  /* Only the real Head and Tail get endpoint spheres, not the internal segment joints. */
   draw_points(ctx, bone, boneflag, col_solid, select_id, true);
 }
 
@@ -1663,7 +1695,7 @@ static void bone_draw_wire(const Armatures::DrawContext *ctx,
 
   if (bone.is_editbone()) {
     const float *col_solid = get_bone_solid_with_consts_color(ctx, bone, boneflag);
-    draw_points(ctx, bone, boneflag, col_solid, select_id);
+    draw_points(ctx, bone, boneflag, col_solid, select_id, true);
   }
 }
 
@@ -1973,8 +2005,10 @@ static void bone_draw_update_display_matrix(const eArmature_Drawtype drawtype,
   if (use_custom_shape) {
     draw_bone_update_disp_matrix_custom_shape(bone);
   }
-  else if (ELEM(drawtype, ARM_DRAW_TYPE_B_BONE, ARM_DRAW_TYPE_WIRE)) {
-    draw_bone_update_disp_matrix_bbone(bone, armature);
+  else if (ELEM(drawtype, ARM_DRAW_TYPE_B_BONE, ARM_DRAW_TYPE_WIRE) ||
+           (drawtype == ARM_DRAW_TYPE_OCTA && bone.segments() > 1))
+  {
+    draw_bone_update_disp_matrix_bbone(bone, armature, drawtype == ARM_DRAW_TYPE_OCTA);
   }
   else {
     draw_bone_update_disp_matrix_default(bone);

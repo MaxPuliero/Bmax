@@ -630,7 +630,9 @@ struct FileDirEntryArr {
 struct SpaceImageOverlay {
   eSpaceImageOverlay_Flag flag = {};
   float passepartout_alpha = 0;
-  float uv_overlap_opacity = 1.0f;
+  float uv_overlap_opacity = 0.5f;
+  float uv_flipped_opacity = 0.5f;
+  float uv_faces_opacity = 0.5f;
   float image_opacity = 1.0f;
 };
 

@@ -581,7 +581,30 @@ void blo_do_versions_520(FileData *fd, Library * /*lib*/, Main *bmain)
       for (ScrArea &area : screen.areabase) {
         for (SpaceLink &space : area.spacedata) {
           if (space.spacetype == SPACE_IMAGE) {
-            reinterpret_cast<SpaceImage &>(space).overlay.uv_overlap_opacity = 1.0f;
+            reinterpret_cast<SpaceImage &>(space).overlay.uv_overlap_opacity = 0.5f;
+          }
+        }
+      }
+    }
+  }
+
+  /* Keep explicitly saved opacity values, including zero. New UV fill controls default to 50%. */
+  const bool missing_uv_flipped_opacity = !DNA_struct_member_exists(
+      fd->filesdna, "SpaceImageOverlay", "float", "uv_flipped_opacity");
+  const bool missing_uv_faces_opacity = !DNA_struct_member_exists(
+      fd->filesdna, "SpaceImageOverlay", "float", "uv_faces_opacity");
+  if (missing_uv_flipped_opacity || missing_uv_faces_opacity) {
+    for (bScreen &screen : bmain->screens) {
+      for (ScrArea &area : screen.areabase) {
+        for (SpaceLink &space : area.spacedata) {
+          if (space.spacetype == SPACE_IMAGE) {
+            SpaceImage &sima = reinterpret_cast<SpaceImage &>(space);
+            if (missing_uv_flipped_opacity) {
+              sima.overlay.uv_flipped_opacity = 0.5f;
+            }
+            if (missing_uv_faces_opacity) {
+              sima.overlay.uv_faces_opacity = 0.5f;
+            }
           }
         }
       }

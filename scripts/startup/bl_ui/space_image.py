@@ -1620,7 +1620,7 @@ class IMAGE_PT_overlay(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Overlays"
-    bl_ui_units_x = 14
+    bl_ui_units_x = 16
 
     def draw(self, context):
         pass
@@ -1693,6 +1693,7 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Geometry"
+    bl_ui_units_x = 16
     bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
@@ -1721,13 +1722,20 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
         row.prop(uvedit, "show_overlap", text="Overlap")
         sub = row.row(align=True)
         sub.active = uvedit.show_overlap
-        sub.prop(uvedit, "overlap_opacity", text="Intensity", slider=True)
-        col.prop(uvedit, "show_flipped")
+        sub.prop(uvedit, "overlap_opacity", text="Opacity", slider=True)
+        row = col.row(align=True)
+        row.prop(uvedit, "show_flipped")
+        sub = row.row(align=True)
+        sub.active = uvedit.show_flipped
+        sub.prop(uvedit, "flipped_opacity", text="Opacity", slider=True)
 
         # Faces
-        row = col.row()
+        row = col.row(align=True)
         row.active = not (sima.show_uvedit and uvedit.show_stretch)
         row.prop(uvedit, "show_faces", text="Faces")
+        sub = row.row(align=True)
+        sub.active = uvedit.show_faces
+        sub.prop(uvedit, "faces_opacity", text="Opacity", slider=True)
 
 
 class IMAGE_PT_overlay_uv_display(Panel):

@@ -68,6 +68,10 @@ void main()
 
   eObjectInfoFlag ob_flag = drw_object_infos().flag;
   bool is_active = flag_test(ob_flag, OBJECT_ACTIVE_EDIT_MODE);
+#ifdef WIREFRAME
+  /* Object Mode UVs are the primary overlay, not a faded modifier/paint guide. */
+  is_active = is_active || wireframe_on_top;
+#endif
   final_color.a *= is_active ? alpha : (alpha * 0.25f);
 
   frag_color = final_color;

@@ -1439,7 +1439,7 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
       prop,
       "Octahedral Radius",
       "Absolute Octahedral X/Z half-width and head/tail sphere radius in armature space, "
-      "independent of bone length; only affects Octahedral display");
+      "independent of bone length; affects Octahedral display and Wire endpoint spheres");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
 
   prop = RNA_def_property(srna, "axis_size", PROP_FLOAT, PROP_DISTANCE);

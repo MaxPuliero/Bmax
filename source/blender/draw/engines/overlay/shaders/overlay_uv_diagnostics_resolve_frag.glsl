@@ -17,7 +17,7 @@ void main()
   else if (show_overlap && coverage.r > 1.0f && overlap_opacity > 0.0f) {
     frag_color = float4(1.0f, 0.0f, 0.0f, overlap_opacity);
   }
-  else if (show_flipped && coverage.g > 0.0f) {
-    frag_color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+  else if (show_flipped && coverage.g > 0.0f && flipped_opacity > 0.0f) {
+    frag_color = float4(1.0f, 0.0f, 1.0f, flipped_opacity);
   }
 }

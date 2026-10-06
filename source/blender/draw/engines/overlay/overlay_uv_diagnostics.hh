@@ -101,6 +101,7 @@ class UVDiagnostics {
     resolve_ps_.push_constant("show_flipped", show_flipped_);
     resolve_ps_.push_constant("outline_pass", &outline_pass_);
     resolve_ps_.push_constant("overlap_opacity", sima.overlay.uv_overlap_opacity);
+    resolve_ps_.push_constant("flipped_opacity", sima.overlay.uv_flipped_opacity);
     resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 

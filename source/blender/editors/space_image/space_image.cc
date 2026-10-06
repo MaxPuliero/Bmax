@@ -114,7 +114,9 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
   simage->uv_opacity = 1.0f;
-  simage->overlay.uv_overlap_opacity = 1.0f;
+  simage->overlay.uv_overlap_opacity = 0.5f;
+  simage->overlay.uv_flipped_opacity = 0.5f;
+  simage->overlay.uv_faces_opacity = 0.5f;
   simage->overlay.image_opacity = 1.0f;
   simage->uv_face_opacity = 1.0f;
   simage->uv_edge_opacity = 1.0f;

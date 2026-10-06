@@ -930,6 +930,7 @@ bPoseChannel *BKE_pose_channel_ensure(bPose *pose, const char *name)
   chan->custom_shape_wire_width = 1.0f;
 
   /* init vars to prevent math errors */
+  chan->rotmode = ROT_MODE_XYZ;
   unit_qt(chan->quat);
   unit_axis_angle(chan->rotAxis, &chan->rotAngle);
   chan->scale[0] = chan->scale[1] = chan->scale[2] = 1.0f;
