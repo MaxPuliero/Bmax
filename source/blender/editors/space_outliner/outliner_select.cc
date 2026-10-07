@@ -1809,6 +1809,21 @@ static void do_outliner_range_select(bContext *C,
     in_collection = outliner_collection_get_for_recursive(C, active);
     do_outliner_select_recursive(&active->subtree, true, in_collection);
   }
+
+  /* Activate the clicked endpoint after selecting the range. Selection syncing below restores
+   * the range in the view layer, including any objects or bones deselected by data activation. */
+  outliner_flag_set(*space_outliner, TSE_ACTIVE, false);
+  TREESTORE(cursor)->flag |= TSE_ACTIVE;
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
+  do_outliner_item_activate_tree_element(C,
+                                         tvc,
+                                         space_outliner,
+                                         cursor,
+                                         TREESTORE(cursor),
+                                         false,
+                                         false,
+                                         space_outliner->flag & SO_SYNC_SELECT);
 }
 
 static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *space_outliner,
