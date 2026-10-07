@@ -50,6 +50,20 @@ On the supplied scan, Face Area & Angle at Weight 50 took **6.84 ms** through Me
 
 <img src="doc/bmax/media/weighted-performance.png" alt="Normal weighting benchmark: Mesh Data versus Weighted Normal modifier. Object Mode: 6.8 ms versus 378 ms. Edit Mode: 34 ms versus 417 ms." width="567">
 
+### Shared random colors for instances
+
+Enable **Instances** in **Viewport Shading > Color** with **Random** selected for Object or Wireframe colors. Both modes share the checkbox, which defaults off.
+
+<img src="doc/bmax/media/instance_overlays.gif" alt="Toggling shared random colors for instances in viewport Object and Wireframe shading" width="640">
+
+The **Object Info** shader node has an independent **Instances** checkbox affecting only its **Random** output in EEVEE and Cycles. Different nodes can use either behavior in the same material.
+
+<img src="doc/bmax/media/random_instance_material_editor.gif" alt="Toggling the Object Info Instances option to share material random values between linked objects" width="524">
+
+Alt+D linked duplicates, object/collection instances, and Geometry Nodes instances share a color/value by their geometry source, including generated and nested instances. **Realize Instances** ends this grouping. Generated prototype colors may change if their set or traversal order changes. See [controls, validation and timings](doc/bmax/instance_random.md).
+
+The implementation is included in source commit `f68b422571e9` on `main`, and the local Windows runtime is updated. Separately copied Desktop packages and the public download have not been updated.
+
 ### Selected mesh openings
 
 <img src="doc/bmax/media/spotholes.webp" alt="Toggling Mesh Holes to highlight open boundary edges of a selected mesh" width="720">
@@ -168,7 +182,7 @@ Object Mode UV diagnostics were additionally checked in 15 cases on each backend
 
 The UV changes were checked in the running editor on both OpenGL and Vulkan: 15 diagnostic cases, including the exact 2-pixel outline at two zoom levels, and 21 background/view cases covering 4K images, rectangular images, removal, automatic image changes, pan, zoom, opacity, and save/reload. Image switches produced no change in the measured UV screen coordinates. Old-file migration and persistence were also verified.
 
-The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The normal weighting, Fill Holes, Separate, Mesh Holes, selection priority, and Multires painting demonstrations are animated WebP files encoded losslessly, retaining their original 720-pixel width, height, total duration, frame timing, and looping; identical consecutive frames can be combined. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
+The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The normal weighting, Fill Holes, Separate, Mesh Holes, selection priority, and Multires painting demonstrations are animated WebP files encoded losslessly, retaining their original 720-pixel width, height, total duration, frame timing, and looping; identical consecutive frames can be combined. The instance viewport and Object Info demonstrations use the original animated GIFs at their native dimensions, preserving frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
 
 ## License and attribution
 
