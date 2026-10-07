@@ -31,6 +31,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
+#include "BLI_set.hh"
 #include "BLI_sort_utils.h"
 
 #include "BKE_attribute.h"
@@ -5275,36 +5276,112 @@ void MESH_OT_fill_grid(wmOperatorType *ot)
 /** \name Hole Fill Operator
  * \{ */
 
+static bool mesh_fill_holes_poll(bContext *C)
+{
+  return ED_operator_editmesh(C) ||
+         (ED_operator_objectmode(C) && ED_operator_object_active_editable_mesh(C));
+}
+
 static wmOperatorStatus edbm_fill_holes_exec(bContext *C, wmOperator *op)
 {
   const int sides = RNA_int_get(op->ptr, "sides");
-
-  const Main *bmain = CTX_data_main(C);
+  const bool use_new_face_sets = RNA_boolean_get(op->ptr, "use_new_face_sets");
+  Main *bmain = CTX_data_main(C);
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      *bmain, scene, view_layer, CTX_wm_view3d(C));
+  int filled_faces = 0;
 
-  for (Object *obedit : objects) {
-    BMEditMesh *em = BKE_editmesh_from_object(obedit);
-
-    if (em->bm->totedgesel == 0) {
-      continue;
+  if (ED_operator_editmesh(C)) {
+    const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+        *bmain, scene, view_layer, CTX_wm_view3d(C));
+    for (Object *obedit : objects) {
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      if (em->bm->totedgesel == 0) {
+        continue;
+      }
+      const int faces_before = em->bm->totface;
+      if (!EDBM_op_call_and_selectf(em,
+                                    op,
+                                    "faces.out",
+                                    true,
+                                    "holes_fill edges=%he sides=%i use_new_face_sets=%b",
+                                    BM_ELEM_SELECT,
+                                    sides,
+                                    use_new_face_sets))
+      {
+        continue;
+      }
+      const int added = em->bm->totface - faces_before;
+      if (added == 0) {
+        continue;
+      }
+      filled_faces += added;
+      EDBMUpdate_Params params{};
+      params.calc_looptris = true;
+      params.calc_normals = false;
+      params.is_destructive = true;
+      EDBM_update(id_cast<Mesh *>(obedit->data), &params);
     }
+  }
+  else {
+    Set<Mesh *> processed;
+    CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects) {
+      if (ob->type != OB_MESH) {
+        continue;
+      }
+      Mesh *mesh = id_cast<Mesh *>(ob->data);
+      if (!BKE_id_is_editable(bmain, &mesh->id) || ID_IS_OVERRIDE_LIBRARY(mesh) ||
+          !processed.add(mesh))
+      {
+        continue;
+      }
+      BMeshCreateParams create_params{};
+      create_params.use_toolflags = true;
+      BMesh *bm = BM_mesh_create(&bm_mesh_allocsize_default, &create_params);
+      BMeshFromMeshParams from_mesh_params{};
+      from_mesh_params.calc_face_normal = true;
+      BM_mesh_bm_from_me(bm, mesh, &from_mesh_params);
 
-    if (!EDBM_op_call_and_selectf(
-            em, op, "faces.out", true, "holes_fill edges=%he sides=%i", BM_ELEM_SELECT, sides))
-    {
-      continue;
+      /* Object Mode fills surface openings only, including hidden Edit Mode geometry.
+       * Do not turn loose wire geometry into faces. */
+      Vector<BMEdge *> boundaries;
+      BMIter iter;
+      BMEdge *edge;
+      BM_ITER_MESH (edge, &iter, bm, BM_EDGES_OF_MESH) {
+        if (BM_edge_is_boundary(edge)) {
+          boundaries.append(edge);
+        }
+      }
+      if (!boundaries.is_empty()) {
+        BMOperator fill_op;
+        BMO_op_initf(
+            bm, &fill_op, 0, "holes_fill sides=%i use_new_face_sets=%b", sides, use_new_face_sets);
+        BMO_slot_buffer_from_array(&fill_op,
+                                   BMO_slot_get(fill_op.slots_in, "edges"),
+                                   reinterpret_cast<BMHeader **>(boundaries.data()),
+                                   boundaries.size());
+        BMO_op_exec(bm, &fill_op);
+        const int added = BMO_slot_buffer_len(fill_op.slots_out, "faces.out");
+        BMO_op_finish(bm, &fill_op);
+        if (added != 0) {
+          filled_faces += added;
+          BMeshToMeshParams to_mesh_params{};
+          BM_mesh_bm_to_me(bmain, bm, mesh, &to_mesh_params);
+          BKE_sculptsession_free_pbvh(*ob);
+          DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY_ALL_MODES);
+          WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
+        }
+      }
+      BM_mesh_free(bm);
     }
-
-    EDBMUpdate_Params params{};
-    params.calc_looptris = true;
-    params.calc_normals = false;
-    params.is_destructive = true;
-    EDBM_update(id_cast<Mesh *>(obedit->data), &params);
+    CTX_DATA_END;
   }
 
+  if (filled_faces == 0) {
+    BKE_report(op->reports, RPT_INFO, "No holes filled");
+    return OPERATOR_CANCELLED;
+  }
+  BKE_reportf(op->reports, RPT_INFO, "Created %d hole fill faces", filled_faces);
   return OPERATOR_FINISHED;
 }
 
@@ -5313,24 +5390,30 @@ void MESH_OT_fill_holes(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Fill Holes";
   ot->idname = "MESH_OT_fill_holes";
-  ot->description = "Fill in holes (boundary edge loops)";
+  ot->description =
+      "Fill boundary edge loops of selected mesh objects or selected edges in Edit Mode";
 
   /* API callbacks. */
   ot->exec = edbm_fill_holes_exec;
-  ot->poll = ED_operator_editmesh;
+  ot->poll = mesh_fill_holes_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_int(ot->srna,
               "sides",
-              4,
+              0,
               0,
               1000,
               "Sides",
-              "Number of sides in hole required to fill (zero fills all holes)",
+              "Maximum number of sides in a hole to fill (zero fills all holes)",
               0,
               100);
+  RNA_def_boolean(ot->srna,
+                  "use_new_face_sets",
+                  false,
+                  "New Face Sets",
+                  "Assign a different Sculpt Face Set to each newly filled patch");
 }
 
 /** \} */

@@ -2824,6 +2824,8 @@ class VIEW3D_MT_object(Menu):
         layout.operator("object.duplicate_move")
         layout.operator("object.duplicate_move_linked")
         layout.operator("object.join")
+        if ob and ob.type == 'MESH':
+            layout.menu("VIEW3D_MT_object_mesh_separate")
 
         layout.separator()
 
@@ -3144,6 +3146,11 @@ class VIEW3D_MT_object_context_menu(Menu):
 
                 layout.separator()
 
+        if obj and obj.type == 'MESH':
+            layout.menu("VIEW3D_MT_object_mesh_separate")
+            layout.operator("mesh.fill_holes")
+            layout.separator()
+
         # Shared among all object types
         layout.operator("view3d.copybuffer", text="Copy Objects", icon='COPYDOWN')
         layout.operator("view3d.pastebuffer", text="Paste Objects", icon='PASTEDOWN')
@@ -3391,11 +3398,24 @@ class VIEW3D_MT_object_showhide(Menu):
         layout.operator("object.hide_view_set", text="Hide Unselected").unselected = True
 
 
-class VIEW3D_MT_object_cleanup(Menu):
-    bl_label = "Clean Up"
+class VIEW3D_MT_object_mesh_separate(Menu):
+    bl_label = "Separate"
 
     def draw(self, _context):
         layout = self.layout
+        layout.operator("mesh.separate", text="By Loose Parts").type = 'LOOSE'
+        layout.operator("mesh.separate", text="By Material").type = 'MATERIAL'
+
+
+class VIEW3D_MT_object_cleanup(Menu):
+    bl_label = "Clean Up"
+
+    def draw(self, context):
+        layout = self.layout
+
+        if context.object and context.object.type == 'MESH':
+            layout.operator("mesh.fill_holes")
+            layout.separator()
 
         layout.operator("object.vertex_group_clean", text="Clean Vertex Group Weights").group_select_mode = 'ALL'
         layout.operator("object.vertex_group_limit_total", text="Limit Total Vertex Groups").group_select_mode = 'ALL'
@@ -9349,6 +9369,7 @@ classes = (
     VIEW3D_MT_object_modifiers,
     VIEW3D_MT_object_quick_effects,
     VIEW3D_MT_object_showhide,
+    VIEW3D_MT_object_mesh_separate,
     VIEW3D_MT_object_cleanup,
     VIEW3D_MT_make_single_user,
     VIEW3D_MT_make_links,

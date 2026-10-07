@@ -917,6 +917,8 @@ static BMOpDefine bmo_holes_fill_def = {
         {"edges", BMO_OP_SLOT_ELEMENT_BUF, {BM_EDGE}},
         /* Maximum number of sides for holes to fill (holes with more edges are skipped). */
         {"sides", BMO_OP_SLOT_INT},
+        /* Give each new connected patch a separate Sculpt Face Set. */
+        {"use_new_face_sets", BMO_OP_SLOT_BOOL},
         {{'\0'}},
     },
     /*slot_types_out*/
