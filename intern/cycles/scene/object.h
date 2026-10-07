@@ -43,6 +43,7 @@ class Object : public Node {
   NODE_SOCKET_API_BASE(Transform, tfm, "tfm")
   BoundBox bounds;
   NODE_SOCKET_API(uint, random_id)
+  NODE_SOCKET_API(uint, source_random_id)
   NODE_SOCKET_API(int, pass_id)
   NODE_SOCKET_API(float3, color)
   NODE_SOCKET_API(float, alpha)

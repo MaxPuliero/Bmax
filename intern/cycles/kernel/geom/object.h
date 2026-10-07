@@ -328,6 +328,11 @@ ccl_device_inline float object_random_number(KernelGlobals kg, const int object)
   return kernel_data_fetch(objects, object).random_number;
 }
 
+ccl_device_inline float object_source_random_number(KernelGlobals kg, const int object)
+{
+  return object == OBJECT_NONE ? 0.0f : kernel_data_fetch(objects, object).source_random_number;
+}
+
 /* Particle ID from which this object was generated */
 
 ccl_device_inline int object_particle_id(KernelGlobals kg, const int object)

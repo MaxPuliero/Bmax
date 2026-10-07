@@ -5,6 +5,8 @@
 #include "node_shader_util.hh"
 
 #include "DNA_material_types.h"
+#include "UI_interface_layout.hh"
+#include "UI_resources.hh"
 
 namespace blender {
 
@@ -20,6 +22,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Random"_ustr);
 }
 
+static void node_shader_buts_object_info(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  layout.prop(ptr, "use_instance_random", ui::ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
+}
+
 static int node_shader_gpu_object_info(GPUMaterial *mat,
                                        bNode *node,
                                        bNodeExecData * /*execdata*/,
@@ -29,7 +36,9 @@ static int node_shader_gpu_object_info(GPUMaterial *mat,
   Material *ma = GPU_material_get_material(mat);
   float index = ma ? ma->index : 0.0f;
   GPU_material_flag_set(mat, GPU_MATFLAG_OBJECT_INFO);
-  return GPU_stack_link(mat, node, "node_object_info", in, out, GPU_constant(&index));
+  const float instances = (node->custom1 & 1) ? 1.0f : 0.0f;
+  return GPU_stack_link(
+      mat, node, "node_object_info", in, out, GPU_constant(&index), GPU_constant(&instances));
 }
 
 NODE_SHADER_MATERIALX_BEGIN
@@ -67,6 +76,7 @@ void register_node_type_sh_object_info()
   ntype.enum_name_legacy = "OBJECT_INFO";
   ntype.nclass = NODE_CLASS_INPUT;
   ntype.declare = file_ns::node_declare;
+  ntype.draw_buttons = file_ns::node_shader_buts_object_info;
   ntype.gpu_fn = file_ns::node_shader_gpu_object_info;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 

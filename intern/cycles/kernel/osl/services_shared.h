@@ -1067,6 +1067,10 @@ ccl_device_inline bool osl_shared_get_object_standard_attribute(KernelGlobals kg
     const float f = shader_pass_id(kg, sd);
     return set_attribute(f, type, derivatives, val);
   }
+  if (name == DeviceStrings::u_object_source_random) {
+    const float f = object_source_random_number(kg, sd->object);
+    return set_attribute(f, type, derivatives, val);
+  }
   if (name == DeviceStrings::u_object_random) {
     const float f = object_random_number(kg, sd->object);
     return set_attribute(f, type, derivatives, val);

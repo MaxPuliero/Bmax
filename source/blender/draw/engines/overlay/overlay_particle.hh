@@ -82,6 +82,8 @@ class Particles : Overlay {
         auto &sub = pass.sub("Hair");
         sub.shader_set(res.shaders->particle_hair.get());
         sub.push_constant("color_type", state.v3d->shading.wire_color_type);
+        sub.push_constant("use_instance_random",
+                          bool(state.v3d->shading.flag & V3D_SHADING_RANDOM_INSTANCES));
         sub.push_constant("is_transform", is_transform);
         hair_ps_ = &sub;
       }

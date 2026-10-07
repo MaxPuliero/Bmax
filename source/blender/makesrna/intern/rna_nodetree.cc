@@ -6043,6 +6043,17 @@ static void def_sh_tex_wireframe(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_sh_object_info(BlenderRNA * /*brna*/, StructRNA *srna)
+{
+  PropertyRNA *prop = RNA_def_property(srna, "use_instance_random", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "custom1", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Instances",
+      "Use the same Random value for objects and instances sharing a geometry source");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_metallic(BlenderRNA * /*brna*/, StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -10394,7 +10405,7 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("ShaderNode", "ShaderNodeNewGeometry");
   define("ShaderNode", "ShaderNodeNormal");
   define("ShaderNode", "ShaderNodeNormalMap", def_sh_normal_map);
-  define("ShaderNode", "ShaderNodeObjectInfo");
+  define("ShaderNode", "ShaderNodeObjectInfo", def_sh_object_info);
   define("ShaderNode", "ShaderNodeOutputAOV", def_sh_output_aov);
   define("ShaderNode", "ShaderNodeOutputLight", def_sh_output);
   define("ShaderNode", "ShaderNodeOutputLineStyle", def_sh_output_linestyle);

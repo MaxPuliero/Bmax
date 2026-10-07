@@ -112,6 +112,10 @@ ccl_device_noinline void svm_node_object_info(KernelGlobals kg,
     case NODE_INFO_MAT_INDEX:
       data = shader_pass_id(kg, sd);
       break;
+    case NODE_INFO_OB_SOURCE_RANDOM: {
+      data = object_source_random_number(kg, sd->object);
+      break;
+    }
     case NODE_INFO_OB_RANDOM: {
       data = object_random_number(kg, sd->object);
       break;

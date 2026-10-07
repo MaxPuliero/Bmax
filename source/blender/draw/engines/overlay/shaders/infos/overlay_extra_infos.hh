@@ -404,6 +404,7 @@ CREATE_INFO_VARIANT(overlay_particle_shape_selectable_clipped, overlay_particle_
 /* clang-format on */
 
 GPU_SHADER_CREATE_INFO(overlay_particle_hair_base)
+PUSH_CONSTANT(bool, use_instance_random)
 TYPEDEF_SOURCE("overlay_shader_shared.hh")
 VERTEX_IN(0, float3, pos)
 VERTEX_IN(1, float3, nor)

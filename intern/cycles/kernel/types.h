@@ -1416,6 +1416,7 @@ struct KernelObject {
   float volume_density;
   float pass_id;
   float random_number;
+  float source_random_number;
   float color[3];
   float alpha;
   int particle_index;

@@ -6785,6 +6785,8 @@ class VIEW3D_PT_shading_color(Panel):
         shading = VIEW3D_PT_shading.get_shading(context)
 
         layout.grid_flow(row_major=True, columns=3, align=True).prop(shading, "color_type", expand=True)
+        if shading.color_type == 'RANDOM' and shading.wireframe_color_type != 'RANDOM':
+            layout.prop(shading, "use_instance_random")
         if shading.color_type == 'SINGLE':
             layout.row().prop(shading, "single_color", text="")
 
@@ -6803,6 +6805,8 @@ class VIEW3D_PT_shading_color(Panel):
 
         layout.label(text="Wireframe")
         layout.row().prop(shading, "wireframe_color_type", expand=True)
+        if shading.wireframe_color_type == 'RANDOM':
+            layout.prop(shading, "use_instance_random")
         layout.separator()
 
         if shading.type == 'SOLID':

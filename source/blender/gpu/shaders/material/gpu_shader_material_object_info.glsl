@@ -4,6 +4,7 @@
 
 [[node]]
 void node_object_info(float mat_index,
+                      float use_instance_random,
                       float3 &location,
                       float4 &color,
                       float &alpha,
@@ -18,5 +19,5 @@ void node_object_info(float mat_index,
   object_index = info.index;
   /* TODO(fclem): Put that inside the Material UBO. */
   material_index = mat_index;
-  random = info.random;
+  random = use_instance_random != 0.0f ? info.source_random : info.random;
 }

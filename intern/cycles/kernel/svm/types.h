@@ -85,7 +85,8 @@ enum NodeObjectInfo : uint {
   NODE_INFO_OB_ALPHA,
   NODE_INFO_OB_INDEX,
   NODE_INFO_MAT_INDEX,
-  NODE_INFO_OB_RANDOM
+  NODE_INFO_OB_RANDOM,
+  NODE_INFO_OB_SOURCE_RANDOM
 };
 
 enum NodeParticleInfo : uint {

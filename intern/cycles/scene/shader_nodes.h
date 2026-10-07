@@ -1083,6 +1083,7 @@ class LightFalloffNode : public ShaderNode {
 class ObjectInfoNode : public ShaderNode {
  public:
   SHADER_NODE_CLASS(ObjectInfoNode)
+  NODE_SOCKET_API(bool, use_instance_random)
 };
 
 class ParticleInfoNode : public ShaderNode {

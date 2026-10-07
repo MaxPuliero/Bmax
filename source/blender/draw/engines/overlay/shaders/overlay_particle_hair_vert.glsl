@@ -67,7 +67,7 @@ void wire_object_color_get(float3 &rim_col, float3 &wire_col)
     rim_col = wire_col = drw_object_infos().ob_color.rgb * 0.5f;
   }
   else {
-    float hue = info.random;
+    float hue = use_instance_random ? info.source_random : info.random;
     float3 hsv = float3(hue, 0.75f, 0.8f);
     rim_col = wire_col = hsv_to_rgb(hsv);
   }

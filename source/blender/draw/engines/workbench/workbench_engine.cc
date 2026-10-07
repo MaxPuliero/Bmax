@@ -136,8 +136,13 @@ class Instance : public DrawEngine {
     switch (color_type) {
       case V3D_SHADING_OBJECT_COLOR:
         return Material(*ob_ref.object);
-      case V3D_SHADING_RANDOM_COLOR:
+      case V3D_SHADING_RANDOM_COLOR: {
+        if (scene_state_.shading.flag & V3D_SHADING_RANDOM_INSTANCES) {
+          const float source_random = ob_ref.source_random();
+          return Material(*ob_ref.object, true, &source_random);
+        }
         return Material(*ob_ref.object, true);
+      }
       case V3D_SHADING_SINGLE_COLOR:
         return scene_state_.material_override;
       case V3D_SHADING_VERTEX_COLOR:

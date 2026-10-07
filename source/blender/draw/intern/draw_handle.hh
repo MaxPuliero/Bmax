@@ -291,6 +291,12 @@ class ObjectRef {
     return object_to_world(0);
   }
 
+  float source_random(int instance_index = 0) const
+  {
+    const DupliObject *dupli = duplis_ ? (*duplis_)[instance_index] : dupli_object_;
+    return BKE_object_instance_source_hash(*object, dupli) * (1.0f / float(0xFFFFFFFF));
+  }
+
   float random(int instance_index) const
   {
     if (instance_index != 0) {

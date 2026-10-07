@@ -114,7 +114,7 @@ struct Material {
   Material() = default;
   Material(float3 color) : base_color(color), packed_data(Material::pack_data(0.0f, 0.4f, 1.0f)) {}
 
-  Material(blender::Object &ob, bool random = false);
+  Material(blender::Object &ob, bool random = false, const float *source_random = nullptr);
   Material(blender::Material &mat)
       : base_color(&mat.r), packed_data(Material::pack_data(mat.metallic, mat.roughness, mat.a))
   {

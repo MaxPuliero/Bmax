@@ -49,6 +49,7 @@ OSL_DEVICE_STRING(u_object_alpha, "object:alpha", 11165053919428293151ull)
 OSL_DEVICE_STRING(u_object_index, "object:index", 6588325838217472556ull)
 OSL_DEVICE_STRING(u_object_is_light, "object:is_light", 13979755312845091842ull)
 OSL_DEVICE_STRING(u_object_random, "object:random", 15789063994977955884ull)
+OSL_DEVICE_STRING(u_object_source_random, "object:source_random", 14500180945632552441ull)
 
 OSL_DEVICE_STRING(u_material_index, "material:index", 741770758159634623ull)
 

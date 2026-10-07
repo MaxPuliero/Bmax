@@ -4644,6 +4644,7 @@ void LightFalloffNode::compile(OSLCompiler &compiler)
 NODE_DEFINE(ObjectInfoNode)
 {
   NodeType *type = NodeType::add("object_info", create, NodeType::SHADER);
+  SOCKET_BOOLEAN(use_instance_random, "Instances", false);
 
   SOCKET_OUT_VECTOR(location, "Location");
   SOCKET_OUT_COLOR(color, "Color");
@@ -4711,17 +4712,19 @@ void ObjectInfoNode::compile(SVMCompiler &compiler)
 
   out = output("Random");
   if (!out->links.empty()) {
-    compiler.add_node(this,
-                      NODE_OBJECT_INFO,
-                      SVMNodeObjectInfo{
-                          .info_type = NODE_INFO_OB_RANDOM,
-                          .out_offset = compiler.output("Random"),
-                      });
+    compiler.add_node(
+        this,
+        NODE_OBJECT_INFO,
+        SVMNodeObjectInfo{
+            .info_type = use_instance_random ? NODE_INFO_OB_SOURCE_RANDOM : NODE_INFO_OB_RANDOM,
+            .out_offset = compiler.output("Random"),
+        });
   }
 }
 
 void ObjectInfoNode::compile(OSLCompiler &compiler)
 {
+  compiler.parameter("UseInstances", use_instance_random);
   compiler.add(this, "node_object_info");
 }
 

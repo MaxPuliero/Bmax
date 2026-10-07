@@ -4,7 +4,8 @@
 
 #include "stdcycles.h"
 
-shader node_object_info(output point Location = point(0.0, 0.0, 0.0),
+shader node_object_info(int UseInstances = 0,
+                        output point Location = point(0.0, 0.0, 0.0),
                         output color Color = color(1.0, 1.0, 1.0),
                         output float Alpha = 1.0,
                         output float ObjectIndex = 0.0,
@@ -16,5 +17,5 @@ shader node_object_info(output point Location = point(0.0, 0.0, 0.0),
   getattribute("object:alpha", Alpha);
   getattribute("object:index", ObjectIndex);
   getattribute("material:index", MaterialIndex);
-  getattribute("object:random", Random);
+  getattribute(UseInstances ? "object:source_random" : "object:random", Random);
 }

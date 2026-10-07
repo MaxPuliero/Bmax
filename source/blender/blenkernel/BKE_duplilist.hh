@@ -51,6 +51,8 @@ struct DupliObject {
 
   /* Random ID for shading */
   unsigned int random_id;
+  /** Random ID shared by instances of the same geometry source. */
+  unsigned int source_random_id;
 
   /* Particle this dupli was generated from. */
   ParticleSystem *particle_system;
@@ -68,6 +70,10 @@ struct DupliObject {
 };
 
 using DupliList = VectorList<DupliObject>;
+
+/** Stable data-block identity for linked objects; duplis carry their resolved source identity. */
+unsigned int BKE_object_instance_source_hash(const Object &object,
+                                             const DupliObject *dupli = nullptr);
 
 /**
  * Fill a Vector of #DupliObject.

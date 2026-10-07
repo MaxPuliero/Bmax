@@ -82,6 +82,7 @@ NODE_DEFINE(Object)
   SOCKET_COLOR(color, "Color", zero_float3());
   SOCKET_FLOAT(alpha, "Alpha", 0.0f);
   SOCKET_UINT(random_id, "Random ID", 0);
+  SOCKET_UINT(source_random_id, "Source Random ID", 0);
   SOCKET_INT(pass_id, "Pass ID", 0);
   SOCKET_BOOLEAN(use_holdout, "Use Holdout", false);
   SOCKET_BOOLEAN(hide_on_missing_motion, "Hide on Missing Motion", false);
@@ -590,6 +591,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.alpha = ob->alpha;
   kobject.pass_id = pass_id;
   kobject.random_number = random_number;
+  kobject.source_random_number = float(ob->source_random_id) * (1.0f / float(0xFFFFFFFF));
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
   kobject.position_offset = ATTR_STD_NOT_FOUND;

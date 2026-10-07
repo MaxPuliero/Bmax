@@ -850,7 +850,9 @@ static ShaderNode *add_node(Scene *scene,
     node = graph->create_node<LightFalloffNode>();
   }
   else if (b_node.is_type("ShaderNodeObjectInfo"_ustr)) {
-    node = graph->create_node<ObjectInfoNode>();
+    ObjectInfoNode *object_info = graph->create_node<ObjectInfoNode>();
+    object_info->set_use_instance_random((b_node.custom1 & 1) != 0);
+    node = object_info;
   }
   else if (b_node.is_type("ShaderNodeParticleInfo"_ustr)) {
     node = graph->create_node<ParticleInfoNode>();

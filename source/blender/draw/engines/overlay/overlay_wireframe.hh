@@ -92,6 +92,8 @@ class Wireframe : Overlay {
             sub.push_constant("wire_opacity", state.overlay.wireframe_opacity);
             sub.push_constant("is_transform", is_transform);
             sub.push_constant("color_type", state.v3d->shading.wire_color_type);
+            sub.push_constant("use_instance_random",
+                              bool(state.v3d->shading.flag & V3D_SHADING_RANDOM_INSTANCES));
             sub.push_constant("use_coloring", use_coloring);
             sub.push_constant("wire_step_param", wire_threshold);
             sub.push_constant("ndc_offset_factor", &state.ndc_offset_factor);

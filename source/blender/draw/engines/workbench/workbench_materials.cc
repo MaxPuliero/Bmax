@@ -19,14 +19,21 @@
 
 namespace blender::workbench {
 
-Material::Material(blender::Object &ob, bool random)
+Material::Material(blender::Object &ob, bool random, const float *source_random)
 {
   if (random) {
-    uint hash = BLI_ghashutil_strhash_p_murmur(ob.id.name);
-    if (ob.id.lib) {
-      hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob.id.lib->filepath);
+    float hue;
+    if (source_random) {
+      hue = *source_random;
     }
-    float3 hsv = float3(BLI_hash_int_01(hash), 0.5f, 0.8f);
+    else {
+      uint hash = BLI_ghashutil_strhash_p_murmur(ob.id.name);
+      if (ob.id.lib) {
+        hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob.id.lib->filepath);
+      }
+      hue = BLI_hash_int_01(hash);
+    }
+    float3 hsv = float3(hue, 0.5f, 0.8f);
     hsv_to_rgb_v(hsv, base_color);
     IMB_colormanagement_rec709_to_scene_linear(base_color, base_color);
   }

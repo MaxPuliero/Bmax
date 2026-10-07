@@ -73,6 +73,7 @@ inline void ObjectInfos::sync()
   index = 0;
   light_and_shadow_set_membership = 0;
   random = 0.0f;
+  source_random = 0.0f;
   flag = eObjectInfoFlag::OBJECT_NO_INFO;
   shadow_terminator_normal_offset = 0.0f;
   shadow_terminator_geometry_offset = 0.0f;
@@ -121,6 +122,7 @@ inline void ObjectInfos::sync(const draw::ObjectRef ref,
   }
 
   random = ref.random(0);
+  source_random = ref.source_random();
 
   if (ref.object->data == nullptr) {
     orco_add = float3(0.0f);

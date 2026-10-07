@@ -245,6 +245,7 @@ enum eView3DShading_Flag : short {
   V3D_SHADING_SCENE_LIGHTS_RENDER = (1 << 12),
   V3D_SHADING_SCENE_WORLD_RENDER = (1 << 13),
   V3D_SHADING_STUDIOLIGHT_VIEW_ROTATION = (1 << 14),
+  V3D_SHADING_RANDOM_INSTANCES = -32768, /* High bit of the existing short flag. */
 };
 ENUM_OPERATORS(eView3DShading_Flag)
 

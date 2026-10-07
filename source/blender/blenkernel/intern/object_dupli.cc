@@ -21,6 +21,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_hash.h"
+#include "BLI_map.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -132,6 +133,7 @@ struct DupliContext {
 
   /** Result containers. */
   DupliList *duplilist;
+  Map<const ID *, uint> *source_hashes;
 };
 
 struct DupliGenerator {
@@ -141,6 +143,28 @@ struct DupliGenerator {
 };
 
 static const DupliGenerator *get_dupli_generator(const DupliContext *ctx);
+
+static uint instance_source_id_hash(const ID &id)
+{
+  const ID *source = id.orig_id ? id.orig_id : &id;
+  uint hash = BLI_hash_string(source->name);
+  if (source->lib) {
+    hash = BLI_hash_int_2d(hash, BLI_hash_string(source->lib->filepath));
+  }
+  return BLI_hash_int_2d(hash, 0);
+}
+
+unsigned int BKE_object_instance_source_hash(const Object &object, const DupliObject *dupli)
+{
+  if (dupli) {
+    return dupli->source_random_id;
+  }
+  const Object &original = object.id.orig_id ?
+                               *reinterpret_cast<const Object *>(object.id.orig_id) :
+                               object;
+  return instance_source_id_hash(original.data ? *static_cast<const ID *>(original.data) :
+                                                 original.id);
+}
 
 /**
  * Create initial context for root object.
@@ -152,7 +176,8 @@ static void init_context(DupliContext *r_ctx,
                          Set<const Object *> *include_objects,
                          Vector<Object *> &instance_stack,
                          Vector<short> &dupli_gen_type_stack,
-                         DupliList &duplilist)
+                         DupliList &duplilist,
+                         Map<const ID *, uint> &source_hashes)
 {
   r_ctx->depsgraph = depsgraph;
   r_ctx->collection = nullptr;
@@ -163,6 +188,7 @@ static void init_context(DupliContext *r_ctx,
   r_ctx->instance_stack = &instance_stack;
   r_ctx->dupli_gen_type_stack = &dupli_gen_type_stack;
   r_ctx->duplilist = &duplilist;
+  r_ctx->source_hashes = &source_hashes;
   if (space_mat) {
     copy_m4_m4(r_ctx->space_mat, space_mat);
   }
@@ -270,6 +296,19 @@ static DupliObject *make_dupli(const DupliContext *ctx,
 
   dob->ob = ob;
   dob->ob_data = const_cast<ID *>(object_data);
+  if (object_data && object_data->orig_id) {
+    dob->source_random_id = instance_source_id_hash(*object_data);
+  }
+  else if (!object_data || object_data == ob->data) {
+    dob->source_random_id = BKE_object_instance_source_hash(*ob);
+  }
+  else {
+    /* Distinct anonymous generated prototypes often all have the name "Mesh". */
+    dob->source_random_id = ctx->source_hashes->lookup_or_add_cb(object_data, [&]() {
+      return BLI_hash_int_2d(BKE_object_instance_source_hash(*ctx->object),
+                             uint(ctx->source_hashes->size()) + 1);
+    });
+  }
   mul_m4_m4m4(dob->mat, const_cast<float (*)[4]>(ctx->space_mat), mat);
   dob->type = ctx->gen == nullptr ? 0 : ctx->dupli_gen_type_stack->last();
   dob->preview_base_geometry = ctx->preview_base_geometry;
@@ -1804,6 +1843,7 @@ void object_duplilist(Depsgraph *depsgraph,
                       DupliList &r_duplilist)
 {
   DupliContext ctx;
+  Map<const ID *, uint> source_hashes;
   Vector<Object *> instance_stack;
   Vector<short> dupli_gen_type_stack({0});
   instance_stack.append(ob);
@@ -1814,7 +1854,8 @@ void object_duplilist(Depsgraph *depsgraph,
                include_objects,
                instance_stack,
                dupli_gen_type_stack,
-               r_duplilist);
+               r_duplilist,
+               source_hashes);
   if (ctx.gen) {
     ctx.gen->make_duplis(&ctx);
   }
@@ -1826,6 +1867,7 @@ void object_duplilist_preview(Depsgraph *depsgraph,
                               DupliList &r_duplilist)
 {
   DupliContext ctx;
+  Map<const ID *, uint> source_hashes;
   Vector<Object *> instance_stack;
   Vector<short> dupli_gen_type_stack({0});
   instance_stack.append(ob_eval);
@@ -1836,7 +1878,8 @@ void object_duplilist_preview(Depsgraph *depsgraph,
                nullptr,
                instance_stack,
                dupli_gen_type_stack,
-               r_duplilist);
+               r_duplilist,
+               source_hashes);
 
   Object *ob_orig = DEG_get_original(ob_eval);
 
@@ -1866,12 +1909,20 @@ void object_duplilist_preview(Depsgraph *depsgraph,
 bke::Instances object_duplilist_legacy_instances(Depsgraph &depsgraph, Object &ob)
 {
   DupliContext ctx;
+  Map<const ID *, uint> source_hashes;
   DupliList duplilist;
   Vector<Object *> instance_stack({&ob});
   Vector<short> dupli_gen_type_stack({0});
 
-  init_context(
-      &ctx, &depsgraph, &ob, nullptr, nullptr, instance_stack, dupli_gen_type_stack, duplilist);
+  init_context(&ctx,
+               &depsgraph,
+               &ob,
+               nullptr,
+               nullptr,
+               instance_stack,
+               dupli_gen_type_stack,
+               duplilist,
+               source_hashes);
   if (ctx.gen == &gen_dupli_geometry_set) {
     /* These are not legacy instances. */
     return {};

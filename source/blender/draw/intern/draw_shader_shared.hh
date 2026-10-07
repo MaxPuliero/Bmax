@@ -464,7 +464,7 @@ struct [[host_shared]] ObjectInfos {
   enum eObjectInfoFlag flag;
   float shadow_terminator_normal_offset;
   float shadow_terminator_geometry_offset;
-  float _pad1;
+  float source_random;
   float _pad2;
 
 #ifndef GPU_SHADER

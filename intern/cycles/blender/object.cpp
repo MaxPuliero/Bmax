@@ -335,6 +335,9 @@ Object *BlenderSync::sync_object(blender::ViewLayer &b_view_layer,
     object->set_alpha(object_color[3]);
     object->set_tfm(tfm);
 
+    object->set_source_random_id(blender::BKE_object_instance_source_hash(
+        b_ob, is_instance ? b_deg_iter_data.dupli_object_current : nullptr));
+
     /* dupli texture coordinates and random_id */
     if (is_instance) {
       const float *orco = b_deg_iter_data.dupli_object_current->orco;
