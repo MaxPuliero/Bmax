@@ -96,6 +96,12 @@ New armatures and **Add Bone** in Edit Mode start with a bone length of **20 cm*
 
 New bones use **XYZ Euler** rotation by default, including new armatures and bones added in Edit Mode or through Python. Resetting Rotation Mode to its default also selects XYZ Euler. Existing bones keep their rotation modes; duplicates retain the source bone's mode.
 
+### Active endpoint in Outliner range selection
+
+<img src="doc/bmax/media/selection_outliner.gif" alt="Shift-clicking an Outliner range makes the last clicked object active while keeping the range selected" width="302">
+
+Shift-click activates the clicked endpoint after selecting an Outliner range. The selected range remains synchronized with the viewport; Ctrl+Shift can add the range to the existing selection. Subsequent Shift-clicks use the new active endpoint as their starting point. The local runtime in `D:\blender_build\octahedral_radius\bin` is updated and verified in nine GUI operator cases. Implementation commit: `87036d985cd3`, included in `main`. Separately copied Desktop packages and public Windows downloads have not been updated.
+
 ### Selection outlines for coincident elements
 
 <img src="doc/bmax/media/highlightSelection.webp" alt="Comparing selection visibility on coincident empty objects in official Blender and Bmax" width="720">
@@ -182,7 +188,7 @@ Object Mode UV diagnostics were additionally checked in 15 cases on each backend
 
 The UV changes were checked in the running editor on both OpenGL and Vulkan: 15 diagnostic cases, including the exact 2-pixel outline at two zoom levels, and 21 background/view cases covering 4K images, rectangular images, removal, automatic image changes, pan, zoom, opacity, and save/reload. Image switches produced no change in the measured UV screen coordinates. Old-file migration and persistence were also verified.
 
-The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The normal weighting, Fill Holes, Separate, Mesh Holes, selection priority, and Multires painting demonstrations are animated WebP files encoded losslessly, retaining their original 720-pixel width, height, total duration, frame timing, and looping; identical consecutive frames can be combined. The instance viewport and Object Info demonstrations use the original animated GIFs at their native dimensions, preserving frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
+The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The normal weighting, Fill Holes, Separate, Mesh Holes, selection priority, and Multires painting demonstrations are animated WebP files encoded losslessly, retaining their original 720-pixel width, height, total duration, frame timing, and looping; identical consecutive frames can be combined. The instance viewport, Object Info, and Outliner selection demonstrations use the original animated GIFs at their native dimensions, preserving frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
 
 ## License and attribution
 

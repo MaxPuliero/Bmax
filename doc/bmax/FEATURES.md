@@ -103,6 +103,12 @@ Viewport Shading > Color exposes **Instances** for Random object/wireframe color
 
 170 background assertions, OpenGL/Vulkan viewport grouping and visible UI checks, actual Manifold Sculpt Trim, Manifold Boolean, and opening/rendering in official Blender passed. With Instances disabled, legacy OpenGL Solid/Wireframe captures were pixel-identical and Cycles values matched the previous build. See [technical notes and performance results](instance_random.md).
 
+## Outliner range activation added to the source on 2026-10-07
+
+Implementation commit: `87036d985cd3`, integrated into `main`. Shift-click makes the clicked endpoint active while retaining the range selection. Ctrl+Shift adds the range to the previous selection. Subsequent range selection starts from the new active endpoint. Data activation follows the existing selection-sync setting and mode-lock rules. Source publication and Windows packages remain separate.
+
+The local Release runtime is installed. Nine GUI operator cases passed using simulated cursor positions and invoking the same item-activation operator as mouse selection: plain click, downward/upward Shift ranges, repeated range endpoints, Ctrl selection, and Ctrl+Shift ranges. Checks verified both the actual ViewLayer active object and the complete selected object set. The previous build reproduced the old A-active result for A to Shift+D; the new build retained A-D selection and activated D. Separately copied Desktop packages and the public Windows download have not been updated.
+
 ## Compatibility and persistence
 
 The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Multires Sculpt color uses named per-attribute RGBA grids saved with the base mesh; applying Multires materializes the detail as a regular evaluated color attribute. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero opacity values survive saving and reopening. Mesh Data weighting is also saved per mesh, defaults to Unweighted for older files, and is not baked into custom normals. Official Blender uses its standard automatic normals when no custom normals or normal modifier is present; re-saving there discards the Bmax weighting settings. Multires paint grids require Bmax; apply Multires in Bmax before transferring finished painted geometry to other builds. Official Blender may discard Bmax-specific properties when re-saving a file.
