@@ -1,6 +1,6 @@
 # Bmax feature inventory
 
-This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-06**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
+This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-07**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
@@ -76,6 +76,24 @@ Bendy Bone compatibility of this update was verified on 2026-10-06: newly create
 Implementation commit: `2334bd5436b8`.
 
 **Help > Report a Bmax Bug**, the standalone system-information launcher, and Windows debug helpers direct Bmax reports to [GitHub Bmax issues](https://github.com/MaxPuliero/Bmax/issues). Runtime and standalone forms pre-fill version and system information and ask for an official Blender comparison. This routes custom-build reports through Bmax rather than Blender's upstream tracker.
+
+## Object mesh tools added to the source on 2026-10-07
+
+Implementation commit: `47896472`. The updated local Windows runtime is installed in `D:\blender_build\octahedral_radius\bin`; the Desktop package and public download remain separate.
+
+| Feature | Implemented behavior |
+| --- | --- |
+| Object Mode Separate menus | Object > Separate and the Object context menu offer By Loose Parts and By Material, calling the existing C++ Separate operator. |
+| Fast Fill Holes in Object and Edit Mode | Object > Clean Up and the Object context menu fill boundary loops of selected editable meshes without switching modes. Edit Mode retains selected-edge control. Simple cycles use direct C++ cap creation; other selected edge networks retain the general path. Default Sides is 0, with no hole size limit. Original non-manifold geometry is not repaired. |
+| Face Sets for new hole patches | Optional New Face Sets in F9 assigns a different Sculpt Face Set to each connected new patch. Existing IDs are retained. With no pre-existing layer, original faces receive ID 1. The option defaults off and creates no layer on a no-op. |
+
+The supplied 624,503-face scan measured 0.392 s for Loose Parts, 1.203 s for Material, 0.308 s for Object Fill Holes, 0.337 s with New Face Sets, and 0.203 s for the Edit Mode fill operator. All 28 boundary loops were closed and original positions stayed exact. These are background medians, one warm-up plus three runs, without interactive undo or redraw. Functional checks cover attributes, keys, shared data, selections, save/reload, Undo/Redo, and a successful Voxel Remesh of the filled scan. See [object mesh tools notes](object_mesh_tools.md).
+
+## Windows icon update added to the source on 2026-10-07
+
+Implementation commit: `5c0d7e11`. Both application and blend-file ICO resources use antialiased 32-bit bitmap entries through 96 pixels with matching transparency masks, and PNG entries from 128 to 256 pixels. Sixteen native sizes include intermediate DPI dimensions. The 1024-pixel Bmax logo artwork is unchanged.
+
+All 16 frames passed round-trip pixel checks, all bitmap masks matched fully transparent pixels, and Windows native extraction/drawing of the compiled executable matched expected alpha composition on dark and light backgrounds within one channel level. See [Windows icon notes](windows_icons.md). The installed local runtime is updated; source publication does not update an existing Desktop copy or public download.
 
 ## Compatibility and persistence
 

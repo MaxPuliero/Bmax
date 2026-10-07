@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -16,7 +16,7 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-6, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-7, 2026, their source commits, and removed items.
 
 ### Multires color painting in Sculpt Mode
 
@@ -24,11 +24,23 @@ Paint, Blur, and Smear can edit color at the current Multires sculpt resolution.
 
 Brush updates and undo are restricted to the affected grids and their boundaries, and color storage is committed at stroke completion to keep painting responsive. This implementation supports Float and Byte attributes on Point and Face Corner domains. Color Filter and Mask by Color remain unavailable with Multires. The classic Vertex Paint mode retains its existing behavior. See [usage, storage, and validation notes](doc/bmax/multires_color.md). Publishing this source update does not publish a new Windows download.
 
+### Object Mode Separate and fast Fill Holes
+
+Added to the source on October 7, 2026, in commit `47896472`. **Object > Separate** and the Object context menu expose **By Loose Parts** and **By Material** using the existing C++ operator. **Fill Holes** now works in Object Mode under **Object > Clean Up** and in the context menu, as well as **Mesh > Clean Up** in Edit Mode.
+
+Fill Holes uses a native C++ fast path for simple boundary loops. Object Mode fills the selected mesh objects; Edit Mode respects selected edges. **Sides = 0** fills holes without a size limit and is the new default. Enable **New Face Sets** in **Adjust Last Operation (F9)** to give each newly filled patch a separate Sculpt Face Set while preserving existing IDs.
+
+On the supplied 624,503-face scan, Object Mode Fill Holes with Face Sets took a median **0.337 s**, closing all 28 boundary loops. The Edit Mode operator took **0.203 s** with the mesh already in Edit Mode. These synchronous background timings exclude interactive undo and redraw. See [implementation and validation notes](doc/bmax/object_mesh_tools.md). The local runtime has been updated; the separately copied Desktop package and public Windows download have not.
+
 ### Selected mesh openings
 
 **3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.
 
 The boundary geometry is cached until the mesh changes and supports evaluated meshes and subdivision. See [the implementation and validation notes](doc/bmax/mesh_holes.md).
+
+### Windows icon antialiasing and DPI sizes
+
+Windows application and blend-file icons retain the Bmax logo with antialiased alpha edges. Small entries through 96 pixels now use 32-bit Windows bitmap payloads with alpha and a matching transparency mask; larger previews remain PNG. Sixteen sizes from 16 to 256 pixels include intermediate DPI sizes, avoiding rescaling a neighboring icon entry. See [icon implementation and validation](doc/bmax/windows_icons.md). This is included in the local runtime; separately copied Desktop packages and the public download require their own update.
 
 ### Absolute Octahedral Radius
 

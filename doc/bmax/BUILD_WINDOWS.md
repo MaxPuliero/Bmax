@@ -140,3 +140,14 @@ The installed runtime passed the original Manifold Boolean crash reproduction an
 The Help bug-report preset produced the Bmax GitHub issue URL with the installed hash and GPU backend. The standalone launcher also passed using bundled Python in isolated `-I` mode, preserving build information and targeting the same Bmax tracker. Checks generated URLs without opening a browser or submitting further issues. All verification scripts, logs, and results were temporary and removed afterward.
 
 The ready local runtime is `D:\blender_build\octahedral_radius\bin`; source/documentation publication does not update a separately copied Desktop package or the public Windows download.
+## Object mesh tools local build verified on 2026-10-07
+
+The Object Mode Separate menus in source commit `47896472`, fast C++ Fill Holes in Object/Edit modes, and optional New Face Sets were compiled and installed as Windows Release using the existing INSTALL target with parallelism 2 and CL_MPCount=2. No DNA or shared C++ structure layout changed. The installed binary is `D:\blender_build\octahedral_radius\bin\blender.exe`. The separately copied Desktop package and public download were not updated.
+
+Fifty-five background functional assertions passed, followed by GUI Undo/Redo and Sculpt Face Set display checks on OpenGL and Vulkan, plus the visible F9 options popup. The supplied 624,503-face `test.blend` passed all benchmark cases and a Voxel Remesh after filling. See [object mesh tools validation](object_mesh_tools.md) for exact methods and medians. Verification scripts and artifacts were temporary and were removed after checking; the original input file and build cache were preserved. The source changes are committed; source publication does not update the separately copied Desktop package or public download.
+
+## Windows icon resource update verified on 2026-10-07
+
+The resources in implementation commit `5c0d7e11` were built and installed with the same Windows Release INSTALL command. Both ICO files contain 16 alpha-antialiased native sizes, with 32-bit DIB/AND-mask payloads for entries through 96 pixels and PNG payloads for larger previews. Windows resource extraction and DrawIconEx checks on the compiled executable passed all 16 sizes on dark and light backgrounds, with alpha composition error at most one channel level. See [Windows icon validation](windows_icons.md).
+
+The local runtime remains `D:\blender_build\octahedral_radius\bin`. No user Blender session was closed, no Desktop copy was overwritten, and the public Windows download was not replaced. Verification scripts, extracted icon images, comparisons and build logs were temporary and removed afterward.
