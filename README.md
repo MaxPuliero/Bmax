@@ -46,6 +46,8 @@ The setting is stored per mesh and does not bake automatic weights into custom n
 
 On the supplied scan, Face Area & Angle at Weight 50 took **6.84 ms** through Mesh Data versus **377.92 ms** with an active Weighted Normal modifier in Object Mode, and **34.00 ms** versus **417.49 ms** in Edit Mode. These medians measure geometry evaluation plus normal readback, excluding drawing and undo; unchanged cached reads are about 1 ms for both paths. See the notes above for methods and numerical differences.
 
+<img src="doc/bmax/media/weighted-performance.png" alt="Normal weighting benchmark: Mesh Data versus Weighted Normal modifier. Object Mode: 6.8 ms versus 378 ms. Edit Mode: 34 ms versus 417 ms." width="567">
+
 ### Selected mesh openings
 
 **3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.
