@@ -268,6 +268,20 @@ static void set_rest_position(Mesh &mesh)
   }
 }
 
+static void mesh_copy_normal_weighting_for_eval(Mesh &mesh, const Mesh &source)
+{
+  if (mesh.normal_weighting_mode == source.normal_weighting_mode &&
+      mesh.normal_weight == source.normal_weight &&
+      mesh.normal_weight_threshold == source.normal_weight_threshold)
+  {
+    return;
+  }
+  mesh.normal_weighting_mode = source.normal_weighting_mode;
+  mesh.normal_weight = source.normal_weight;
+  mesh.normal_weight_threshold = source.normal_weight_threshold;
+  mesh.tag_custom_normals_changed();
+}
+
 static void mesh_calc_modifiers(Depsgraph &depsgraph,
                                 const Scene &scene,
                                 Object &ob,
@@ -689,6 +703,12 @@ static void mesh_calc_modifiers(Depsgraph &depsgraph,
     }
   }
 
+  /* Generated geometry may have fresh Mesh defaults. The object's data settings
+   * also apply there, while custom normals written by modifiers remain authoritative. */
+  if (is_own_mesh) {
+    mesh_copy_normal_weighting_for_eval(*mesh, mesh_input);
+  }
+
   /* Return final mesh */
   *r_final = mesh;
   if (r_deform) {
@@ -925,6 +945,21 @@ static void editbmesh_calc_modifiers(Depsgraph &depsgraph,
 
   if (mesh_orco) {
     BKE_id_free(nullptr, mesh_orco);
+  }
+
+  mesh_copy_normal_weighting_for_eval(*mesh, mesh_input);
+  if (mesh_cage && mesh_cage != mesh) {
+    mesh_copy_normal_weighting_for_eval(*mesh_cage, mesh_input);
+  }
+
+  /* Weighted automatic shading uses Mesh's cached corner normals. The direct BMesh
+   * drawing path uses geometry normals, so materialize only for the opt-in modes.
+   * Keep original-index mappings for edit selection and the independent UV path. */
+  if (mesh_input.normal_weighting_mode != ME_NORMAL_WEIGHTING_UNWEIGHTED) {
+    BKE_mesh_wrapper_ensure_mdata(mesh);
+    if (mesh_cage && mesh_cage != mesh) {
+      BKE_mesh_wrapper_ensure_mdata(mesh_cage);
+    }
   }
 
   /* Return final mesh. */

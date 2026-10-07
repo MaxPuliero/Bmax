@@ -170,6 +170,23 @@ class DATA_PT_context_mesh(MeshButtonsPanel, Panel):
             layout.template_ID(space, "pin_id")
 
 
+class DATA_PT_normal_weighting(MeshButtonsPanel, Panel):
+    bl_label = "Normals"
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        mesh = context.mesh
+        layout = self.layout
+        layout.use_property_split = True
+        layout.prop(mesh, "normal_weighting_mode")
+        col = layout.column()
+        col.active = mesh.normal_weighting_mode != 'UNWEIGHTED' and not mesh.has_custom_normals
+        col.prop(mesh, "normal_weight")
+        col.prop(mesh, "normal_weight_threshold")
+        if mesh.has_custom_normals:
+            layout.label(text="Custom normals take precedence", icon='INFO')
+
+
 class DATA_PT_texture_space(MeshButtonsPanel, Panel):
     bl_label = "Texture Space"
     bl_options = {'DEFAULT_CLOSED'}
@@ -727,6 +744,7 @@ classes = (
     MESH_UL_uvmaps,
     MESH_UL_attributes,
     DATA_PT_context_mesh,
+    DATA_PT_normal_weighting,
     DATA_PT_vertex_groups,
     DATA_PT_shape_keys,
     DATA_PT_uv_texture,

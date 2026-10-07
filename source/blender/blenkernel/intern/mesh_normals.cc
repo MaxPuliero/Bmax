@@ -10,7 +10,9 @@
  * \see `bmesh_mesh_normals.cc` for the equivalent #BMesh functionality.
  */
 
+#include <algorithm>
 #include <climits>
+#include <cmath>
 
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
@@ -337,6 +339,10 @@ bke::MeshNormalDomain Mesh::normals_domain() const
     return MeshNormalDomain::Face;
   }
 
+  if (this->normal_weighting_mode != ME_NORMAL_WEIGHTING_UNWEIGHTED) {
+    return MeshNormalDomain::Corner;
+  }
+
   if (edge_mix == array_utils::BooleanMix::AllFalse &&
       face_mix == array_utils::BooleanMix::AllFalse)
   {
@@ -385,6 +391,15 @@ Span<float3> Mesh::vert_normals() const
                                          r_data.ensure_vector_size(this->verts_num));
         return;
       }
+    }
+    if (this->normal_weighting_mode != ME_NORMAL_WEIGHTING_UNWEIGHTED) {
+      mesh::mix_normals_corner_to_vert(this->vert_positions(),
+                                       this->faces(),
+                                       this->corner_verts(),
+                                       this->vert_to_face_map(),
+                                       this->corner_normals(),
+                                       r_data.ensure_vector_size(this->verts_num));
+      return;
     }
     r_data.data = NormalsCache::UseTrueCache();
   });
@@ -507,7 +522,8 @@ Span<float3> Mesh::corner_normals() const
                                    sharp_faces,
                                    VArraySpan<short2>(custom.varray.typed<short2>()),
                                    nullptr,
-                                   data);
+                                   data,
+                                   custom ? nullptr : this);
       }
     }
   });
@@ -1180,6 +1196,82 @@ static float3 accumulate_fan_normal(const Span<VertCornerInfo> corner_infos,
   return math::normalize(fan_normal);
 }
 
+/* Local fan sorting avoids the modifier's global sort and custom-normal buffers.
+ * Rank correction and grouping follow Weighted Normal, with sharp boundaries always kept. */
+static float3 accumulate_weighted_fan_normal(const Span<VertCornerInfo> corner_infos,
+                                             const Span<float3> edge_dirs,
+                                             const Span<float3> face_normals,
+                                             const Span<int> corners_in_fan,
+                                             const Span<float> face_areas,
+                                             const Mesh &settings,
+                                             Vector<std::pair<float, int>, 16> &weights)
+{
+  if (corners_in_fan.size() == 1) {
+    return face_normals[corner_infos[corners_in_fan.first()].face];
+  }
+  weights.clear();
+  for (const int corner : corners_in_fan) {
+    const VertCornerInfo &info = corner_infos[corner];
+    float value = 1.0f;
+    if (settings.normal_weighting_mode != ME_NORMAL_WEIGHTING_FACE_AREA) {
+      value = math::safe_acos(
+          math::dot(edge_dirs[info.local_edge_prev], edge_dirs[info.local_edge_next]));
+    }
+    if (!face_areas.is_empty()) {
+      value *= face_areas[info.face];
+    }
+    weights.append({value, info.face});
+  }
+  if (settings.normal_weight == 50) {
+    /* Neutral correction needs neither sorting nor rank grouping. */
+    float3 normal(0.0f);
+    for (const auto &item : weights) {
+      normal += face_normals[item.second] * item.first;
+    }
+    if (math::length_squared(normal) >= 1e-12f && std::isfinite(math::length_squared(normal))) {
+      return math::normalize(normal);
+    }
+    return accumulate_fan_normal(corner_infos, edge_dirs, face_normals, corners_in_fan);
+  }
+  std::sort(weights.begin(), weights.end(), [](const auto &a, const auto &b) {
+    return a.first > b.first;
+  });
+  float weight = float(settings.normal_weight) / 50.0f;
+  if (settings.normal_weight == 100) {
+    weight = float(SHRT_MAX);
+  }
+  else if (settings.normal_weight == 1) {
+    weight = 1.0f / float(SHRT_MAX);
+  }
+  else if ((weight - 1.0f) * 25.0f > 1.0f) {
+    weight = (weight - 1.0f) * 25.0f;
+  }
+  /* Normalize rank factors for weights below 50 to avoid growing powers/overflow. */
+  Vector<int, 16> ranks;
+  int rank = 0;
+  float previous = 0.0f;
+  for (const auto &item : weights) {
+    if (previous == 0.0f) {
+      previous = item.first;
+    }
+    if (!compare_ff(previous, item.first, settings.normal_weight_threshold)) {
+      rank++;
+      previous = item.first;
+    }
+    ranks.append(rank);
+  }
+  float3 normal(0.0f);
+  for (const int i : weights.index_range()) {
+    const float exponent = weight < 1.0f ? float(rank - ranks[i]) : -float(ranks[i]);
+    const float correction = weight == 1.0f ? 1.0f : powf(weight, exponent);
+    normal += face_normals[weights[i].second] * (weights[i].first * correction);
+  }
+  if (math::length_squared(normal) < 1e-12f || !std::isfinite(math::length_squared(normal))) {
+    return accumulate_fan_normal(corner_infos, edge_dirs, face_normals, corners_in_fan);
+  }
+  return math::normalize(normal);
+}
+
 struct CornerSpaceGroup {
   /* Maybe acyclic and unordered set of adjacent corners in same smooth group around vertex. */
   Array<int> fan_corners;
@@ -1246,7 +1338,8 @@ void normals_calc_corners(const Span<float3> vert_positions,
                           const Span<bool> sharp_faces,
                           const Span<short2> custom_normals,
                           CornerNormalSpaceArray *r_fan_spaces,
-                          MutableSpan<float3> r_corner_normals)
+                          MutableSpan<float3> r_corner_normals,
+                          const Mesh *weighting_mesh)
 {
   PRF_scope(ProfileCategory::Default);
   BLI_assert(corner_verts.size() == corner_edges.size());
@@ -1259,6 +1352,17 @@ void normals_calc_corners(const Span<float3> vert_positions,
     return;
   }
 
+  const bool weighted = weighting_mesh && custom_normals.is_empty() && !r_fan_spaces &&
+                        weighting_mesh->normal_weighting_mode != ME_NORMAL_WEIGHTING_UNWEIGHTED;
+  Array<float> face_areas;
+  if (weighted && weighting_mesh->normal_weighting_mode != ME_NORMAL_WEIGHTING_CORNER_ANGLE) {
+    face_areas.reinitialize(faces.size());
+    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+      for (const int face : range) {
+        face_areas[face] = face_area_calc(vert_positions, corner_verts.slice(faces[face]));
+      }
+    });
+  }
   threading::EnumerableThreadSpecific<Vector<CornerSpaceGroup, 0>> space_groups;
 
   threading::parallel_for(vert_positions.index_range(), 256, [&](const IndexRange range) {
@@ -1268,6 +1372,7 @@ void normals_calc_corners(const Span<float3> vert_positions,
     Vector<float3, 16> edge_dirs;
     Vector<bool, 16> local_corner_visited;
     Vector<int, 16> corners_in_fan;
+    Vector<std::pair<float, int>, 16> weights;
 
     Vector<CornerSpaceGroup, 0> *local_space_groups = r_fan_spaces ? &space_groups.local() :
                                                                      nullptr;
@@ -1309,8 +1414,15 @@ void normals_calc_corners(const Span<float3> vert_positions,
         corners_in_fan.clear();
         traverse_fan_local_corners(corner_infos, edge_infos, start_local_corner, corners_in_fan);
 
-        float3 fan_normal = accumulate_fan_normal(
-            corner_infos, edge_dirs, face_normals, corners_in_fan);
+        float3 fan_normal = weighted ? accumulate_weighted_fan_normal(corner_infos,
+                                                                      edge_dirs,
+                                                                      face_normals,
+                                                                      corners_in_fan,
+                                                                      face_areas,
+                                                                      *weighting_mesh,
+                                                                      weights) :
+                                       accumulate_fan_normal(
+                                           corner_infos, edge_dirs, face_normals, corners_in_fan);
 
         if (!custom_normals.is_empty() || r_fan_spaces) {
           handle_fan_result_and_custom_normals(custom_normals,

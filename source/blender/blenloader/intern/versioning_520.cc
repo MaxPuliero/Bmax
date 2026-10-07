@@ -568,6 +568,15 @@ static void version_bone_axis_size(ListBaseT<Bone> &bones)
 
 void blo_do_versions_520(FileData *fd, Library * /*lib*/, Main *bmain)
 {
+  /* Bmax fields use DNA presence, since official and earlier Bmax files share versions. */
+  if (!DNA_struct_member_exists(fd->filesdna, "Mesh", "int", "normal_weight")) {
+    for (Mesh &mesh : bmain->meshes) {
+      mesh.normal_weighting_mode = ME_NORMAL_WEIGHTING_UNWEIGHTED;
+      mesh.normal_weight = 50;
+      mesh.normal_weight_threshold = 0.01f;
+    }
+  }
+
   /* Fork-specific settings must also migrate upstream files at the same subversion. */
   if (!DNA_struct_member_exists(fd->filesdna, "Object", "float", "origin_axis_scale")) {
     for (Object &object : bmain->objects) {

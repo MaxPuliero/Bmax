@@ -1213,6 +1213,10 @@ static bool mesh_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
                            mesh->vertex_group_active_index,
                            um_references ? um_references[i] : nullptr);
 
+    elem->data.mesh->normal_weighting_mode = mesh->normal_weighting_mode;
+    elem->data.mesh->normal_weight = mesh->normal_weight;
+    elem->data.mesh->normal_weight_threshold = mesh->normal_weight_threshold;
+
     em->needs_flush_to_id = 1;
     us->step.data_size += elem->data.undo_size;
 
@@ -1260,6 +1264,11 @@ static void mesh_undosys_step_decode(
     BMEditMesh *em = mesh->runtime->edit_mesh.get();
     undomesh_to_editmesh(
         &elem->data, em, &mesh->vertex_group_names, &mesh->vertex_group_active_index);
+
+    mesh->normal_weighting_mode = elem->data.mesh->normal_weighting_mode;
+    mesh->normal_weight = elem->data.mesh->normal_weight;
+    mesh->normal_weight_threshold = elem->data.mesh->normal_weight_threshold;
+    mesh->tag_custom_normals_changed();
 
     obedit->shapenr = em->bm->shapenr;
 

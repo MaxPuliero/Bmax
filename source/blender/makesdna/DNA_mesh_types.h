@@ -50,6 +50,14 @@ struct MCol;
 struct MEdge;
 struct MFace;
 
+/** Automatic shading normals. Custom normals always take precedence. */
+enum eMesh_NormalWeightingMode : int {
+  ME_NORMAL_WEIGHTING_UNWEIGHTED = 0,
+  ME_NORMAL_WEIGHTING_FACE_AREA = 1,
+  ME_NORMAL_WEIGHTING_CORNER_ANGLE = 2,
+  ME_NORMAL_WEIGHTING_FACE_AREA_ANGLE = 3,
+};
+
 /** #Mesh.texspace_flag */
 enum eMesh_TexSpaceFlag : char {
   ME_TEXSPACE_FLAG_AUTO = 1 << 0,
@@ -335,6 +343,11 @@ struct Mesh {
   CustomData fdata_legacy;
   /* Deprecated size of #fdata. */
   int totface_legacy = 0;
+
+  eMesh_NormalWeightingMode normal_weighting_mode = ME_NORMAL_WEIGHTING_UNWEIGHTED;
+  int normal_weight = 50;
+  float normal_weight_threshold = 0.01f;
+  int _pad_normal_weighting = {};
 
   char _pad1 = {};
   int8_t radial_symmetry[3] = {1, 1, 1};

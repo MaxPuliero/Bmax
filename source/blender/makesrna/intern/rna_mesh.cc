@@ -204,6 +204,13 @@ static void rna_Mesh_update_geom_and_params(Main * /*bmain*/, Scene * /*scene*/,
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
 }
 
+static void rna_Mesh_update_normal_weighting(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  rna_mesh(ptr)->tag_custom_normals_changed();
+  BKE_mesh_batch_cache_dirty_tag(rna_mesh(ptr), BKE_MESH_BATCH_DIRTY_ALL);
+  rna_Mesh_update_geom_and_params(bmain, scene, ptr);
+}
+
 static void rna_Mesh_update_data_edit_weight(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   BKE_mesh_batch_cache_dirty_tag(rna_mesh(ptr), BKE_MESH_BATCH_DIRTY_ALL);
@@ -3276,6 +3283,45 @@ static void rna_def_mesh(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Radial Symmetry Count", "Number of mirrored regions around a central axis");
   /* End Symmetry */
+
+  static const EnumPropertyItem normal_weighting_items[] = {
+      {ME_NORMAL_WEIGHTING_UNWEIGHTED,
+       "UNWEIGHTED",
+       0,
+       "Unweighted",
+       "Use Blender's automatic normals"},
+      {ME_NORMAL_WEIGHTING_FACE_AREA, "FACE_AREA", 0, "Face Area", "Weight normals by face area"},
+      {ME_NORMAL_WEIGHTING_CORNER_ANGLE,
+       "CORNER_ANGLE",
+       0,
+       "Corner Angle",
+       "Weight normals by corner angle"},
+      {ME_NORMAL_WEIGHTING_FACE_AREA_ANGLE,
+       "FACE_AREA_WITH_ANGLE",
+       0,
+       "Face Area & Angle",
+       "Weight normals by face area and corner angle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  prop = RNA_def_property(srna, "normal_weighting_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, normal_weighting_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Weighting Mode",
+      "Automatic shading normals; custom normals take precedence and sharp edges are preserved");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_normal_weighting");
+
+  prop = RNA_def_property(srna, "normal_weight", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 1, 100);
+  RNA_def_property_ui_text(prop, "Weight", "Corrective factor for face weights; 50 is neutral");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_normal_weighting");
+
+  prop = RNA_def_property(srna, "normal_weight_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 2);
+  RNA_def_property_ui_text(
+      prop, "Threshold", "Difference below which face weights are considered equal");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_normal_weighting");
 
   RNA_define_verify_sdna(false);
   prop = RNA_def_property(srna, "has_custom_normals", PROP_BOOLEAN, PROP_NONE);
