@@ -64,10 +64,6 @@ Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > It
 
 ![Octahedral Radius demonstration](doc/bmax/media/bmax_radius.webp)
 
-### Octahedral Bendy Bone display
-
-With **B-Bone Segments** above 1, Octahedral display follows Bendy Bone curvature in Edit and Pose Mode. Each segment uses **Octahedral Radius** as its transverse radius before spline and pose scaling; B-Bone Display X/Z Width does not control the octahedra. Head and Tail spheres remain at the two real bone endpoints. Selecting any segment selects its bone. With one segment, the existing Octahedral display is preserved.
-
 ### Independent Axis Size
 
 **Axis Size** appears directly below Octahedral Radius. It controls the display axes independently of bone radius and length. The default is **0.03 Blender units**, or **3 cm** with standard metric units. The object's scale still affects viewport display.
@@ -82,8 +78,6 @@ New armatures and **Add Bone** in Edit Mode start with a bone length of **20 cm*
 
 New bones use **XYZ Euler** rotation by default, including new armatures and bones added in Edit Mode or through Python. Resetting Rotation Mode to its default also selects XYZ Euler. Existing bones keep their rotation modes; duplicates retain the source bone's mode.
 
-Bendy Bones remain supported with XYZ Euler. Set **Bone Properties > Bendy Bones > Segments** above 1 (for example, 8) to display curvature: **Wire** follows the segmented centerline, **B-Bone** shows the segment boxes, and **Octahedral** draws one octahedron per segment along the curve, in both Edit and Pose Mode. Wire endpoint spheres in Edit Mode continue to use Octahedral Radius.
-
 ### Selection outlines for coincident elements
 
 When armature elements coincide at the same depth, unselected elements are drawn first, selected elements next, and the selected active element last. This prevents a later unselected bone from replacing the selection outline and gives the active bone priority among coincident selected bones. The ordering applies to Pose and Edit Mode and selected armature objects. Existing depth tests, X-Ray/In Front behavior, and picking remain in place. Selected mesh objects also retain their outlines when coincident with unselected meshes. Empty shapes and image frames, legacy curves, lattices, and meshes made only of loose edges or points use the same selection priority in Object Mode. Their wires are grouped by selection across these overlay types, so creation order does not hide the selected color.
@@ -97,10 +91,6 @@ The armature's **Names** and **Axes** toggles display these overlays only for se
 ### Hide/unhide synchronization
 
 Bone hide state transfers between Pose and Edit Mode when switching modes. Hidden bones are deselected during transfer. Bone collection visibility remains a separate visibility filter.
-
-### Mode pie gesture
-
-For the mode pie opened with **Tab for Pie Menu**, tapping and releasing Tab allows selection by moving past the outer edge of an enabled menu item without clicking. This adjustment is scoped to the mode pie opened with Tab.
 
 ### Origin axes during transforms
 

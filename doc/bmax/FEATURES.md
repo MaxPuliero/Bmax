@@ -15,7 +15,6 @@ Commit: `a0f495c4`.
 | Independent Axis Size | Per-bone display-axis length independent of radius and bone length. Default: `0.03` Blender units, available in Edit and Pose Mode under N sidebar > Item. Object scale still applies. |
 | Names and axes for selected bones | The armature Names and Axes toggles draw these overlays only for selected bones. Selecting a head or tail in Edit Mode also qualifies the bone. |
 | Pose/Edit hide synchronization | Per-bone hidden state transfers between Pose and Edit Mode. Hidden bones are deselected; Bone Collection visibility remains a separate filter. |
-| Mode pie gesture after a Tab tap | With Tab for Pie Menu enabled, tapping and releasing Tab allows confirming an enabled item by moving beyond its outer edge without clicking. This is scoped to the mode pie opened with Tab. |
 | Bmax branding | Custom splash logo and Windows icons, Bmax window titles and command-line version output, and a separate Bmax Windows application identity. The executable remains `blender.exe` and uses Blender 5.2 preferences and startup configuration. |
 
 ## Added to the published source on 2026-10-02
@@ -63,13 +62,10 @@ Implementation commit: `ee9bcdf37b32`. Source publication does not update the se
 
 | Feature | Implemented behavior |
 | --- | --- |
-| Octahedral Bendy Bone display | For bones with multiple B-Bone segments, Octahedral draws a body per evaluated segment along the curve in Edit and Pose Mode. Octahedral Radius controls transverse size independently of B-Bone display widths, with spline and pose scaling retained. Only real bone endpoints get spheres; segment picking selects the whole bone. Single-segment display is preserved. |
 | Independent UV fill opacities | Overlap, Flipped UVs, and Faces have separate opacity sliders in the shared Geometry panel, defaulting to 0.5 (50%) for new settings. Faces opacity is independent of UV lines and paint-mode face opacity. Saved values, including zero, are retained; missing properties migrate to the new defaults. |
 | Object Mode UV line priority | UV wire lines are submitted after Faces and Flipped/Overlap diagnostic fills, keeping the lines visible above their colors at the chosen UV line opacity, without automatic quarter-strength fading. Edit Mode keeps its existing line order and white shell outlines remain on top. |
 | Wire endpoint radius | Head and Tail spheres in Wire Edit Mode use the per-bone Octahedral Radius independently of rest-bone length. Selection and endpoint picking use the same sphere geometry. |
 | Default bone rotation mode | Newly created pose channels and the Rotation Mode property default use XYZ Euler. Existing channels and copied bone rotation modes are preserved. |
-
-Bendy Bone compatibility of this update was verified on 2026-10-06: newly created bones using XYZ Euler display segmented curvature in Wire and B-Bone modes, in Edit and Pose Mode. Set B-Bone Segments above 1 to enable the curved display; the creation default remains one segment. This preserves existing support rather than adding a new deformation feature.
 
 ## Bmax bug reporting
 
@@ -105,6 +101,6 @@ The custom bone display properties, origin-axis scale compensation, UV diagnosti
 
 ## Removed items
 
-The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list. The built-in Tab mode pie gesture remains implemented.
+The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list.
 
 The removal of development tests and the branch cleanup are maintenance changes, not feature removals. All features listed above remain in `main`.
