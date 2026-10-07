@@ -1,6 +1,6 @@
 # Bmax feature inventory
 
-This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-07**. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
+This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-07**, including the complete history on `main`, the changed source files relative to the imported snapshot, and the per-feature implementation notes. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
@@ -16,7 +16,7 @@ Commit: `a0f495c4`.
 | Names and axes for selected bones | The armature Names and Axes toggles draw these overlays only for selected bones. Selecting a head or tail in Edit Mode also qualifies the bone. |
 | Pose/Edit hide synchronization | Per-bone hidden state transfers between Pose and Edit Mode. Hidden bones are deselected; Bone Collection visibility remains a separate filter. |
 | Mode pie gesture after a Tab tap | With Tab for Pie Menu enabled, tapping and releasing Tab allows confirming an enabled item by moving beyond its outer edge without clicking. This is scoped to the mode pie opened with Tab. |
-| Bmax branding | Custom splash logo and Windows icons. The executable remains `blender.exe` and uses Blender 5.2 preferences and startup configuration. |
+| Bmax branding | Custom splash logo and Windows icons, Bmax window titles and command-line version output, and a separate Bmax Windows application identity. The executable remains `blender.exe` and uses Blender 5.2 preferences and startup configuration. |
 
 ## Added to the published source on 2026-10-02
 
@@ -29,9 +29,9 @@ Commit: `ac5982c9`.
 | Triangulate defaults | New modifiers have Keep Normals enabled. |
 | Displace default | New modifiers use Strength `0.1`. Existing saved modifier settings are preserved. |
 | UV Shell Outline | White outline drawn two physical pixels inward along UV shell boundaries, including holes. Width stays constant when zooming; internal UV edges are excluded. |
-| UV Overlap | Red highlighting of the intersecting area, including partial overlap and overlap between objects. Intensity controls opacity from `0` to `1`; the display updates as UV shells move. |
+| UV Overlap | Red highlighting of the intersecting area, including partial overlap and overlap between objects. Opacity controls the fill from `0` (transparent) to `1` (opaque); the display updates as UV shells move. |
 | Flipped UVs | Magenta highlighting of faces with reversed UV orientation. Red takes priority where overlap and flipped-face diagnostics coincide. |
-| Shared UV controls in Object and Edit Mode | The same Geometry panel, diagnostic settings, intensities, opacity, and face visibility controls work in both modes. Object Mode inspects selected mesh objects. Original UVs are used, so repeated modifier geometry does not create false overlaps. |
+| Shared UV controls in Object and Edit Mode | The same Geometry panel, diagnostic settings, fill opacities, and face visibility controls work in both modes. Object Mode inspects selected mesh objects. Original UVs are used, so repeated modifier geometry does not create false overlaps. |
 | Independent UV background opacity | UV Editor > Overlays > Image > Opacity changes the image independently of UV geometry. Zero is transparent, one is fully visible; the setting also takes effect when the main Overlays toggle is off. |
 | Stable UV framing when changing images | Adding, removing, or switching images preserves the UVs' size and position on screen, including resolution/aspect changes and automatic image changes from the active material. Pan and zoom remain usable. |
 
@@ -95,16 +95,16 @@ Implementation commit: `5c0d7e11`. Both application and blend-file ICO resources
 
 All 16 frames passed round-trip pixel checks, all bitmap masks matched fully transparent pixels, and Windows native extraction/drawing of the compiled executable matched expected alpha composition on dark and light backgrounds within one channel level. See [Windows icon notes](windows_icons.md). The installed local runtime is updated; source publication does not update an existing Desktop copy or public download.
 
+## Mesh Data normal weighting added to the source on 2026-10-07
+
+Object Data Properties > Normals exposes Unweighted, Face Area, Corner Angle, and Face Area & Angle. Unweighted preserves the existing automatic normal calculation. Weight and Threshold affect the three weighted modes. Sharp edges/flat faces remain effective; explicit custom normals and the normal modifier take precedence over the data setting. Settings are saved per mesh, without generating a persistent custom-normal attribute. Official Blender ignores the extra fields and uses standard automatic normals in their absence. See [implementation and validation](mesh_normal_weighting.md). The local runtime has been fully rebuilt and verified: 80 background checks, OpenGL/Vulkan Undo and shading checks, Manifold Boolean/Sculpt Trim, and an official Blender file round trip passed. Cold normal calculation on the supplied scan measured 3.73 ms Unweighted and 5.72-6.37 ms weighted at Weight 50; weighted Edit geometry evaluation adds about 23-25 ms over Unweighted, excluding drawing. Source commit: `6f8c2738`. The separately copied Desktop packages and public Windows download have not been updated.
+
 ## Compatibility and persistence
 
-The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Multires Sculpt color uses named per-attribute RGBA grids saved with the base mesh; applying Multires materializes the detail as a regular evaluated color attribute. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero intensity and opacity values survive saving and reopening. Official Blender may discard Bmax-specific properties when re-saving a file.
+The custom bone display properties, origin-axis scale compensation, UV diagnostic settings, background opacity, and UV view aspect are saved in Bmax `.blend` files. Multires Sculpt color uses named per-attribute RGBA grids saved with the base mesh; applying Multires materializes the detail as a regular evaluated color attribute. Old-file migration supplies defaults when the corresponding fields are absent. Explicit zero opacity values survive saving and reopening. Mesh Data weighting is also saved per mesh, defaults to Unweighted for older files, and is not baked into custom normals. Official Blender uses its standard automatic normals when no custom normals or normal modifier is present; re-saving there discards the Bmax weighting settings. Multires paint grids require Bmax; apply Multires in Bmax before transferring finished painted geometry to other builds. Official Blender may discard Bmax-specific properties when re-saving a file.
 
 ## Removed items
 
 The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list. The built-in Tab mode pie gesture remains implemented.
 
 The removal of development tests and the branch cleanup are maintenance changes, not feature removals. All features listed above remain in `main`.
-
-## Added to the published source on 2026-10-07
-
-Object Data Properties > Normals exposes Unweighted, Face Area, Corner Angle, and Face Area & Angle. Unweighted preserves the existing automatic normal calculation. Weight and Threshold affect the three weighted modes. Sharp edges/flat faces remain effective; explicit custom normals and the normal modifier take precedence over the data setting. Settings are saved per mesh, without generating a persistent custom-normal attribute. Official Blender ignores the extra fields and uses standard automatic normals in their absence. See [implementation and validation](mesh_normal_weighting.md). The local runtime has been fully rebuilt and verified: 80 background checks, OpenGL/Vulkan Undo and shading checks, Manifold Boolean/Sculpt Trim, and an official Blender file round trip passed. Cold normal calculation on the supplied scan measured 3.73 ms Unweighted and 5.72-6.37 ms weighted at Weight 50; weighted Edit geometry evaluation adds about 23-25 ms over Unweighted, excluding drawing. Source commit: `6f8c2738`. The separately copied Desktop packages and public Windows download have not been updated.

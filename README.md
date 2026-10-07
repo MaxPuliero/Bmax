@@ -20,11 +20,15 @@ See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented a
 
 ### Multires color painting in Sculpt Mode
 
+<img src="doc/bmax/media/polypaint.webp" alt="Color painting on a Multires mesh in Sculpt Mode" width="720">
+
 Paint, Blur, and Smear can edit color at the current Multires sculpt resolution. RGBA grids are saved with the active color attribute; changing levels retains the highest painted detail, and lower-level strokes update that detail. Undo/redo and saving/reopening preserve the grids. Applying Multires produces a regular color attribute on the evaluated mesh.
 
 Brush updates and undo are restricted to the affected grids and their boundaries, and color storage is committed at stroke completion to keep painting responsive. This implementation supports Float and Byte attributes on Point and Face Corner domains. Color Filter and Mask by Color remain unavailable with Multires. The classic Vertex Paint mode retains its existing behavior. See [usage, storage, and validation notes](doc/bmax/multires_color.md). Publishing this source update does not publish a new Windows download.
 
 ### Object Mode Separate and fast Fill Holes
+
+<img src="doc/bmax/media/fillholes.webp" alt="Filling mesh openings with the Fill Holes operator" width="720">
 
 Added to the source on October 7, 2026, in commit `47896472`. **Object > Separate** and the Object context menu expose **By Loose Parts** and **By Material** using the existing C++ operator. **Fill Holes** now works in Object Mode under **Object > Clean Up** and in the context menu, as well as **Mesh > Clean Up** in Edit Mode.
 
@@ -33,6 +37,8 @@ Fill Holes uses a native C++ fast path for simple boundary loops. Object Mode fi
 On the supplied 624,503-face scan, Object Mode Fill Holes with Face Sets took a median **0.337 s**, closing all 28 boundary loops. The Edit Mode operator took **0.203 s** with the mesh already in Edit Mode. These synchronous background timings exclude interactive undo and redraw. See [implementation and validation notes](doc/bmax/object_mesh_tools.md). The local runtime has been updated; the separately copied Desktop package and public Windows download have not.
 
 ### Mesh Data normal weighting
+
+<img src="doc/bmax/media/weighted.webp" alt="Changing Mesh Data normal weighting to adjust surface shading" width="720">
 
 **Object Data Properties > Normals** offers **Unweighted** (the existing Blender automatic normals), **Face Area**, **Corner Angle**, and **Face Area & Angle**, with **Weight** and **Threshold** controls. Sharp edges and flat faces remain effective. Imported or manually edited custom normals take precedence; the Weighted Normal modifier can override the automatic result with its existing settings.
 
@@ -140,11 +146,13 @@ Adding, removing, or switching the background image preserves the UVs' size and 
 
 ### Branding and Windows executable
 
-Bmax includes a custom splash logo and Windows icons. The executable is named **blender.exe**. It uses the existing Blender 5.2 preferences and startup configuration.
+Bmax includes a custom splash logo and Windows icons, Bmax window titles and command-line version output, and a separate Bmax Windows application identity. The executable is named **blender.exe**. It uses the existing Blender 5.2 preferences and startup configuration.
 
 ## File compatibility
 
 Bmax uses Blender's `.blend` format. Its custom Octahedral Radius, Axis Size, origin-axis uniform-scale compensation, UV diagnostic settings, background opacity, and UV view aspect are stored in Bmax files. Files lacking the UV diagnostic settings open with those flags disabled and missing fill opacities set to 0.5; missing background-image opacity defaults to 1. Saved opacity values are retained. Explicit zero values survive saving and reopening. Official Blender does not expose the Bmax-specific properties and may discard them when re-saving a file. Standard rigging and animation data continue to use Blender's existing structures.
+
+Mesh Data normal weighting is saved per mesh; official Blender ignores the extra settings and uses its standard automatic normals, while preserving ordinary custom normals and modifiers. Re-saving there discards the Bmax weighting choice. Multires paint grids require Bmax: apply Multires in Bmax to transfer a finished painted mesh as a regular color attribute. See the [normal weighting](doc/bmax/mesh_normal_weighting.md) and [Multires color](doc/bmax/multires_color.md) notes for details.
 
 ## Build and source
 
@@ -162,7 +170,7 @@ Object Mode UV diagnostics were additionally checked in 15 cases on each backend
 
 The UV changes were checked in the running editor on both OpenGL and Vulkan: 15 diagnostic cases, including the exact 2-pixel outline at two zoom levels, and 21 background/view cases covering 4K images, rectangular images, removal, automatic image changes, pan, zoom, opacity, and save/reload. Image switches produced no change in the measured UV screen coordinates. Old-file migration and persistence were also verified.
 
-The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
+The armature demonstrations are animated WebP files resized to **35%** of their original dimensions (448 × 336), retaining frame timing and looping. The normal weighting, Fill Holes, and Multires painting demonstrations are animated WebP files encoded losslessly, retaining their original 720-pixel width, height, total duration, frame timing, and looping; identical consecutive frames can be combined. The UV demonstrations use the original animated GIFs, preserving their frame timing, resolution, and looping. The overlap and flipped-UV GIFs are displayed at 448 pixels wide; the image-opacity GIF is displayed at its original 700-pixel width to keep the controls readable.
 
 ## License and attribution
 
