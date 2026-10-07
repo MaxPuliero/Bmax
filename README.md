@@ -32,6 +32,14 @@ Fill Holes uses a native C++ fast path for simple boundary loops. Object Mode fi
 
 On the supplied 624,503-face scan, Object Mode Fill Holes with Face Sets took a median **0.337 s**, closing all 28 boundary loops. The Edit Mode operator took **0.203 s** with the mesh already in Edit Mode. These synchronous background timings exclude interactive undo and redraw. See [implementation and validation notes](doc/bmax/object_mesh_tools.md). The local runtime has been updated; the separately copied Desktop package and public Windows download have not.
 
+### Mesh Data normal weighting
+
+**Object Data Properties > Normals** offers **Unweighted** (the existing Blender automatic normals), **Face Area**, **Corner Angle**, and **Face Area & Angle**, with **Weight** and **Threshold** controls. Sharp edges and flat faces remain effective. Imported or manually edited custom normals take precedence; the Weighted Normal modifier can override the automatic result with its existing settings.
+
+The setting is stored per mesh and does not bake automatic weights into custom normals. Official Blender can open the same `.blend` and uses its standard automatic shading when no custom normals or normal modifier is present. See [normal weighting notes](doc/bmax/mesh_normal_weighting.md) for compatibility and performance checks. The local runtime has been rebuilt and verified. The implementation is included in source commit `6f8c2738` on `main`; the separately copied Desktop packages and public Windows download have not been updated.
+
+On the supplied scan, Face Area & Angle at Weight 50 took **6.84 ms** through Mesh Data versus **377.92 ms** with an active Weighted Normal modifier in Object Mode, and **34.00 ms** versus **417.49 ms** in Edit Mode. These medians measure geometry evaluation plus normal readback, excluding drawing and undo; unchanged cached reads are about 1 ms for both paths. See the notes above for methods and numerical differences.
+
 ### Selected mesh openings
 
 **3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.

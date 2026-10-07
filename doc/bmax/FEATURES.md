@@ -104,3 +104,7 @@ The custom bone display properties, origin-axis scale compensation, UV diagnosti
 The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list. The built-in Tab mode pie gesture remains implemented.
 
 The removal of development tests and the branch cleanup are maintenance changes, not feature removals. All features listed above remain in `main`.
+
+## Added to the published source on 2026-10-07
+
+Object Data Properties > Normals exposes Unweighted, Face Area, Corner Angle, and Face Area & Angle. Unweighted preserves the existing automatic normal calculation. Weight and Threshold affect the three weighted modes. Sharp edges/flat faces remain effective; explicit custom normals and the normal modifier take precedence over the data setting. Settings are saved per mesh, without generating a persistent custom-normal attribute. Official Blender ignores the extra fields and uses standard automatic normals in their absence. See [implementation and validation](mesh_normal_weighting.md). The local runtime has been fully rebuilt and verified: 80 background checks, OpenGL/Vulkan Undo and shading checks, Manifold Boolean/Sculpt Trim, and an official Blender file round trip passed. Cold normal calculation on the supplied scan measured 3.73 ms Unweighted and 5.72-6.37 ms weighted at Weight 50; weighted Edit geometry evaluation adds about 23-25 ms over Unweighted, excluding drawing. Source commit: `6f8c2738`. The separately copied Desktop packages and public Windows download have not been updated.
