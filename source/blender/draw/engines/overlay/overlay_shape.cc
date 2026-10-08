@@ -95,10 +95,11 @@ static const std::array<float3, 12> bone_box_solid_normals = {
 
 static const std::array<float3, 6> bone_octahedral_verts{
     float3{0.0f, 0.0f, 0.0f},
-    {0.1f, 0.1f, 0.1f},
-    {0.1f, 0.1f, -0.1f},
-    {-0.1f, 0.1f, -0.1f},
-    {-0.1f, 0.1f, 0.1f},
+    /* The wide end is flat; the display matrix places it outside the Head sphere. */
+    {0.1f, 0.0f, 0.1f},
+    {0.1f, 0.0f, -0.1f},
+    {-0.1f, 0.0f, -0.1f},
+    {-0.1f, 0.0f, 0.1f},
     {0.0f, 1.0f, 0.0f},
 };
 
@@ -158,14 +159,14 @@ static const std::array<uint4, 12> bone_octahedral_wire_lines_adjacency = {
 
 /* aligned with bone_octahedral_solid_tris */
 static const float bone_octahedral_solid_normals[8][3] = {
-    {M_SQRT1_2, -M_SQRT1_2, 0.00000000f},
-    {-0.00000000f, -M_SQRT1_2, -M_SQRT1_2},
-    {-M_SQRT1_2, -M_SQRT1_2, 0.00000000f},
-    {0.00000000f, -M_SQRT1_2, M_SQRT1_2},
-    {0.99388373f, 0.11043154f, -0.00000000f},
-    {0.00000000f, 0.11043154f, -0.99388373f},
-    {-0.99388373f, 0.11043154f, 0.00000000f},
-    {0.00000000f, 0.11043154f, 0.99388373f},
+    {0.0f, -1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
+    {0.99503719f, 0.09950372f, 0.0f},
+    {0.0f, 0.09950372f, -0.99503719f},
+    {-0.99503719f, 0.09950372f, 0.0f},
+    {0.0f, 0.09950372f, 0.99503719f},
 };
 
 static void append_line_loop(

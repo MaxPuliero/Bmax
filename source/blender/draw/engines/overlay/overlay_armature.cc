@@ -24,6 +24,8 @@
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
+#include "BLI_vector.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.hh"
@@ -1462,8 +1464,89 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
   auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
-  auto draw_body = [&](const float4x4 &display_mat) {
-    float4x4 bone_mat = ctx->ob->object_to_world() * display_mat;
+  const float radius = max_ff(bone.octahedral_radius(), 0.000001f);
+
+  /* Use the endpoint spheres' unscaled space. Object scale is applied afterward;
+   * pose scale and shear remain in the display matrix, but not in the radius test. */
+  float sphere_basis[4][4], sphere_inverse[4][4];
+  if (bone.is_posebone()) {
+    copy_m4_m4(sphere_basis, bone.as_posebone()->pose_mat);
+  }
+  else {
+    unit_m4(sphere_basis);
+  }
+  unit_m4(sphere_inverse);
+  const bool has_sphere_space = invert_m4_m4(sphere_inverse, sphere_basis);
+  const float4x4 sphere_space(sphere_inverse);
+  const float3 head_center = math::transform_point(sphere_space, float3(bone.disp_mat()[3]));
+  const float3 tail_center = math::transform_point(sphere_space, float3(bone.disp_tail_mat()[3]));
+
+  /* Trim ends inside a real endpoint sphere, including radii spanning several
+   * short spline segments. Internal joints outside the spheres keep no gap. */
+  auto trim_endpoint = [&](const float3 &start,
+                           const float3 &delta,
+                           const float3 &center,
+                           float &start_fac,
+                           float &end_fac) {
+    const float3 offset = start - center;
+    const float a = math::dot(delta, delta);
+    const float b = math::dot(offset, delta);
+    const float c = math::dot(offset, offset) - radius * radius;
+    const float discriminant = b * b - a * c;
+    if (discriminant < 0.0f) {
+      return;
+    }
+    const float root = sqrtf(max_ff(discriminant, 0.0f));
+    const float enter = (-b - root) / a;
+    const float exit = (-b + root) / a;
+    if (enter <= start_fac && exit > start_fac) {
+      start_fac = min_ff(exit, 1.0f);
+    }
+    if (exit >= end_fac && enter < end_fac) {
+      end_fac = max_ff(enter, 0.0f);
+    }
+  };
+
+  auto draw_body = [&](float4x4 display_mat, const float3 &end) {
+    if (!has_sphere_space) {
+      return;
+    }
+    const float3 start = display_mat.location();
+    const float3 delta = end - start;
+    const float3 sphere_start = math::transform_point(sphere_space, start);
+    const float3 sphere_delta = math::transform_direction(sphere_space, delta);
+    if (math::dot(sphere_delta, sphere_delta) < 1e-16f) {
+      return;
+    }
+    float start_fac = 0.0f, end_fac = 1.0f;
+    trim_endpoint(sphere_start, sphere_delta, head_center, start_fac, end_fac);
+    trim_endpoint(sphere_start, sphere_delta, tail_center, start_fac, end_fac);
+    /* Overlapping endpoint spheres retain their display and picking without an
+     * inverted or degenerate body between them. */
+    if (end_fac - start_fac <= 1e-6f) {
+      return;
+    }
+    /* The cropped outer segment's transverse plane must be tangent to the sphere,
+     * not merely have its center on the sphere. B-Bone roll/scale compensation can
+     * otherwise leave a tilted base intersecting an unchanged endpoint sphere. */
+    if (start_fac > 0.0f || end_fac < 1.0f) {
+      const float3 contact = sphere_start +
+                             sphere_delta * (start_fac > 0.0f ? start_fac : end_fac);
+      const float3 center = start_fac > 0.0f ? head_center : tail_center;
+      const float3 normal = math::normalize(contact - center);
+      for (const int axis : {0, 2}) {
+        const float3 original = math::transform_direction(sphere_space, display_mat[axis].xyz());
+        float3 tangent = original - normal * math::dot(original, normal);
+        if (math::dot(tangent, tangent) < 1e-16f) {
+          return;
+        }
+        tangent *= math::length(original) / math::length(tangent);
+        display_mat[axis].xyz() = math::transform_direction(float4x4(sphere_basis), tangent);
+      }
+    }
+    display_mat.location() = start + delta * start_fac;
+    display_mat.y_axis() = delta * (end_fac - start_fac);
+    const float4x4 bone_mat = ctx->ob->object_to_world() * display_mat;
     if (ctx->is_filled) {
       ctx->bone_buf->octahedral_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
     }
@@ -1473,26 +1556,32 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   };
 
   if (bone.segments() > 1) {
-    /* Keep the whole bone's selection ID, but draw each evaluated B-Bone segment. */
+    /* Join at the actual next segment position, not its nominal tangent length.
+     * This keeps displayed bodies connected for curved and rolled B-Bones. */
+    Vector<float4x4, 32> segments;
     if (bone.is_posebone()) {
-      for (const Mat4 &segment : Span<Mat4>(
-               reinterpret_cast<Mat4 *>(bone.as_posebone()->draw_data->bbone_matrix),
-               bone.segments()))
+      for (const Mat4 &segment :
+           Span<Mat4>(reinterpret_cast<Mat4 *>(bone.as_posebone()->draw_data->bbone_matrix),
+                      bone.segments()))
       {
-        draw_body(float4x4(segment.mat));
+        segments.append(float4x4(segment.mat));
       }
     }
     else {
       for (int i = 0; i < bone.segments(); i++) {
-        draw_body(float4x4(bone.as_editbone()->disp_bbone_mat[i]));
+        segments.append(float4x4(bone.as_editbone()->disp_bbone_mat[i]));
       }
+    }
+    for (const int i : segments.index_range()) {
+      const float3 end = i + 1 < segments.size() ? segments[i + 1].location() :
+                                                   float3(bone.disp_tail_mat()[3]);
+      draw_body(segments[i], end);
     }
   }
   else {
     float display_mat[4][4];
     copy_m4_m4(display_mat, bone.disp_mat());
-    /* Keep the original single-segment display and its evaluated pose basis. */
-    const float transverse_scale = max_ff(bone.octahedral_radius(), 0.000001f) / 0.1f;
+    const float transverse_scale = radius / 0.1f;
     if (bone.is_posebone()) {
       const bPoseChannel *pchan = bone.as_posebone();
       mul_v3_v3fl(display_mat[0], pchan->pose_mat[0], transverse_scale);
@@ -1502,7 +1591,7 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
       normalize_v3_length(display_mat[0], transverse_scale);
       normalize_v3_length(display_mat[2], transverse_scale);
     }
-    draw_body(float4x4(display_mat));
+    draw_body(float4x4(display_mat), float3(bone.disp_tail_mat()[3]));
   }
 
   /* Only the real Head and Tail get endpoint spheres, not the internal segment joints. */
