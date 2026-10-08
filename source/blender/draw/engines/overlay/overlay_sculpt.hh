@@ -97,7 +97,9 @@ class Sculpts : Overlay {
       pass.shader_set(res.shaders->sculpt_curves_cage.get());
       pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
       pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
+      res.bind_hair_curves_theme(pass);
       pass.push_constant("opacity", curve_cage_opacity);
+      pass.push_constant("depth_bias", 1e-3f);
     }
   }
 
@@ -154,7 +156,7 @@ class Sculpts : Overlay {
       ResourceHandleRange handle = manager.unique_handle(ob_ref);
 
       gpu::Batch *geometry = DRW_curves_batch_cache_get_sculpt_curves_cage(&curves);
-      sculpt_curve_cage_.draw(geometry, handle);
+      sculpt_curve_cage_.draw_expand(geometry, GPU_PRIM_TRIS, 2, 1, handle);
     }
   }
 

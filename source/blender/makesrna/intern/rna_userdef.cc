@@ -3113,6 +3113,31 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
 
   /* Curve Object specific */
 
+  prop = RNA_def_property(srna, "hair_curves", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "hair_curves");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop,
+                           "Hair Curves Unselected",
+                           "Color of unselected Hair Curves guides in Edit and Sculpt Mode");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "hair_curves_select", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "hair_curves_select");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop,
+                           "Hair Curves Selected",
+                           "Color of selected Hair Curves guides in Edit and Sculpt Mode");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "hair_curves_width", PROP_INT, PROP_PIXEL);
+  RNA_def_property_int_sdna(prop, nullptr, "hair_curves_width");
+  RNA_def_property_range(prop, 1, 16);
+  RNA_def_property_ui_text(
+      prop,
+      "Hair Curves Width",
+      "Width of Hair Curves guides in physical pixels, independent of hair radius");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   prop = RNA_def_property(srna, "nurb_uline", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, nullptr, "nurb_uline");
   RNA_def_property_array(prop, 3);

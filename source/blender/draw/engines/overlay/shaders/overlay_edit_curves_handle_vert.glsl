@@ -173,7 +173,7 @@ void geometry_main(VertOut geom_in[2],
         theme.colors.nurb_uline, theme.colors.nurb_sel_uline, geom_in[line_end_point].sel);
   }
   else {
-    inner_color = mix(theme.colors.wire, theme.colors.vert_select, geom_in[line_end_point].sel);
+    inner_color = mix(unselected_color, selected_color, geom_in[line_end_point].sel);
   }
 
   /* Minimize active color bleeding on inner_color. */
@@ -181,7 +181,14 @@ void geometry_main(VertOut geom_in[2],
   float4 outer_color = is_active ? active_color : float4(inner_color.rgb, 0.0f);
 
   float2 v1_2 = (v2.xy / v2.w - v1.xy / v1.w);
-  float2 offset = theme.sizes.edge * 4.0f * uniform_buf.size_viewport_inv; /* 4.0f is eyeballed */
+  bool is_guide = (geom_in[line_end_point].flag &
+                   (EDIT_CURVES_BEZIER_HANDLE | EDIT_CURVES_BEZIER_KNOT |
+                    EDIT_CURVES_NURBS_CONTROL_POINT)) == 0u;
+  float2 offset = (is_guide ? line_width : theme.sizes.edge * 4.0f) *
+                  uniform_buf.size_viewport_inv;
+  if (is_guide) {
+    outer_color = float4(inner_color.rgb, 0.0f);
+  }
 
   if (abs(v1_2.x) <= M_TAN_PI_BY_8 * abs(v1_2.y)) {
     offset.y = 0.0f;

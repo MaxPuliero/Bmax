@@ -93,6 +93,7 @@ struct CurvesBatchCache {
 
   gpu::Batch *edit_curves_lines;
   gpu::VertBuf *edit_curves_lines_pos;
+  gpu::VertBuf *edit_curves_lines_selection;
   gpu::IndexBuf *edit_curves_lines_ibo;
 
   /* Whether the cache is invalid. */
@@ -136,6 +137,7 @@ static void clear_edit_data(CurvesBatchCache *cache)
   GPU_BATCH_DISCARD_SAFE(cache->sculpt_cage);
 
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_curves_lines_pos);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edit_curves_lines_selection);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_curves_lines_ibo);
   GPU_BATCH_DISCARD_SAFE(cache->edit_curves_lines);
 }
@@ -412,64 +414,38 @@ static void create_edit_points_selection(const OffsetIndices<int> points_by_curv
   }
 }
 
-static void create_lines_ibo_no_cyclic(const OffsetIndices<int> points_by_curve,
-                                       gpu::IndexBuf &ibo)
-{
-  const int points_num = points_by_curve.total_size();
-  const int curves_num = points_by_curve.size();
-  const int indices_num = points_num + curves_num;
-  GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_LINE_STRIP, indices_num, points_num);
-  MutableSpan<uint> ibo_data = GPU_indexbuf_get_data(&builder);
-  threading::parallel_for(IndexRange(curves_num), 1024, [&](const IndexRange range) {
-    for (const int curve : range) {
-      const IndexRange points = points_by_curve[curve];
-      const IndexRange ibo_range = IndexRange(points.start() + curve, points.size() + 1);
-      for (const int i : points.index_range()) {
-        ibo_data[ibo_range[i]] = points[i];
-      }
-      ibo_data[ibo_range.last()] = gpu::RESTART_INDEX;
-    }
-  });
-  GPU_indexbuf_build_in_place_ex(&builder, 0, points_num, true, &ibo);
-}
-
-static void create_lines_ibo_with_cyclic(const OffsetIndices<int> points_by_curve,
-                                         const Span<bool> cyclic,
-                                         gpu::IndexBuf &ibo)
-{
-  const int points_num = points_by_curve.total_size();
-  const int curves_num = points_by_curve.size();
-  const int indices_num = points_num + curves_num * 2;
-  GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_LINE_STRIP, indices_num, points_num);
-  MutableSpan<uint> ibo_data = GPU_indexbuf_get_data(&builder);
-  threading::parallel_for(IndexRange(curves_num), 1024, [&](const IndexRange range) {
-    for (const int curve : range) {
-      const IndexRange points = points_by_curve[curve];
-      const IndexRange ibo_range = IndexRange(points.start() + curve * 2, points.size() + 2);
-      for (const int i : points.index_range()) {
-        ibo_data[ibo_range[i]] = points[i];
-      }
-      ibo_data[ibo_range.last(1)] = cyclic[curve] ? points.first() : gpu::RESTART_INDEX;
-      ibo_data[ibo_range.last()] = gpu::RESTART_INDEX;
-    }
-  });
-  GPU_indexbuf_build_in_place_ex(&builder, 0, points_num, true, &ibo);
-}
-
+/* Explicit segments allow portable screen-space expansion without primitive restart. */
 static void create_lines_ibo_with_cyclic(const OffsetIndices<int> points_by_curve,
                                          const VArray<bool> &cyclic,
                                          gpu::IndexBuf &ibo)
 {
-  const array_utils::BooleanMix cyclic_mix = array_utils::booleans_mix_calc(cyclic);
-  if (cyclic_mix == array_utils::BooleanMix::AllFalse) {
-    create_lines_ibo_no_cyclic(points_by_curve, ibo);
+  const int points_num = points_by_curve.total_size();
+  Array<int> segment_offsets(points_by_curve.size() + 1);
+  segment_offsets[0] = 0;
+  for (const int curve : points_by_curve.index_range()) {
+    const int points = points_by_curve[curve].size();
+    segment_offsets[curve + 1] = segment_offsets[curve] + std::max(points - 1, 0) +
+                                 int(cyclic[curve] && points > 1);
   }
-  else {
-    const VArraySpan<bool> cyclic_span(cyclic);
-    create_lines_ibo_with_cyclic(points_by_curve, cyclic_span, ibo);
-  }
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, segment_offsets.last(), points_num);
+  MutableSpan<uint2> segments = GPU_indexbuf_get_data(&builder).cast<uint2>();
+  threading::parallel_for(points_by_curve.index_range(), 1024, [&](const IndexRange range) {
+    for (const int curve : range) {
+      const IndexRange points = points_by_curve[curve];
+      if (points.size() < 2) {
+        continue;
+      }
+      int segment = segment_offsets[curve];
+      for (const int i : points.index_range().drop_back(1)) {
+        segments[segment++] = uint2(points[i], points[i + 1]);
+      }
+      if (cyclic[curve]) {
+        segments[segment] = uint2(points.last(), points.first());
+      }
+    }
+  });
+  GPU_indexbuf_build_in_place_ex(&builder, 0, points_num, false, &ibo);
 }
 
 static void create_segments_with_cyclic(const OffsetIndices<int> points_by_curve,
@@ -1099,7 +1075,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.edit_points, &cache.edit_points_selection);
     is_edit_data_needed = true;
   }
-  if (DRW_batch_requested(cache.sculpt_cage, GPU_PRIM_LINE_STRIP)) {
+  if (DRW_batch_requested(cache.sculpt_cage, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache.sculpt_cage, &cache.sculpt_cage_ibo);
     DRW_vbo_request(cache.sculpt_cage, &cache.edit_points_pos);
     DRW_vbo_request(cache.sculpt_cage, &cache.edit_points_data);
@@ -1114,8 +1090,9 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.edit_handles, &cache.edit_points_selection);
     is_edit_data_needed = true;
   }
-  if (DRW_batch_requested(cache.edit_curves_lines, GPU_PRIM_LINE_STRIP)) {
+  if (DRW_batch_requested(cache.edit_curves_lines, GPU_PRIM_LINES)) {
     DRW_vbo_request(cache.edit_curves_lines, &cache.edit_curves_lines_pos);
+    DRW_vbo_request(cache.edit_curves_lines, &cache.edit_curves_lines_selection);
     DRW_ibo_request(cache.edit_curves_lines, &cache.edit_curves_lines_ibo);
   }
 
@@ -1128,11 +1105,26 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
           bke::crazyspace::GeometryDeformation();
 
   if (DRW_ibo_requested(cache.sculpt_cage_ibo)) {
-    create_lines_ibo_no_cyclic(points_by_curve, *cache.sculpt_cage_ibo);
+    create_lines_ibo_with_cyclic(points_by_curve,
+                                 VArray<bool>::from_single(false, curves_orig.curves_num()),
+                                 *cache.sculpt_cage_ibo);
   }
 
   if (DRW_vbo_requested(cache.edit_curves_lines_pos)) {
     create_edit_points_position_vbo(curves_orig, deformation, cache);
+  }
+
+  if (DRW_vbo_requested(cache.edit_curves_lines_selection)) {
+    const GPUVertFormat format = GPU_vertformat_from_attribute("selection",
+                                                               gpu::VertAttrType::SFLOAT_32);
+    gpu::VertBuf &vbo = *cache.edit_curves_lines_selection;
+    GPU_vertbuf_init_with_format(vbo, format);
+    GPU_vertbuf_data_alloc(vbo, curves_orig.evaluated_points_num());
+    const VArray<float> selection = *curves_orig.attributes().lookup_or_default<float>(
+        ".selection", bke::AttrDomain::Point, 1.0f);
+    const VArraySpan<float> selection_span(selection);
+    curves_orig.ensure_can_interpolate_to_evaluated();
+    curves_orig.interpolate_to_evaluated(selection_span, vbo.data<float>());
   }
 
   if (DRW_ibo_requested(cache.edit_curves_lines_ibo)) {

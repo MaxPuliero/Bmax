@@ -1430,6 +1430,17 @@ class USERPREF_PT_theme_strip_colors(ThemePanel, CenterAlignMixIn, Panel):
 
 
 # Base class for dynamically defined theme-space panels.
+# This is not registered; used by the generated Hair Curves theme panel.
+class PreferenceThemeHairCurvesPanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        theme = context.preferences.themes[0].view_3d
+        layout.prop(theme, "hair_curves_width", text="Width")
+        layout.prop(theme, "hair_curves_select", text="Selected")
+        layout.prop(theme, "hair_curves", text="Unselected")
+
+
 # This is not registered.
 class PreferenceThemeSpacePanel:
     @staticmethod
@@ -1442,7 +1453,7 @@ class PreferenceThemeSpacePanel:
         props_type = {}
 
         for prop in themedata.rna_type.properties:
-            if prop.identifier == "rna_type":
+            if prop.identifier in {"rna_type", "hair_curves", "hair_curves_select", "hair_curves_width"}:
                 continue
 
             props_type.setdefault((prop.type, prop.subtype), []).append(prop)
@@ -1523,7 +1534,7 @@ class ThemeGenericClassGenerator:
             props_type = {}
 
             for prop in rna_type.properties:
-                if prop.identifier == "rna_type":
+                if prop.identifier in {"rna_type", "hair_curves", "hair_curves_select", "hair_curves_width"}:
                     continue
 
                 props_type.setdefault((prop.type, prop.subtype), []).append(prop)
@@ -1570,6 +1581,14 @@ class ThemeGenericClassGenerator:
                 "icon": theme_area.icon,
                 "datapath": theme_area.identifier.lower(),
             })
+
+            if theme_area.identifier == 'VIEW_3D':
+                yield type("USERPREF_PT_theme_view_3d_hair_curves", (ThemePanel, Panel), {
+                    "bl_label": "Hair Curves",
+                    "bl_options": {'DEFAULT_CLOSED'},
+                    "bl_parent_id": panel_id,
+                    "draw": PreferenceThemeHairCurvesPanel.draw,
+                })
 
             yield from ThemeGenericClassGenerator.generate_theme_area_child_panel_classes(
                 panel_id, Theme.bl_rna.properties[theme_area.identifier.lower()].fixed_type,

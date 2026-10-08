@@ -408,7 +408,10 @@ typedef struct ThemeSpace {
   unsigned char gp_wire_edit[4];
   unsigned char gp_vertex_size;
   unsigned char gp_vertex[4], gp_vertex_select[4];
-  char _pad11[12];
+  /** Hair Curves edit/sculpt guides; reuse padding to preserve the existing DNA layout. */
+  unsigned char hair_curves[4], hair_curves_select[4];
+  unsigned char hair_curves_width;
+  char _pad11[3];
 
   unsigned char preview_back[4];
   unsigned char preview_stitch_face[4];

@@ -73,6 +73,13 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 #define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_FILE_ATLEAST(userdef, ver, subver)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
+  /* Bmax: zero is the unset sentinel in preferences predating Hair Curves theme controls. */
+  if (btheme->space_view3d.hair_curves_width == 0) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.hair_curves);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.hair_curves_select);
+    btheme->space_view3d.hair_curves_width = U_theme_default.space_view3d.hair_curves_width;
+  }
+
   if (!USER_VERSION_ATLEAST(300, 41)) {
     MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }

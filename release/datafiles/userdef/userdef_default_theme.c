@@ -431,6 +431,9 @@ const bTheme U_theme_default = {
     .gp_vertex = RGBA(0x000000ff),
     .gp_vertex_select = RGBA(0xff8500ff),
     .skin_root = RGBA(0xb44d4dff),
+    .hair_curves = RGBA(0x909000ff),
+    .hair_curves_select = RGBA(0xffff00ff),
+    .hair_curves_width = 4,
   },
   .space_file = {
     .back = RGBA(0x28282800),

@@ -459,7 +459,7 @@ class ShaderModule {
   StaticShader background_fill = {"overlay_background"};
   StaticShader background_clip_bound = {"overlay_clipbound"};
   StaticShader curve_edit_points = shader_clippable("overlay_edit_curves_point");
-  StaticShader curve_edit_line = shader_clippable("overlay_edit_particle_strand");
+  StaticShader curve_edit_line = shader_clippable("overlay_sculpt_curves_cage");
   StaticShader curve_edit_handles = shader_clippable("overlay_edit_curves_handle");
   StaticShader facing = shader_clippable("overlay_facing");
   StaticShader grid = {"overlay_grid_next"};
@@ -593,6 +593,9 @@ struct GreasePencilDepthPlane {
 };
 
 struct Resources : public select::SelectMap {
+  /* Bind the dedicated Hair Curves guide theme without extending the shared globals layout. */
+  void bind_hair_curves_theme(PassSimple &pass) const;
+  void bind_hair_curves_theme(PassSimple::Sub &pass) const;
   ShaderModule *shaders = nullptr;
 
   /* Overlay Color. */

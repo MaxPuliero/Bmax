@@ -451,6 +451,29 @@ void Resources::update_theme_settings(const DRWContext *ctx, const State &state)
   globals_buf.push_update();
 }
 
+template<typename PassT> static void bind_hair_curves_theme_impl(PassT &pass)
+{
+  const ThemeSpace &theme = ui::theme::theme_get()->space_view3d;
+  float4 unselected, selected;
+  rgba_uchar_to_float(unselected, theme.hair_curves);
+  rgba_uchar_to_float(selected, theme.hair_curves_select);
+  srgb_to_linearrgb_v4(unselected, unselected);
+  srgb_to_linearrgb_v4(selected, selected);
+  pass.push_constant("unselected_color", unselected);
+  pass.push_constant("selected_color", selected);
+  pass.push_constant("line_width", float(theme.hair_curves_width));
+}
+
+void Resources::bind_hair_curves_theme(PassSimple &pass) const
+{
+  bind_hair_curves_theme_impl(pass);
+}
+
+void Resources::bind_hair_curves_theme(PassSimple::Sub &pass) const
+{
+  bind_hair_curves_theme_impl(pass);
+}
+
 void Instance::begin_sync()
 {
   /* TODO(fclem): Against design. Should not sync depending on view. */
