@@ -18,6 +18,12 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-8, 2026, their source commits, and removed items.
 
+### Hair Curves guide theme
+
+**Preferences > Themes > 3D Viewport > Hair Curves** controls **Width**, **Selected**, and **Unselected** for individual Hair Curves guides in Edit and Sculpt Mode. Defaults are **4 physical pixels**, bright yellow selected guides, and dark yellow unselected guides. Soft selections blend the two colors. These controls are independent of NURBS and object-selection colors.
+
+In Sculpt Mode, enable **Viewport Overlays > Sculpt > Cage** and adjust **Cage Opacity** to show the editable guides, including Hair Curves objects with Geometry Nodes modifiers. Generated strands remain part of the evaluated hair; the cage represents editable source guides. Hair radii, materials, rendering, and curve geometry are unchanged. Existing preferences receive the new defaults without resetting other theme settings. The local Windows runtime is updated and verified with OpenGL and Vulkan. The implementation is included in source commit `0fedd7e24fb9` on `main`; separately copied Desktop packages and the public download have not been updated.
+
 ### Multires color painting in Sculpt Mode
 
 <img src="doc/bmax/media/polypaint.webp" alt="Color painting on a Multires mesh in Sculpt Mode" width="720">

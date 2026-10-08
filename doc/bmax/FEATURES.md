@@ -4,6 +4,10 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Hair Curves guide theme (2026-10-08)
+
+- **Hair Curves guide theme:** dedicated Width/Selected/Unselected controls under Preferences > Themes > 3D Viewport > Hair Curves. Editable guides use four physical pixels by default, with yellow selected and dark yellow unselected colors in Edit/Sculpt Mode. Sculpt Cage Opacity remains effective; soft selection blends the colors. Geometry Nodes generated strands and physical hair radii retain their existing behavior. Previous preferences acquire these defaults without resetting other theme settings. The local runtime is updated and verified on OpenGL/Vulkan. Source commit: `0fedd7e24fb9`. The Desktop packages and public binary download have not been updated.
+
 ## Added to the published source on 2026-10-01
 
 Commit: `a0f495c4`.
