@@ -2,7 +2,7 @@
 
 The option is **enabled by default**, including viewports saved before the option existed. Disabling it is saved with the viewport.
 
-Enable **3D Viewport > Overlays > Objects > Mesh Holes** with **Outline Selected**. The overlay draws edges incident to exactly one face on selected meshes in Object Mode, using the selection color and half the theme outline width in physical pixels. It excludes loose edges, shared edges, and edges with three or more face users. Hidden faces still count towards topology, so hiding a face does not create a false opening along its shared edges.
+Enable **3D Viewport > Overlays > Objects > Mesh Holes** with **Outline Selected**. The overlay draws edges incident to exactly one face on selected meshes in Object Mode, using the selection color and half the theme outline width, with a minimum of two physical pixels. It excludes loose edges, shared edges, and edges with three or more face users. Hidden faces still count towards topology, so hiding a face does not create a false opening along its shared edges.
 
 Visible boundaries respect scene depth. X-Ray and In Front objects show their boundaries without scene occlusion. World clipping is supported. The ordinary outer selection outline continues to be drawn.
 

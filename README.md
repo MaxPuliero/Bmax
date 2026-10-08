@@ -16,7 +16,7 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-7, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-8, 2026, their source commits, and removed items.
 
 ### Multires color painting in Sculpt Mode
 
@@ -68,7 +68,7 @@ The implementation is included in source commit `f68b422571e9` on `main`, and th
 
 <img src="doc/bmax/media/spotholes.webp" alt="Toggling Mesh Holes to highlight open boundary edges of a selected mesh" width="720">
 
-**3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.
+**3D Viewport > Overlays > Objects > Mesh Holes**, enabled by default, highlights open boundary edges of selected meshes in Object Mode. The line uses the selection color and half the theme's selection outline width, with a minimum of two physical pixels. Closed meshes and internal shared edges receive no extra lines. The option follows **Outline Selected**, the master Overlays toggle, X-Ray, and the object's In Front setting.
 
 The boundary geometry is cached until the mesh changes and supports evaluated meshes and subdivision. See [the implementation and validation notes](doc/bmax/mesh_holes.md).
 
@@ -84,13 +84,19 @@ Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > It
 
 ### Independent Axis Size
 
-**Axis Size** appears directly below Octahedral Radius. It controls the display axes independently of bone radius and length. The default is **0.03 Blender units**, or **3 cm** with standard metric units. The object's scale still affects viewport display.
+**Axis Size** appears directly below Octahedral Radius. It controls the display axes independently of bone radius and length. The default is **0.03 Blender units**, or **3 cm** with standard metric units. The object's scale still affects viewport display. Enabled bone axes always draw in front of scene geometry and other bones, even when the armature's In Front setting is off.
 
 ![Axis Size demonstration](doc/bmax/media/bmax_axis.webp)
 
 ### Default new bone length
 
 New armatures and **Add Bone** in Edit Mode start with a bone length of **20 cm**: `0.2` Blender units with standard metric units, adjusted for the scene's unit scale. Explicit operator lengths and radii are respected. Existing bones, duplicates, and extrusions keep their existing lengths and behavior; armature object scale still applies.
+
+### New armature and bone display defaults
+
+New armature objects use **Octahedral**, **In Front**, and object **Wire** display. Newly created bones default to Octahedral independently of the armature display type. **Add Bone** also enables In Front and Wire on the existing armature object. Existing bones retain their per-bone display settings; duplicates and extrusions retain their source settings.
+
+Mesh Holes and its tooltip are translated into Japanese, Italian, French, and Spanish. This viewport polishing is included in source commit `5f6eba240126` and in the verified local runtime. Separately copied Desktop packages and the public Windows download require their own update.
 
 ### Default new bone rotation mode
 

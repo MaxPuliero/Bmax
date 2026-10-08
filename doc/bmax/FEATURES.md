@@ -1,6 +1,6 @@
 # Bmax feature inventory
 
-This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-07**, including the complete history on `main`, the changed source files relative to the imported snapshot, and the per-feature implementation notes. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
+This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-08**, including the complete history on `main`, the changed source files relative to the imported snapshot, and the per-feature implementation notes. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
@@ -40,7 +40,7 @@ Source commits: Mesh Holes `a5cd97e8`; 20 cm bone defaults and armature selectio
 
 | Feature | Implemented behavior |
 | --- | --- |
-| Mesh Holes | 3D Viewport > Overlays > Objects > Mesh Holes highlights open boundary edges of selected meshes in Object Mode. Enabled by default, including older saved viewports. Uses the selection color and half the selection-outline width. Supports evaluated and subdivision meshes, X-Ray, In Front, clipping, and scene occlusion. Closed geometry, internal shared edges, loose edges, and edges incident to more than two faces receive no extra boundary lines. |
+| Mesh Holes | 3D Viewport > Overlays > Objects > Mesh Holes highlights open boundary edges of selected meshes in Object Mode. Enabled by default, including older saved viewports. Uses the selection color and half the selection-outline width, with a minimum of two physical pixels. Supports evaluated and subdivision meshes, X-Ray, In Front, clipping, and scene occlusion. Closed geometry, internal shared edges, loose edges, and edges incident to more than two faces receive no extra boundary lines. |
 | Default new bone length | New armatures and Add Bone in Edit Mode default to 20 cm, adjusted for scene unit scale (`0.2` Blender units at standard metric scale). Explicit sizes are respected; existing bones, duplicates, and extrusions are unchanged. Armature object scale still applies. |
 | Coincident selection outlines | Armature display submits unselected elements first, selected elements next, and selected active elements last. Selection outlines no longer depend on bone creation order at equal depth; existing depth tests and picking are retained. Object Mode also orders empty shapes/image frames, legacy curve wires, lattice cages, and loose mesh edges/points across their overlay passes. Coincident selected mesh-object outlines were also verified. |
 
@@ -118,3 +118,13 @@ The custom bone display properties, origin-axis scale compensation, UV diagnosti
 The bundled Max Puliero Pie Menu List addon was removed on 2026-10-02 (`00fbd0ac`) and is not included in the current feature list.
 
 The removal of development tests and the branch cleanup are maintenance changes, not feature removals. All features listed above remain in `main`.
+
+## Viewport polishing added to the source on 2026-10-08
+
+Implementation commit: `5f6eba240126`.
+
+- Enabled bone axes always draw in front of scene geometry and both armature layers; clipping and object selection keep their existing behavior.
+- New armature objects default to Octahedral, In Front and object Wire. New bones default to Octahedral independently of their armature display type. Add Bone enables In Front and Wire on the armature object. Existing per-bone settings and copied/extruded display types are preserved.
+- Mesh Holes uses at least two physical pixels, retaining the half-theme-width rule above that minimum. Its label and tooltip have Japanese, Italian, French and Spanish translations.
+
+The local runtime is updated and verified; source publication does not update the separately copied Desktop packages or public Windows download. See the build guide for verification details.

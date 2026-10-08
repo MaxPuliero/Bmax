@@ -19,9 +19,12 @@
 ## Comportamenti da preservare
 
 - Nuove armature e Add Bone in Edit Mode partono da 20 cm, compensando la scala delle unità della scena. Rispettare i valori espliciti; duplicazioni, estrusioni e ossa esistenti mantengono il loro comportamento. La scala dell'oggetto armatura continua ad applicarsi.
+- Nuovi oggetti armatura usano Octahedral, In Front e display oggetto Wire. Le nuove ossa usano Octahedral indipendentemente dal tipo di display dell'armatura; Add Bone abilita In Front e Wire sull'oggetto esistente. Preservare i tipi di display delle ossa esistenti e quelli copiati da duplicazione ed estrusione.
+- Gli assi abilitati delle ossa selezionate si disegnano sempre davanti alla geometria e alle ossa, anche con In Front disabilitato sull'armatura. Usare il passaggio finale dedicato senza test o scrittura della profondità; preservare clipping, dimensioni indipendenti, filtri di selezione e percorso del picking.
+- Mesh Holes usa metà dello spessore del contorno del tema, con minimo di 2 pixel fisici. Preservare occlusione, X-Ray, In Front e la regola topologica delle boundary edges. Mantenere etichetta e tooltip tradotti in giapponese, italiano, francese e spagnolo nei cataloghi PO e verificare i cataloghi installati dopo INSTALL.
 - Gli elementi coincidenti devono mantenere il colore selezionato, con priorità all'elemento selezionato attivo. Le armature usano buffer distinti per questa priorità; in Object Mode anche empty, curve legacy, lattice e geometria mesh senza facce coordinano la priorità dei rispettivi overlay.
 - Non confondere il contorno con il puntino dell'origine dell'oggetto, che appartiene a un overlay separato.
-- Preservare profondità, occlusione, clipping, In Front, X-Ray e picking GPU. Non cambiare la matematica di valutazione delle ossa per correggere la visualizzazione.
+- Preservare profondità, occlusione, clipping, In Front, X-Ray e picking GPU per corpi e contorni; gli assi delle ossa fanno eccezione per la sola occlusione visiva. Non cambiare la matematica di valutazione delle ossa per correggere la visualizzazione.
 - Per modifiche ai contorni, verificare l'ordine inverso di creazione, la selezione multipla con oggetto attivo e le coppie di tipi diversi coinvolti. Verificare OpenGL/Vulkan, l'occlusione e il picking quando disponibili, usando solo artefatti temporanei.
 
 ## Colore Multires in Sculpt Mode
