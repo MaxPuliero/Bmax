@@ -72,7 +72,7 @@ EditBone *ED_armature_ebone_add(bArmature *arm, const char *name)
   BLI_addtail(arm->edbo, bone);
 
   bone->flag |= BONE_TIPSEL;
-  bone->drawtype = ARM_DRAW_TYPE_ARMATURE_DEFINED;
+  bone->drawtype = ARM_DRAW_TYPE_OCTA;
   bone->weight = 1.0f;
   bone->dist = 0.25f;
   bone->xwidth = 0.1f;
@@ -108,6 +108,8 @@ EditBone *ED_armature_ebone_add_primitive(Object *obedit_arm,
                                           const bool view_aligned)
 {
   bArmature *arm = id_cast<bArmature *>(obedit_arm->data);
+  obedit_arm->dt = OB_WIRE;
+  obedit_arm->dtx |= OB_DRAW_IN_FRONT;
   EditBone *bone;
 
   ED_armature_edit_deselect_all(obedit_arm);
@@ -1859,6 +1861,8 @@ static wmOperatorStatus armature_bone_primitive_add_exec(bContext *C, wmOperator
 {
   Object *obedit = CTX_data_edit_object(C);
 
+  obedit->dt = OB_WIRE;
+  obedit->dtx |= OB_DRAW_IN_FRONT;
   invert_m4_m4(obedit->runtime->world_to_object.ptr(), obedit->object_to_world().ptr());
   const float3x3 imat = float3x3(obedit->world_to_object());
 

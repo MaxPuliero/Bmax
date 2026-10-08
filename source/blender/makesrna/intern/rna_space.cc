@@ -5115,7 +5115,7 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Mesh Holes",
-      "Highlight open boundary edges of selected meshes at half the selection outline width");
+      "Highlight open boundary edges of selected meshes with a minimum width of 2 pixels");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "show_object_origins", PROP_BOOLEAN, PROP_NONE);

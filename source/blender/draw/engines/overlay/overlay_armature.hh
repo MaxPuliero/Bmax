@@ -39,6 +39,7 @@ class Armatures : Overlay {
   const SelectionType selection_type_;
 
   PassSimple armature_ps_ = {"Armature"};
+  PassSimple axes_ps_ = {"ArmatureAxesInFront"};
 
   /* Force transparent drawing in X-ray mode. */
   bool draw_transparent = false;
@@ -454,7 +455,13 @@ class Armatures : Overlay {
     }
 
     {
-      auto &sub = armature_ps_.sub("opaque.arrow");
+      /* Preserve object picking; display axes do not test or write scene depth. */
+      axes_ps_.init();
+      axes_ps_.state_set(DRW_STATE_WRITE_COLOR, state.clipping_plane_count);
+      axes_ps_.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
+      axes_ps_.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
+      auto &sub = res.is_selection() ? armature_ps_.sub("opaque.arrow") :
+                                      axes_ps_.sub("axes");
       sub.shader_set(res.shaders->extra_shape.get());
       opaque_.arrows = &sub;
       transparent_.arrows = opaque_.arrows;
@@ -706,6 +713,15 @@ class Armatures : Overlay {
 
     GPU_framebuffer_bind(framebuffer);
     manager.submit(armature_ps_, view);
+  }
+
+  void draw_axes_in_front(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_ || selection_type_ != SelectionType::DISABLED) {
+      return;
+    }
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(axes_ps_, view);
   }
 
   /* Public for the time of the Overlay Next port to avoid duplicated logic. */

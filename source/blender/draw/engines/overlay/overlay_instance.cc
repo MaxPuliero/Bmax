@@ -987,6 +987,10 @@ void Instance::draw_v3d(Manager &manager, View &view)
     infront.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
 
     origins.draw_color_only(resources.overlay_color_only_fb, manager, view);
+
+    /* Bone axes stay above scene geometry and both armature layers. */
+    regular.armatures.draw_axes_in_front(resources.overlay_line_fb, manager, view);
+    infront.armatures.draw_axes_in_front(resources.overlay_line_fb, manager, view);
   }
 
   if (state.is_depth_only_drawing == false) {

@@ -73,7 +73,7 @@ class Outline : Overlay {
       pass.bind_ubo(OVERLAY_GLOBALS_SLOT, &res.globals_buf);
       pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
       pass.bind_texture("scene_depth_tx", &res.depth_tx);
-      pass.push_constant("line_width", outline_width * U.pixelsize * 0.5f);
+      pass.push_constant("line_width", max_ff(2.0f, outline_width * U.pixelsize * 0.5f));
       pass.push_constant("is_transform", is_transform);
       pass.push_constant("do_smooth_lines", do_smooth_lines);
       auto &regular = pass.sub("Regular");

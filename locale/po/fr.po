@@ -163239,3 +163239,13 @@ msgstr "Redimensionner chaque courbe uniformément jusqu’à atteindre la longu
 msgid "Distance from the ground plane"
 msgstr "Distance au plan du sol"
 
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Mesh Holes"
+msgstr "Trous du maillage"
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Highlight open boundary edges of selected meshes with a minimum width of 2 pixels"
+msgstr "Met en évidence les arêtes de bord ouvertes des maillages sélectionnés avec une largeur minimale de 2 pixels"

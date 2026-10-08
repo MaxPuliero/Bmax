@@ -2167,6 +2167,11 @@ static void object_init(Object *ob, const ObjectType ob_type)
     ob->upflag = OB_POSY;
   }
 
+  if (ob->type == OB_ARMATURE) {
+    ob->dt = OB_WIRE;
+    ob->dtx |= OB_DRAW_IN_FRONT;
+  }
+
   if (ob->type == OB_GREASE_PENCIL) {
     ob->dtx |= OB_USE_GPENCIL_LIGHTS;
   }

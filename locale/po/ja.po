@@ -165052,3 +165052,13 @@ msgstr "各カーブのスケールを，ターゲットの長さに達するよ
 msgid "Distance from the ground plane"
 msgstr "地面からの距離"
 
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Mesh Holes"
+msgstr "メッシュの穴"
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Highlight open boundary edges of selected meshes with a minimum width of 2 pixels"
+msgstr "選択したメッシュの開いた境界辺を最小幅2ピクセルで強調表示します"

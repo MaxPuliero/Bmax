@@ -163234,3 +163234,13 @@ msgstr "Escala cada curva uniformemente hasta alcanzar la longitud objetivo"
 msgid "Distance from the ground plane"
 msgstr "Distancia desde el plano del suelo"
 
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Mesh Holes"
+msgstr "Huecos de la malla"
+
+
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Highlight open boundary edges of selected meshes with a minimum width of 2 pixels"
+msgstr "Resalta los bordes abiertos de las mallas seleccionadas con un ancho mínimo de 2 píxeles"
