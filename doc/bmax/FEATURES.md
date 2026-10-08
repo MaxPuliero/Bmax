@@ -128,3 +128,11 @@ Implementation commit: `5f6eba240126`.
 - Mesh Holes uses at least two physical pixels, retaining the half-theme-width rule above that minimum. Its label and tooltip have Japanese, Italian, French and Spanish translations.
 
 The local runtime is updated and verified; source publication does not update the separately copied Desktop packages or public Windows download. See the build guide for verification details.
+
+## Bone body shape update added to the source on 2026-10-08
+
+Implementation commit: `2e4febbdb1df`.
+
+Octahedral display uses a flat square base and a tapered body between the real endpoint sphere boundaries. The Head and Tail sphere geometry, centers, radius and selection IDs are unchanged. Curved/rolled Bendy Bone segment bodies join at the actual neighboring segment positions, without intermediate spheres or radius-sized gaps at internal joints. Sphere trimming can cover multiple short segments; a fully covered body is omitted. Pose scale/shear and object scale remain effective, and bone evaluation is unchanged. The B-Bone box display type retains its existing geometry.
+
+The local runtime is updated and verified. Source publication does not update the separately copied Desktop packages or public Windows download. Build and verification details are recorded in the build guide.

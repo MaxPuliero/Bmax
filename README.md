@@ -80,6 +80,8 @@ Windows application and blend-file icons retain the Bmax logo with antialiased a
 
 Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > Item**, available in Edit and Pose Mode. One absolute radius controls the octahedral body's half-width and both endpoint spheres, independently of rest-bone length. In Wire display, the Head and Tail spheres shown in Edit Mode use this same radius. The default for newly created bones is 0.02 Blender units (2 cm with standard metric units). In Pose Mode, evaluated pose scaling and shear remain visible, including nonuniform scaling.
 
+In Octahedral display, the body now has a flat square base at the Head sphere boundary and tapers to the Tail sphere boundary. Head/Tail spheres retain their size, position, and selection behavior. Bendy Bones shown in Octahedral keep connected segment bodies with no intermediate spheres; only the two outer endpoints are trimmed. Bodies fully covered by overlapping endpoint spheres are omitted. The B-Bone box display type is unchanged. This body-shape update is included in source commit `2e4febbdb1df` and in the verified local runtime. Separately copied Desktop packages and the public Windows download require their own update.
+
 ![Octahedral Radius demonstration](doc/bmax/media/bmax_radius.webp)
 
 ### Independent Axis Size
