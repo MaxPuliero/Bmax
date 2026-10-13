@@ -16,7 +16,27 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-8, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-13, 2026, their source commits, and removed items.
+
+### Outliner collection selection highlights
+
+Selecting an object also highlights its containing collections and all parent collections in the Outliner. The highlight remains visible when a collection is collapsed, making it easier to locate selected objects inside nested collections.
+
+<img src="doc/bmax/media/outliner_collection_highlight.png" alt="Default Blender and Bmax comparison showing selected objects and their ancestor collections highlighted in the Outliner" width="720">
+
+Collections containing the active selected object use the active-row highlight; other selected branches use the normal selection highlight. **Scene Collection** keeps its existing appearance. The hierarchy highlight updates with selection changes and preserves normal object and collection selection operations. The active object's name also remains brighter after deselection, using a near-white tone with the default theme, so it is easier to identify while other objects keep their normal text colors.
+
+The local Windows runtime is rebuilt and verified on OpenGL and Vulkan. The implementation is included in source commit `d86a7a944cdf` on `main`; Desktop copies and the public Windows download have not been updated.
+
+### Occluded selection outline theme
+
+Change the color and transparency of object selection outlines hidden behind scene geometry in **Preferences > Themes > 3D Viewport > Occluded Selection Outline**, directly below **Object Selected**.
+
+<img src="doc/bmax/media/occluded_selection.gif" alt="Changing the color and transparency of occluded object selection outlines in the 3D Viewport theme" width="720">
+
+Use **Alpha** in the color picker to adjust opacity: **0** hides the occluded outline and **1** makes it fully opaque. The default is orange with approximately **35% opacity**. Visible portions retain their selected, active, or transform colors. X-Ray keeps its existing appearance and ignores this setting.
+
+The local Windows runtime is rebuilt and verified on OpenGL and Vulkan. The implementation is included in source commit `ad308b73519a` on `main`; Desktop copies and the public Windows download have not been updated.
 
 ### Hair Curves guide theme
 
