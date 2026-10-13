@@ -22,6 +22,8 @@
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
+#include "BLI_map.hh"
+#include "BLI_set.hh"
 #include "BLI_path_utils.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -3412,6 +3414,11 @@ static void outliner_draw_tree_element(ui::Block *block,
             text_color[3] = 255;
           }
         }
+        else if (ob == tvc.obact) {
+          /* Keep the active object readable after deselection, without using selection colors. */
+          ui::theme::get_color_blend_3ubv(TH_TEXT, TH_TEXT_HI, 0.8f, text_color);
+          text_color[3] = 255;
+        }
       }
       else if (is_object_data_in_editmode(tselem->id, tvc.obact)) {
         /* Objects being edited. */
@@ -3762,6 +3769,44 @@ static void outliner_draw_struct_marks(ARegion *region,
   }
 }
 
+/* Collection rows inherit object-row highlighting without changing tree selection flags.
+ * Memoize collection contents for this draw so collapsed and shared collections stay cheap. */
+enum class CollectionSelectionHighlight { None, Selected, Active };
+
+struct CollectionSelectionHighlights {
+  Set<const Object *> selected_objects;
+  Set<const Object *> active_objects;
+  Map<const Collection *, CollectionSelectionHighlight> collections;
+
+  CollectionSelectionHighlight get(const Collection &collection)
+  {
+    if (const auto *cached = collections.lookup_ptr(&collection)) {
+      return *cached;
+    }
+    CollectionSelectionHighlight highlight = CollectionSelectionHighlight::None;
+    for (const CollectionObject &cob : collection.gobject) {
+      if (active_objects.contains(cob.ob)) {
+        highlight = CollectionSelectionHighlight::Active;
+        break;
+      }
+      if (selected_objects.contains(cob.ob)) {
+        highlight = CollectionSelectionHighlight::Selected;
+      }
+    }
+    for (const CollectionChild &child : collection.children) {
+      if (highlight == CollectionSelectionHighlight::Active) {
+        break;
+      }
+      const CollectionSelectionHighlight child_highlight = get(*child.collection);
+      if (int(child_highlight) > int(highlight)) {
+        highlight = child_highlight;
+      }
+    }
+    collections.add(&collection, highlight);
+    return highlight;
+  }
+};
+
 static void outliner_draw_highlights(const ARegion *region,
                                      const SpaceOutliner *space_outliner,
                                      const float col_selection[4],
@@ -3774,6 +3819,22 @@ static void outliner_draw_highlights(const ARegion *region,
   const bool is_searching = (SEARCHING_OUTLINER(space_outliner) ||
                              (space_outliner->outlinevis == SO_DATA_API &&
                               space_outliner->search_string[0] != 0));
+
+  CollectionSelectionHighlights collection_highlights;
+  if (ELEM(space_outliner->outlinevis, SO_VIEW_LAYER, SO_SCENES)) {
+    /* Include descendants of collapsed rows. The highlight follows the existing object-row
+     * selection, including independent Outliner selection when synchronization is disabled. */
+    tree_iterator::all(space_outliner->runtime->tree, [&](const TreeElement *te) {
+      const TreeStoreElem *tselem = TREESTORE(te);
+      if (tselem->type == TSE_SOME_ID && te->idcode == ID_OB && (tselem->flag & TSE_SELECTED)) {
+        const Object *object = id_cast<Object *>(tselem->id);
+        collection_highlights.selected_objects.add(object);
+        if (tselem->flag & TSE_ACTIVE) {
+          collection_highlights.active_objects.add(object);
+        }
+      }
+    });
+  }
 
   tree_iterator::all_open(*space_outliner, [&](const TreeElement *te) {
     const TreeStoreElem *tselem = TREESTORE(te);
@@ -3790,15 +3851,31 @@ static void outliner_draw_highlights(const ARegion *region,
                   start_y + UI_UNIT_Y - ufac);
     draw_roundbox_corner_set(ui::CNR_ALL);
 
+    CollectionSelectionHighlight collection_highlight = CollectionSelectionHighlight::None;
+    if (!collection_highlights.selected_objects.is_empty() &&
+        (tselem->type == TSE_LAYER_COLLECTION ||
+         (tselem->type == TSE_SOME_ID && te->idcode == ID_GR)))
+    {
+      if (const Collection *collection = outliner_collection_from_tree_element(te)) {
+        if (!(collection->flag & COLLECTION_IS_MASTER)) {
+          collection_highlight = collection_highlights.get(*collection);
+        }
+      }
+    }
+
     /* Selection status. */
-    if ((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) {
+    if (((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) ||
+        collection_highlight == CollectionSelectionHighlight::Active)
+    {
       ui::draw_roundbox_4fv(&rect, true, radius, col_active);
 
       float col_active_outline[4];
       ui::theme::get_color_shade_4fv(TH_SELECT_ACTIVE, 40, col_active_outline);
       ui::draw_roundbox_4fv(&rect, false, radius, col_active_outline);
     }
-    else if (tselem->flag & TSE_SELECTED) {
+    else if ((tselem->flag & TSE_SELECTED) ||
+             collection_highlight == CollectionSelectionHighlight::Selected)
+    {
       ui::draw_roundbox_4fv(&rect, true, radius, col_selection);
     }
 
