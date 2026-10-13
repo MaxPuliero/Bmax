@@ -253,6 +253,10 @@ void main()
   constexpr float epsilon = 3.0f / 8388608.0f;
   bool occluded = (ref_depth > scene_depth + epsilon);
 
+  if (occluded && use_occluded_color) {
+    frag_color.rgb = occluded_color.rgb * frag_color.a;
+  }
+
   /* NOTE: We never set alpha to 1.0 to avoid Anti-aliasing destroying the line. */
   frag_color *= (occluded ? alpha_occlu : 1.0f) * (254.0f / 255.0f);
 

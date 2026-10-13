@@ -80,6 +80,24 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->space_view3d.hair_curves_width = U_theme_default.space_view3d.hair_curves_width;
   }
 
+  /* Bmax: version 2 stores RGBA alpha as a byte instead of a percentage.
+   * A separate sentinel preserves explicitly saved transparent colors. */
+  if (btheme->space_view3d.outline_occluded_initialized != 2) {
+    ThemeSpace &theme = btheme->space_view3d;
+    if (theme.outline_occluded_initialized == 1) {
+      theme.outline_occluded_opacity = (theme.outline_occluded_opacity * 255 + 50) / 100;
+      if (!theme.outline_occluded_custom) {
+        copy_v3_v3_uchar(theme.outline_occluded, U_theme_default.space_view3d.outline_occluded);
+      }
+    }
+    else {
+      copy_v3_v3_uchar(theme.outline_occluded, U_theme_default.space_view3d.outline_occluded);
+      theme.outline_occluded_opacity = U_theme_default.space_view3d.outline_occluded_opacity;
+    }
+    theme.outline_occluded_custom = 0;
+    theme.outline_occluded_initialized = 2;
+  }
+
   if (!USER_VERSION_ATLEAST(300, 41)) {
     MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }

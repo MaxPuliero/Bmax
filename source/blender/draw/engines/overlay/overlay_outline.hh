@@ -15,6 +15,8 @@
 
 #include "DNA_userdef_types.h"
 
+#include "BLI_math_color.h"
+
 namespace blender::draw::overlay {
 
 /**
@@ -136,7 +138,15 @@ class Outline : Overlay {
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
       pass.shader_set(res.shaders->outline_detect.get());
       /* Don't occlude the outline if in xray mode as it causes too much flickering. */
-      pass.push_constant("alpha_occlu", state.xray_enabled ? 1.0f : 0.35f);
+      const ThemeSpace &theme = ui::theme::theme_get()->space_view3d;
+      float4 occluded_color(1.0f);
+      rgb_uchar_to_float(occluded_color, theme.outline_occluded);
+      srgb_to_linearrgb_v4(occluded_color, occluded_color);
+      pass.push_constant("alpha_occlu",
+                         state.xray_enabled ? 1.0f : theme.outline_occluded_opacity / 255.0f);
+      pass.push_constant("occluded_color", occluded_color);
+      pass.push_constant("use_occluded_color",
+                         !state.xray_enabled);
       pass.push_constant("do_thick_outlines", do_expand);
       pass.push_constant("do_anti_aliasing", do_smooth_lines);
       pass.push_constant("is_xray_wires", state.xray_enabled_and_not_wire);

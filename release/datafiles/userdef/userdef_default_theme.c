@@ -434,6 +434,10 @@ const bTheme U_theme_default = {
     .hair_curves = RGBA(0x909000ff),
     .hair_curves_select = RGBA(0xffff00ff),
     .hair_curves_width = 4,
+    .outline_occluded = {0xff, 0x85, 0x00},
+    .outline_occluded_opacity = 89,
+    .outline_occluded_custom = 0,
+    .outline_occluded_initialized = 2,
   },
   .space_file = {
     .back = RGBA(0x28282800),

@@ -297,7 +297,8 @@ typedef struct ThemeSpace {
   unsigned char back_grad[4];
 
   char background_type;
-  char _pad0[3];
+  /** Bmax: occluded object-outline color; reuse padding to preserve DNA layout. */
+  unsigned char outline_occluded[3];
 
   /** Panel title. */
   unsigned char title[4];
@@ -411,7 +412,9 @@ typedef struct ThemeSpace {
   /** Hair Curves edit/sculpt guides; reuse padding to preserve the existing DNA layout. */
   unsigned char hair_curves[4], hair_curves_select[4];
   unsigned char hair_curves_width;
-  char _pad11[3];
+  unsigned char outline_occluded_opacity;
+  char outline_occluded_custom;
+  char outline_occluded_initialized;
 
   unsigned char preview_back[4];
   unsigned char preview_stitch_face[4];

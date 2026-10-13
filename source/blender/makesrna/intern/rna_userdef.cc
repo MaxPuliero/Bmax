@@ -337,6 +337,26 @@ static void rna_userdef_update_compact_tabs(Main *bmain, Scene *scene, PointerRN
   }
 }
 
+/* Expose one RGBA color while retaining the existing split theme storage layout. */
+static void rna_ThemeSpace_occluded_selection_outline_get(PointerRNA *ptr, float *values)
+{
+  const ThemeSpace *theme = static_cast<const ThemeSpace *>(ptr->data);
+  for (int i = 0; i < 3; i++) {
+    values[i] = theme->outline_occluded[i] / 255.0f;
+  }
+  values[3] = theme->outline_occluded_opacity / 255.0f;
+}
+
+static void rna_ThemeSpace_occluded_selection_outline_set(PointerRNA *ptr, const float *values)
+{
+  ThemeSpace *theme = static_cast<ThemeSpace *>(ptr->data);
+  for (int i = 0; i < 3; i++) {
+    theme->outline_occluded[i] = uchar(clamp_f(values[i], 0.0f, 1.0f) * 255.0f + 0.5f);
+  }
+  theme->outline_occluded_opacity = uchar(clamp_f(values[3], 0.0f, 1.0f) * 255.0f + 0.5f);
+  theme->outline_occluded_initialized = 2;
+}
+
 static void rna_userdef_theme_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   /* Recreate gizmos when changing themes. */
@@ -3236,6 +3256,21 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "transform", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Transform", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "occluded_selection_outline", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_float_funcs(prop,
+                               "rna_ThemeSpace_occluded_selection_outline_get",
+                               "rna_ThemeSpace_occluded_selection_outline_set",
+                               nullptr);
+  static const float occluded_outline_default[4] = {1.0f, 133.0f / 255.0f, 0.0f, 89.0f / 255.0f};
+  RNA_def_property_float_array_default(prop, occluded_outline_default);
+  RNA_def_property_ui_text(
+      prop,
+      "Occluded Selection Outline",
+      "Color and opacity of object selection outlines behind scene geometry (ignored in X-Ray)");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "outline_width", PROP_INT, PROP_PIXEL);

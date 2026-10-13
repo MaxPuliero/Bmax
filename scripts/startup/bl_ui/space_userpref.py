@@ -1463,7 +1463,11 @@ class PreferenceThemeSpacePanel:
                 continue
 
             for prop in props_ls:
+                if prop.identifier == "occluded_selection_outline":
+                    continue
                 flow.prop(themedata, prop.identifier)
+                if prop.identifier == "object_selected" and hasattr(themedata, "occluded_selection_outline"):
+                    flow.prop(themedata, "occluded_selection_outline")
 
     def draw_header(self, _context):
         icon = getattr(self, "icon", 'NONE')
