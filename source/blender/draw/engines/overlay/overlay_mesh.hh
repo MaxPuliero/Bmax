@@ -802,8 +802,12 @@ class MeshUVs : Overlay {
     const bool has_active_object_uvmap = bke::mesh::is_uv_map(meta_data);
 
     const Object *ob_orig = DEG_get_original(ob);
-    const Mesh &mesh_orig = *id_cast<Mesh *>(ob_orig->data);
-    diagnostics_.object_sync_object(mesh_orig, mesh_orig.active_or_default_uv_map_name());
+    /* Curves, surfaces, and text can be evaluated as meshes, but their original data is not
+     * a mesh. UV diagnostics inspect original mesh data only. */
+    if (ob_orig->type == OB_MESH) {
+      const Mesh &mesh_orig = *id_cast<Mesh *>(ob_orig->data);
+      diagnostics_.object_sync_object(mesh_orig, mesh_orig.active_or_default_uv_map_name());
+    }
 
     ResourceHandleRange res_handle = manager.unique_handle(ob_ref);
 
