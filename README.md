@@ -166,6 +166,8 @@ New **Weighted Normal** modifiers use **Face Area & Angle** with **Keep Sharp** 
 
 ### UV shell outlines and diagnostics
 
+UV diagnostics read original mesh data only. Curves, surfaces, and text evaluated as meshes retain their normal UV display without interpreting their original data as a mesh, preventing crashes when selecting or pasting them with UV overlays enabled. This correction is included in source commit `bcb82e789062` and in the verified local runtime. Desktop packages and the public download have not been updated.
+
 In **UV Editor > Overlays > Geometry**, three controls help inspect visible UVs in both **Object Mode and Edit Mode**. In Object Mode they inspect the selected mesh objects:
 
 - **Shell Outline** draws a white outline **2 physical pixels inward** along each UV shell boundary, including holes. Its width stays constant when zooming, and internal UV edges are excluded.
