@@ -265,15 +265,18 @@ void main()
 
   bool occluded = false;
   if (use_occluded_color && scene_depth < 1.0f && ref_depth > scene_depth) {
-    float ref_distance = abs(drw_depth_screen_to_view(ref_depth));
-    float scene_distance = abs(drw_depth_screen_to_view(scene_depth));
+    /* Orthographic views can include either side of view Z = 0. Preserve the sign so
+     * depth ordering does not reverse when geometry crosses the view origin. */
+    float ref_distance = -drw_depth_screen_to_view(ref_depth);
+    float scene_distance = -drw_depth_screen_to_view(scene_depth);
 
     /* A relative view-space tolerance must not grow with the clip range like a fixed
      * screen-depth bias. Also allow two representable depth steps for rasterization
      * differences. Reconstructing depth cannot recover precision lost in the buffer. */
     float next_depth = min(uintBitsToFloat(floatBitsToUint(scene_depth) + 2u), 1.0f);
-    float depth_precision = abs(abs(drw_depth_screen_to_view(next_depth)) - scene_distance);
-    float tolerance = max(max(ref_distance, scene_distance) * 1e-6f, depth_precision);
+    float depth_precision = abs(-drw_depth_screen_to_view(next_depth) - scene_distance);
+    float tolerance = max(max(abs(ref_distance), abs(scene_distance)) * 1e-6f,
+                          depth_precision);
     occluded = ref_distance > scene_distance + tolerance;
   }
 
