@@ -153,6 +153,22 @@ Six viewport cases and a GPU object pick passed per backend (OpenGL and Vulkan).
 
 Legacy local custom RGB plus 37% opacity migrated to RGBA, and legacy zero opacity remained zero. RGBA 0/0.5/1 alpha saved and reloaded correctly; zero also survived restart. Editing the new color left the neighboring theme title color intact. Verification scripts, preferences, captures and recovery files were external and removed afterward.
 
+## Outline occlusion depth comparison: local update (2026-10-20)
+
+The outline prepasses no longer shift clip-space Z toward the viewer by `1e-3`. Resolve compares unbiased camera-space distances using a relative tolerance of `1e-6` and a minimum margin corresponding to two representable scene-depth steps, whichever is larger. This replaces the old fixed projected-depth epsilon. Background depth is excluded and X-Ray bypasses the new comparison. Pixels without an outline are discarded before depth reads and reconstruction. No textures, geometry passes, draw calls, saved fields or selection shaders were added.
+
+Release INSTALL completed in the existing local build directory. The implementation is included in source commit `1f04cb0020e9` on `main`; the installed runtime includes it. Compilation preceded the source commit, so the executable metadata does not identify this implementation commit. Desktop copies and the public Windows download are unchanged.
+
+Ten Solid-mode offscreen viewport cases passed on each of OpenGL and Vulkan: perspective/orthographic projection, near clips 0.001/0.01/0.1/1 with far clip 1000, plus near 0.01/far 100000. A cube partially covered by a plane 0.02 units in front retained exactly 620 occluded pixels in perspective and 1,236 in orthographic across these clip settings. Before the change, the perspective case only detected occlusion at near clip 1, and none of the orthographic cases detected it. Alpha zero hid those portions; alpha one displayed them in the configured green. The two backends produced matching case counts, and the perspective captures were visually inspected.
+
+Coincident, intersecting and X-Ray fixture images were byte-identical to the previous runtime on each backend. Outline width 4 also classified the covered section correctly. A coincident selected mesh retained its color whether created before or after its unselected twin. GPU picking and non-mesh prepass visual coverage were not revalidated in this focused check.
+
+A pre-existing In Front limitation was also observed: Workbench writes zero scene depth at In Front pixels (`workbench_overlay_depth_frag.glsl`), while the common outline resolve compares against that scene depth. Such outlines can therefore receive the occluded color. Both the original depth predicate and the revised predicate classify that synthetic depth as occluding; this update does not redesign the In Front path.
+
+Performance check: a selected 1,310,720-triangle icosphere, 512 x 512 offscreen Solid viewport, five warm-up draws and 21 timed draws per configuration. Timings include synchronous RGBA8 readback and NumPy conversion, not isolated GPU timestamps or interactive FPS. With outlines enabled, OpenGL medians were 2.033 ms before and 2.014 ms after. Vulkan measured 2.796 ms before, 6.061 ms in the first updated run and 1.63 ms on repetition; outline-disabled timings also varied substantially (2.188 / 5.861 / 1.96 ms). The Vulkan measurements do not isolate a reliable before/after cost. No additional work proportional to polygon count was introduced, but these measurements are not a universal performance guarantee.
+
+Depth reconstruction cannot restore information already lost in the scene buffer. Extremely close surfaces or clipping ratios beyond the tested range may remain ambiguous; transparent occluders continue to follow the viewport's existing depth policy. Verification scripts, captures, scenes, logs and result files were external and removed after inspection; build caches and runtime dependencies were preserved.
+
 ## Outliner collection selection highlights (2026-10-13)
 
 View Layer and Scenes displays highlight collections containing selected object rows, including nested ancestor collections. Collapsing a collection retains its derived highlight. Active selected objects propagate the active-row fill and border; other selected objects propagate the normal selected-row fill. The master Scene Collection row is unchanged. Shared collection paths and objects linked into multiple collections are evaluated by collection membership, so every containing branch receives the highlight.

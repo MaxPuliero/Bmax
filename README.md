@@ -36,7 +36,7 @@ Change the color and transparency of object selection outlines hidden behind sce
 
 Use **Alpha** in the color picker to adjust opacity: **0** hides the occluded outline and **1** makes it fully opaque. The default is orange with approximately **35% opacity**. Visible portions retain their selected, active, or transform colors. X-Ray keeps its existing appearance and ignores this setting.
 
-The local Windows runtime is rebuilt and verified on OpenGL and Vulkan. The implementation is included in source commit `ad308b73519a` on `main`; Desktop copies and the public Windows download have not been updated.
+The theme controls are included in source commit `ad308b73519a` on `main`. The October 20 local update removes the projection-dependent outline depth bias and compares camera-space distances with a relative and depth-precision tolerance. It reuses the existing buffers and geometry passes; finite depth-buffer precision still limits nearly coincident surfaces at extreme clipping ranges. The updated local Windows runtime is rebuilt and checked on OpenGL and Vulkan; the depth-comparison implementation is included in source commit `1f04cb0020e9` on `main`. Desktop copies and the public Windows download have not been updated. See the [validation and limitations](doc/bmax/FEATURES.md#outline-occlusion-depth-comparison-local-update-2026-10-20).
 
 ### Hair Curves guide theme
 
