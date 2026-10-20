@@ -169,6 +169,18 @@ Performance check: a selected 1,310,720-triangle icosphere, 512 x 512 offscreen 
 
 Depth reconstruction cannot restore information already lost in the scene buffer. Extremely close surfaces or clipping ratios beyond the tested range may remain ambiguous; transparent occluders continue to follow the viewport's existing depth policy. Verification scripts, captures, scenes, logs and result files were external and removed after inspection; build caches and runtime dependencies were preserved.
 
+### Orthographic signed-depth correction (2026-10-20)
+
+The user-provided body/hood scene exposed a sign error in commit `1f04cb0020e9`: the comparison used `abs(view_z)` as a distance. Blender's orthographic viewport can include geometry on either side of view Z = 0, and absolute values can reverse or collapse depth ordering there. The original synthetic orthographic checks placed geometry entirely on the negative-Z side and missed this case. This is an implementation bug, distinct from finite depth-buffer precision.
+
+The follow-up in source commit `42dbb0dd6bf2` on `main` uses signed depth `-view_z` for both surfaces and the precision-step reconstruction. Absolute values apply only to the magnitude used for relative tolerance. It adds no texture reads, buffers, draw calls or geometry passes. Release INSTALL completed before the source commit; the installed runtime includes the correction, although its executable metadata predates this implementation commit. The separately copied Desktop executables are still the earlier build.
+
+The supplied file was opened read-only in separate factory-startup sessions. Actual viewport matrices were updated for orthographic view distances 0.2, 0.5, 0.8909104466 and 1.5. Alpha-zero/alpha-one image differences detected 2,315 / 910 / 504 / 295 occluded pixels on OpenGL and 2,315 / 910 / 505 / 295 on Vulkan; before the correction the hidden parts retained the visible color. Visual inspection confirmed that the hood outlines behind the forehead and face disappear at alpha zero and use the configured green at alpha one. The perspective control was byte-identical to the previous build for both alpha settings on each backend. GPU picking selected the body and hood correctly on both backends.
+
+A separate synthetic symmetric orthographic projection tested five eye offsets and three clipping extents. At the ordinary tested extent 1000, the same 2,460-pixel hidden section was detected for every eye offset, including positive view Z and crossings of zero. A case exactly on a clip plane and a 0.02-unit gap at extreme extent 100000 remain subject to actual clipping and quantization respectively; this correction does not claim to remove those limits. No new performance benchmark was taken for this arithmetic-only follow-up; the earlier medians above belong to the first update.
+
+All scripts, image arrays, captures, logs, result files, isolated configuration, and session recovery were placed in a dedicated external temporary directory and removed after validation. The original user file and existing Blender sessions were preserved.
+
 ## Outliner collection selection highlights (2026-10-13)
 
 View Layer and Scenes displays highlight collections containing selected object rows, including nested ancestor collections. Collapsing a collection retains its derived highlight. Active selected objects propagate the active-row fill and border; other selected objects propagate the normal selected-row fill. The master Scene Collection row is unchanged. Shared collection paths and objects linked into multiple collections are evaluated by collection membership, so every containing branch receives the highlight.
