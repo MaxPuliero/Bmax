@@ -231,6 +231,20 @@ void main()
     has_edge_neg_x = has_edge_neg_y = false;
   }
 
+  int edge_case = 0;
+  edge_case += int(has_edge_pos_x) * XPOS;
+  edge_case += int(has_edge_neg_x) * XNEG;
+  edge_case += int(has_edge_pos_y) * YPOS;
+  edge_case += int(has_edge_neg_y) * YNEG;
+
+  if (edge_case == ALL || edge_case == NONE) {
+    /* NOTE(Metal): Discards are not explicit returns in Metal. We should also return to avoid
+     * erroneous derivatives which can manifest during texture sampling in
+     * non-uniform-control-flow. */
+    gpu_discard_fragment();
+    return;
+  }
+
   /* WATCH: Keep in sync with outline_id_tx of the pre-pass. */
   uint color_id = ref_col >> 14u;
   if (ref_col == 0u) {
@@ -249,9 +263,19 @@ void main()
   float ref_depth = textureLod(outline_depth_tx, depth_uv, 0.0f).r;
   float scene_depth = textureLod(scene_depth_tx, depth_uv, 0.0f).r;
 
-  /* Avoid bad cases of Z-fighting for occlusion only. */
-  constexpr float epsilon = 3.0f / 8388608.0f;
-  bool occluded = (ref_depth > scene_depth + epsilon);
+  bool occluded = false;
+  if (use_occluded_color && scene_depth < 1.0f && ref_depth > scene_depth) {
+    float ref_distance = abs(drw_depth_screen_to_view(ref_depth));
+    float scene_distance = abs(drw_depth_screen_to_view(scene_depth));
+
+    /* A relative view-space tolerance must not grow with the clip range like a fixed
+     * screen-depth bias. Also allow two representable depth steps for rasterization
+     * differences. Reconstructing depth cannot recover precision lost in the buffer. */
+    float next_depth = min(uintBitsToFloat(floatBitsToUint(scene_depth) + 2u), 1.0f);
+    float depth_precision = abs(abs(drw_depth_screen_to_view(next_depth)) - scene_distance);
+    float tolerance = max(max(ref_distance, scene_distance) * 1e-6f, depth_precision);
+    occluded = ref_distance > scene_distance + tolerance;
+  }
 
   if (occluded && use_occluded_color) {
     frag_color.rgb = occluded_color.rgb * frag_color.a;
@@ -259,20 +283,6 @@ void main()
 
   /* NOTE: We never set alpha to 1.0 to avoid Anti-aliasing destroying the line. */
   frag_color *= (occluded ? alpha_occlu : 1.0f) * (254.0f / 255.0f);
-
-  int edge_case = 0;
-  edge_case += int(has_edge_pos_x) * XPOS;
-  edge_case += int(has_edge_neg_x) * XNEG;
-  edge_case += int(has_edge_pos_y) * YPOS;
-  edge_case += int(has_edge_neg_y) * YNEG;
-
-  if (edge_case == ALL || edge_case == NONE) {
-    /* NOTE(Metal): Discards are not explicit returns in Metal. We should also return to avoid
-     * erroneous derivatives which can manifest during texture sampling in
-     * non-uniform-control-flow. */
-    gpu_discard_fragment();
-    return;
-  }
 
   if (!do_anti_aliasing) {
     line_output = float4(0.0f);
