@@ -972,6 +972,8 @@ void SCULPT_OT_face_sets_randomize_colors(wmOperatorType *ot);
 void SCULPT_OT_face_set_change_visibility(wmOperatorType *ot);
 void SCULPT_OT_face_sets_init(wmOperatorType *ot);
 void SCULPT_OT_face_sets_create(wmOperatorType *ot);
+void SCULPT_OT_fill_holes(wmOperatorType *ot);
+void SCULPT_OT_split(wmOperatorType *ot);
 void SCULPT_OT_face_sets_edit(wmOperatorType *ot);
 
 void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
@@ -1011,6 +1013,7 @@ void SCULPT_OT_color_filter(wmOperatorType *ot);
 namespace ed::sculpt_paint::mask {
 
 void SCULPT_OT_mask_filter(wmOperatorType *ot);
+void SCULPT_OT_bevel_mask(wmOperatorType *ot);
 void SCULPT_OT_mask_init(wmOperatorType *ot);
 
 }  // namespace ed::sculpt_paint::mask

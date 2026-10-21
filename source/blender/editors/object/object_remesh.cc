@@ -6,6 +6,7 @@
  * \ingroup edobj
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cfloat>
 #include <cmath>
@@ -14,6 +15,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_atomic_disjoint_set.hh"
 #include "BLI_bounds.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -27,11 +29,13 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
+#include "BKE_geometry_set.hh"
 #include "BKE_global.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mirror.hh"
 #include "BKE_mesh_remesh_voxel.hh"
 #include "BKE_modifier.hh"
@@ -61,6 +65,11 @@
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
+
+#include "GEO_join_geometries.hh"
+#include "GEO_mesh_copy_selection.hh"
+
+#include "bmesh.hh"
 
 #include "BLF_api.hh"
 
@@ -107,6 +116,215 @@ static bool object_remesh_poll(bContext *C)
   return ED_operator_object_active_editable_mesh(C);
 }
 
+/* Use the same simple holes-fill operation as Object Mode. Only the new Face Set IDs
+ * are recorded here; all fairing must wait until after voxelization and projection. */
+static Set<int> fill_remesh_holes(Mesh &mesh)
+{
+  Set<int> patch_ids;
+  const BMAllocTemplate alloc = BMALLOC_TEMPLATE_FROM_ME(&mesh);
+  BMeshCreateParams create{};
+  create.use_toolflags = true;
+  BMesh *bm = BM_mesh_create(&alloc, &create);
+  BMeshFromMeshParams from{};
+  from.calc_face_normal = true;
+  BM_mesh_bm_from_me(bm, &mesh, &from);
+  Vector<BMEdge *> boundaries;
+  BMIter iter;
+  BMEdge *edge;
+  BM_ITER_MESH (edge, &iter, bm, BM_EDGES_OF_MESH) {
+    if (BM_edge_is_boundary(edge)) {
+      boundaries.append(edge);
+    }
+  }
+  if (!boundaries.is_empty()) {
+    BMOperator fill;
+    BMO_op_initf(bm, &fill, 0, "holes_fill sides=%i use_new_face_sets=%b", 0, true);
+    BMO_slot_buffer_from_array(&fill,
+                               BMO_slot_get(fill.slots_in, "edges"),
+                               reinterpret_cast<BMHeader **>(boundaries.data()),
+                               boundaries.size());
+    BMO_op_exec(bm, &fill);
+    const int offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+    if (offset != -1) {
+      BMOIter output_iter;
+      BMFace *face;
+      BMO_ITER (face, &output_iter, fill.slots_out, "faces.out", BM_FACE) {
+        patch_ids.add(BM_ELEM_CD_GET_INT(face, offset));
+      }
+    }
+    BMO_op_finish(bm, &fill);
+    if (!patch_ids.is_empty()) {
+      BMeshToMeshParams to{};
+      BM_mesh_bm_to_me(nullptr, bm, &mesh, &to);
+    }
+  }
+  BM_mesh_free(bm);
+  return patch_ids;
+}
+
+/* Fair Position affects only the interiors of the reprojected hole Face Sets.
+ * Keep their rims, existing surface regions, and non-manifold boundaries fixed. */
+static void fair_remesh_holes(Mesh &mesh, const Set<int> &patch_ids)
+{
+  if (patch_ids.is_empty()) {
+    return;
+  }
+  const VArraySpan<int> face_sets = *mesh.attributes().lookup<int>(
+      ".sculpt_face_set", bke::AttrDomain::Face);
+  if (face_sets.is_empty()) {
+    return;
+  }
+  const GroupedSpan<int> vert_to_face = mesh.vert_to_face_map();
+  Array<bool> affected(mesh.verts_num, false);
+  bool has_affected = false;
+  for (const int vert : affected.index_range()) {
+    const Span<int> faces = vert_to_face[vert];
+    if (faces.is_empty() || !patch_ids.contains(face_sets[faces.first()])) {
+      continue;
+    }
+    const int patch = face_sets[faces.first()];
+    affected[vert] = std::all_of(faces.begin(), faces.end(), [&](const int face) {
+      return face_sets[face] == patch;
+    });
+  }
+  Array<int> edge_face_count(mesh.edges_num, 0);
+  for (const int edge : mesh.corner_edges()) {
+    edge_face_count[edge]++;
+  }
+  const Span<int2> edges = mesh.edges();
+  for (const int edge : edges.index_range()) {
+    if (edge_face_count[edge] != 2) {
+      affected[edges[edge][0]] = false;
+      affected[edges[edge][1]] = false;
+    }
+  }
+  for (const bool value : affected) {
+    has_affected |= value;
+  }
+  if (has_affected) {
+    BKE_mesh_prefair_and_fair_verts(&mesh, {}, affected.data(), MESH_FAIRING_DEPTH_POSITION);
+    mesh.tag_positions_changed();
+  }
+}
+
+/* Every part gets its own volume, pole fixing, projection and attribute transfer.
+ * Projecting against the joined source would snap nearby parts to each other. */
+static Mesh *remesh_part(const Mesh &source,
+                         const Mesh &settings,
+                         Object &object,
+                         ReportList *reports)
+{
+  const Mesh &input = source;
+  const float isovalue = settings.flag & ME_REMESH_REPROJECT_VOLUME ?
+                             settings.remesh_voxel_size * 0.3f :
+                             0.0f;
+  Mesh *result = BKE_mesh_remesh_voxel(
+      &input, settings.remesh_voxel_size, settings.remesh_voxel_adaptivity, isovalue, reports);
+  if (result) {
+    /* Pole cleanup is part of every destructive remesh, including adaptive output. */
+    Mesh *fixed = BKE_mesh_remesh_voxel_fix_poles(result);
+    BKE_id_free(nullptr, result);
+    result = fixed;
+    if (settings.flag & ME_REMESH_REPROJECT_VOLUME) {
+      BKE_shrinkwrap_remesh_target_project(result, const_cast<Mesh *>(&input), &object);
+    }
+    if (settings.flag & ME_REMESH_REPROJECT_ATTRIBUTES) {
+      bke::mesh_remesh_reproject_attributes(input, *result);
+    }
+    else {
+      const VArray<bool> sharp = *source.attributes().lookup_or_default<bool>(
+          "sharp_face", bke::AttrDomain::Face, false);
+      bke::mesh_smooth_set(*result, !sharp[0]);
+      if (input.attributes().contains(".sculpt_face_set")) {
+        /* Keep Face Sets for the filled patches even when other transfer is disabled. */
+        Mesh *ids = BKE_mesh_copy_for_eval(input);
+        Vector<std::string> remove_ids;
+        ids->attributes().foreach_attribute([&](const bke::AttributeIter &iter) {
+          if (!ELEM(iter.name,
+                    "position",
+                    ".edge_verts",
+                    ".corner_vert",
+                    ".corner_edge",
+                    ".sculpt_face_set"))
+          {
+            remove_ids.append(iter.name);
+          }
+        });
+        for (const std::string &name : remove_ids) {
+          ids->attributes_for_write().remove(name);
+        }
+        bke::mesh_remesh_reproject_attributes(*ids, *result);
+        BKE_id_free(nullptr, ids);
+      }
+    }
+  }
+  if (result && (settings.flag & ME_REMESH_BY_LOOSE_PARTS) && result->faces_num == 0) {
+    BKE_id_free(nullptr, result);
+    result = nullptr;
+    BKE_report(reports, RPT_ERROR, "A loose part vanished at this voxel size; reduce Voxel Size");
+  }
+  if (result) {
+    BKE_mesh_copy_parameters(result, &settings);
+    result->flag |= ME_REMESH_FIX_POLES;
+  }
+  return result;
+}
+
+static Mesh *remesh_loose_parts(const Mesh &source,
+                                const Mesh &settings,
+                                Object &object,
+                                ReportList *reports)
+{
+  AtomicDisjointSet sets(source.verts_num);
+  for (const int2 edge : source.edges()) {
+    sets.join(edge[0], edge[1]);
+  }
+  Array<int> ids(source.verts_num);
+  const int count = sets.calc_reduced_ids(ids);
+  if (count <= 1) {
+    return remesh_part(source, settings, object, reports);
+  }
+  Array<Vector<int>> faces_by_part(count);
+  for (const int face : source.faces().index_range()) {
+    faces_by_part[ids[source.corner_verts()[source.faces()[face].start()]]].append(face);
+  }
+  Vector<bke::GeometrySet> results;
+  for (const int part : IndexRange(count)) {
+    if (faces_by_part[part].is_empty()) {
+      continue;
+    }
+    Array<bool> selection(source.faces_num, false);
+    for (const int face : faces_by_part[part]) {
+      selection[face] = true;
+    }
+    std::optional<Mesh *> extracted = geometry::mesh_copy_selection(
+        source, VArray<bool>::from_span(selection), bke::AttrDomain::Face);
+    /* A null optional means the entire input was selected. */
+    Mesh *part_mesh = extracted ? *extracted : BKE_mesh_copy_for_eval(source);
+    if (!part_mesh) {
+      return nullptr;
+    }
+    Mesh *result = remesh_part(*part_mesh, settings, object, reports);
+    BKE_id_free(nullptr, part_mesh);
+    if (!result || result->faces_num == 0) {
+      if (result) {
+        BKE_id_free(nullptr, result);
+      }
+      BKE_report(
+          reports, RPT_ERROR, "A loose part vanished at this voxel size; reduce Voxel Size");
+      return nullptr;
+    }
+    results.append(bke::GeometrySet::from_mesh(result));
+  }
+  bke::GeometrySet joined = geometry::join_geometries(results, {});
+  Mesh *result = joined.get_component_for_write<bke::MeshComponent>().release();
+  if (result) {
+    BKE_mesh_copy_parameters(result, &settings);
+    result->flag |= ME_REMESH_FIX_POLES;
+  }
+  return result;
+}
+
 static wmOperatorStatus voxel_remesh_exec(bContext *C, wmOperator *op)
 {
   const Scene &scene = *CTX_data_scene(C);
@@ -123,40 +341,23 @@ static wmOperatorStatus voxel_remesh_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  float isovalue = 0.0f;
-  if (mesh->flag & ME_REMESH_REPROJECT_VOLUME) {
-    isovalue = mesh->remesh_voxel_size * 0.3f;
-  }
-
-  Mesh *new_mesh = BKE_mesh_remesh_voxel(
-      mesh, mesh->remesh_voxel_size, mesh->remesh_voxel_adaptivity, isovalue, op->reports);
-
+  /* Fill once before splitting so holes in different components get distinct IDs.
+   * Work on a copy so any failure leaves the original geometry and undo untouched. */
+  bke::GeometrySet prepared = bke::GeometrySet::from_mesh(BKE_mesh_copy_for_eval(*mesh));
+  const Set<int> patch_ids = fill_remesh_holes(*prepared.get_mesh_for_write());
+  const Mesh &source = *prepared.get_mesh();
+  Mesh *new_mesh = mesh->flag & ME_REMESH_BY_LOOSE_PARTS ?
+                       remesh_loose_parts(source, *mesh, *ob, op->reports) :
+                       remesh_part(source, *mesh, *ob, op->reports);
   if (!new_mesh) {
     BKE_report(op->reports, RPT_ERROR, "Voxel remesher failed to create mesh");
     return OPERATOR_CANCELLED;
   }
-
+  if (mesh->flag & ME_REMESH_FAIR_HOLES) {
+    fair_remesh_holes(*new_mesh, patch_ids);
+  }
   if (ob->mode == OB_MODE_SCULPT) {
     sculpt_paint::undo::geometry_begin(scene, *ob, op);
-  }
-
-  if (mesh->flag & ME_REMESH_FIX_POLES && mesh->remesh_voxel_adaptivity <= 0.0f) {
-    Mesh *mesh_fixed_poles = BKE_mesh_remesh_voxel_fix_poles(new_mesh);
-    BKE_id_free(nullptr, new_mesh);
-    new_mesh = mesh_fixed_poles;
-  }
-
-  if (mesh->flag & ME_REMESH_REPROJECT_VOLUME) {
-    BKE_shrinkwrap_remesh_target_project(new_mesh, mesh, ob);
-  }
-
-  if (mesh->flag & ME_REMESH_REPROJECT_ATTRIBUTES) {
-    bke::mesh_remesh_reproject_attributes(*mesh, *new_mesh);
-  }
-  else {
-    const VArray<bool> sharp_face = *mesh->attributes().lookup_or_default<bool>(
-        "sharp_face", bke::AttrDomain::Face, false);
-    bke::mesh_smooth_set(*new_mesh, !sharp_face[0]);
   }
 
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob);
@@ -179,8 +380,7 @@ void OBJECT_OT_voxel_remesh(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Voxel Remesh";
   ot->description =
-      "Calculates a new manifold mesh based on the volume of the current mesh. All data layers "
-      "will be lost";
+      "Fill holes, voxel remesh and fix poles, then optionally fair the new hole patches";
   ot->idname = "OBJECT_OT_voxel_remesh";
 
   /* API callbacks. */

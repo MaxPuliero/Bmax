@@ -3744,6 +3744,11 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        layout.operator("sculpt.fill_holes")
+        layout.menu("VIEW3D_MT_sculpt_split")
+
+        layout.separator()
+
         # Fair Positions
         props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
         props.mode = 'FAIR_POSITIONS'
@@ -3805,6 +3810,13 @@ class VIEW3D_MT_sculpt(Menu):
         layout.separator()
 
         layout.operator("object.transfer_mode", text="Transfer Sculpt Mode")
+
+
+class VIEW3D_MT_sculpt_split(Menu):
+    bl_label = "Split"
+
+    def draw(self, _context):
+        self.layout.operator_enum("sculpt.split", "mode")
 
 
 class VIEW3D_MT_sculpt_transform(Menu):
@@ -3957,6 +3969,7 @@ class VIEW3D_MT_mask(Menu):
 
         props = layout.operator("sculpt.mask_filter", text="Smooth Mask")
         props.filter_type = 'SMOOTH'
+        layout.operator("sculpt.bevel_mask", text="Bevel Mask")
 
         props = layout.operator("sculpt.mask_filter", text="Sharpen Mask")
         props.filter_type = 'SHARPEN'
@@ -4070,6 +4083,7 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.separator()
 
+        layout.operator("sculpt.split", text="Split by Face Sets").mode = 'FACE_SETS'
         props = layout.operator("sculpt.face_set_extract", text="Extract Face Set")
 
         layout.separator()
@@ -9385,6 +9399,7 @@ classes = (
     VIEW3D_MT_paint_weight_lock,
     VIEW3D_MT_sculpt,
     VIEW3D_MT_sculpt_set_pivot,
+    VIEW3D_MT_sculpt_split,
     VIEW3D_MT_sculpt_transform,
     VIEW3D_MT_sculpt_showhide,
     VIEW3D_MT_sculpt_trim,

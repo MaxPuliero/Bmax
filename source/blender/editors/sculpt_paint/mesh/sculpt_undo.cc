@@ -1350,6 +1350,9 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
             exec_mode::grain_size(1));
         bke::pbvh::update_mask_grids(*ss.subdiv_ccg, changed_nodes, pbvh);
         pbvh.tag_masks_changed(changed_nodes);
+        /* Undo/redo changes the runtime grids too. Flush their restored masks
+         * into persistent Multires data when saving or reevaluating. */
+        multires_mark_as_modified(depsgraph, &object, MULTIRES_COORDS_MODIFIED);
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();

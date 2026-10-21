@@ -1188,6 +1188,9 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
       BKE_curvemapping_blend_write(writer, ts->sculpt->automasking_cavity_curve_op);
     }
 
+    if (ts->sculpt->bevel_mask_curve) {
+      BKE_curvemapping_blend_write(writer, ts->sculpt->bevel_mask_curve);
+    }
     BKE_paint_blend_write(writer, &ts->sculpt->paint);
   }
   if (ts->uvsculpt.curve_distance_falloff) {
@@ -1400,6 +1403,11 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     }
 
     if (sce->toolsettings->sculpt) {
+      BLO_read_struct(reader, CurveMapping, &sce->toolsettings->sculpt->bevel_mask_curve);
+      if (sce->toolsettings->sculpt->bevel_mask_curve) {
+        BKE_curvemapping_blend_read(reader, sce->toolsettings->sculpt->bevel_mask_curve);
+        BKE_curvemapping_init(sce->toolsettings->sculpt->bevel_mask_curve);
+      }
       BLO_read_struct(reader, CurveMapping, &sce->toolsettings->sculpt->automasking_cavity_curve);
       BLO_read_struct(
           reader, CurveMapping, &sce->toolsettings->sculpt->automasking_cavity_curve_op);
@@ -1725,6 +1733,9 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
       BKE_curvemapping_init(ts->sculpt->automasking_cavity_curve);
     }
 
+    if (toolsettings->sculpt->bevel_mask_curve) {
+      ts->sculpt->bevel_mask_curve = BKE_curvemapping_copy(toolsettings->sculpt->bevel_mask_curve);
+    }
     if (toolsettings->sculpt->automasking_cavity_curve_op) {
       ts->sculpt->automasking_cavity_curve_op = BKE_curvemapping_copy(
           toolsettings->sculpt->automasking_cavity_curve_op);
@@ -1804,6 +1815,9 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
       BKE_curvemapping_free(toolsettings->sculpt->automasking_cavity_curve_op);
     }
 
+    if (toolsettings->sculpt->bevel_mask_curve) {
+      BKE_curvemapping_free(toolsettings->sculpt->bevel_mask_curve);
+    }
     BKE_paint_free(&toolsettings->sculpt->paint);
     MEM_delete(toolsettings->sculpt);
   }

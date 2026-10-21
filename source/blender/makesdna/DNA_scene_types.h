@@ -1520,6 +1520,8 @@ struct Sculpt {
   /** For use by operators. */
   DNA_DEPRECATED struct CurveMapping *automasking_cavity_curve_op = nullptr;
   struct Object *gravity_object = nullptr;
+  /** Independent profile for the Bevel Mask operator. */
+  struct CurveMapping *bevel_mask_curve = nullptr;
 };
 
 struct CurvesSculpt {

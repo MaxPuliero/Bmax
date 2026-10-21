@@ -1714,6 +1714,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_box_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            layout.prop(props, "use_cut_geometry")
 
         return dict(
             idname="builtin.box_face_set",
@@ -1733,6 +1734,7 @@ class _defs_sculpt:
 
             if not extra:
                 layout.prop(props, "use_front_faces_only", expand=False)
+                layout.prop(props, "use_cut_geometry")
                 region_is_header = bpy.context.region.type == 'TOOL_HEADER'
                 if region_is_header:
                     draw_popover = True
@@ -1756,6 +1758,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_line_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            layout.prop(props, "use_cut_geometry")
             layout.prop(props, "use_limit_to_segment", expand=False)
 
         return dict(
@@ -1773,6 +1776,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_polyline_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            layout.prop(props, "use_cut_geometry")
 
         return dict(
             idname="builtin.polyline_face_set",

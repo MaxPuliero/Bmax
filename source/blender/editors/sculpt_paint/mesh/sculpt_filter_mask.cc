@@ -6,18 +6,30 @@
  * \ingroup edsculpt
  */
 
-#include "BLI_array_utils.hh"
-#include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math_base.hh"
+#include <cfloat>
+#include <limits>
+#include <queue>
+
+#include "DNA_brush_types.h"
+#include "DNA_curve_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_attribute.hh"
+#include "BKE_brush.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
+#include "BKE_report.hh"
 #include "BKE_subdiv_ccg.hh"
+#include "BLI_array_utils.hh"
+#include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_base.hh"
+#include "BLI_math_vector.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -32,6 +44,11 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_prototypes.hh"
+
+#include "UI_interface.hh"
+#include "UI_interface_layout.hh"
 
 #include "bmesh.hh"
 
@@ -1082,6 +1099,267 @@ static wmOperatorStatus sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   tag_update_overlays(C);
 
   return OPERATOR_FINISHED;
+}
+
+static CurveMapping *bevel_curve_ensure(Sculpt &sculpt)
+{
+  if (!sculpt.bevel_mask_curve) {
+    sculpt.bevel_mask_curve = BKE_curvemapping_add(1, 0, 0, 1, 1);
+    BKE_curvemap_reset(&sculpt.bevel_mask_curve->cm[0],
+                       &sculpt.bevel_mask_curve->clipr,
+                       CURVE_PRESET_LINE,
+                       CurveMapSlopeType::Negative);
+  }
+  BKE_curvemapping_init(sculpt.bevel_mask_curve);
+  return sculpt.bevel_mask_curve;
+}
+
+static wmOperatorStatus bevel_mask_exec(bContext *C, wmOperator *op)
+{
+  Scene &scene = *CTX_data_scene(C);
+  Object &object = *CTX_data_active_object(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  const float radius = RNA_float_get(op->ptr, "radius");
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  const eBrushCurvePreset profile = eBrushCurvePreset(RNA_enum_get(op->ptr, "profile"));
+  CurveMapping *curve = bevel_curve_ensure(*scene.toolsettings->sculpt);
+  MultiresModifierData *mmd = BKE_sculpt_multires_active(&scene, &object);
+  BKE_sculpt_mask_layers_ensure(depsgraph, CTX_data_main(C), &object, mmd);
+  BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  SculptSession &ss = *object.runtime->sculpt_session;
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  const int size = vertex_count_get(object);
+  Array<float3> positions(size);
+  Array<float> original(size);
+  Array<bool> hidden(size, false);
+  Array<int> neighbor_offsets(size + 1);
+  Vector<int> neighbor_indices;
+  neighbor_indices.reserve(int64_t(size) * 6);
+  int bm_mask_offset = -1;
+  CCGKey key{};
+  if (pbvh.type() == bke::pbvh::Type::Mesh) {
+    positions.as_mutable_span().copy_from(bke::pbvh::vert_positions_eval(*depsgraph, object));
+    const VArray<float> masks = *mesh.attributes().lookup_or_default<float>(
+        ".sculpt_mask", bke::AttrDomain::Point, 0.0f);
+    const VArray<bool> hide = *mesh.attributes().lookup_or_default<bool>(
+        ".hide_vert", bke::AttrDomain::Point, false);
+    masks.materialize(original);
+    hide.materialize(hidden);
+    Array<int> edge_offsets, edge_indices;
+    const Span<int2> edges = mesh.edges();
+    const GroupedSpan<int> vert_edges = bke::mesh::build_vert_to_edge_map(
+        edges, size, edge_offsets, edge_indices);
+    for (const int i : positions.index_range()) {
+      neighbor_offsets[i] = neighbor_indices.size();
+      for (const int edge : vert_edges[i]) {
+        neighbor_indices.append(edges[edge][0] == i ? edges[edge][1] : edges[edge][0]);
+      }
+    }
+  }
+  else if (pbvh.type() == bke::pbvh::Type::Grids) {
+    const SubdivCCG &ccg = *ss.subdiv_ccg;
+    key = BKE_subdiv_ccg_key_top_level(ccg);
+    positions.as_mutable_span().copy_from(ccg.positions);
+    original.as_mutable_span().copy_from(ccg.masks);
+    SubdivCCGNeighbors adjacent;
+    for (const int i : positions.index_range()) {
+      neighbor_offsets[i] = neighbor_indices.size();
+      const SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, i);
+      hidden[i] = !ccg.grid_hidden.is_empty() &&
+                  ccg.grid_hidden[coord.grid_index][i % key.grid_area];
+      BKE_subdiv_ccg_neighbor_coords_get(ccg, coord, true, adjacent);
+      for (const SubdivCCGCoord &neighbor : adjacent.coords) {
+        neighbor_indices.append(neighbor.to_index(key));
+      }
+    }
+  }
+  else {
+    BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
+    BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
+    bm_mask_offset = CustomData_get_offset_named(&ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+    for (const int i : positions.index_range()) {
+      neighbor_offsets[i] = neighbor_indices.size();
+      BMVert *vert = ss.bm->vtable[i];
+      positions[i] = float3(vert->co);
+      original[i] = BM_ELEM_CD_GET_FLOAT(vert, bm_mask_offset);
+      hidden[i] = BM_elem_flag_test(vert, BM_ELEM_HIDDEN);
+      BMIter iter;
+      BMEdge *edge;
+      BM_ITER_ELEM (edge, &iter, vert, BM_EDGES_OF_VERT) {
+        neighbor_indices.append(BM_elem_index_get(BM_edge_other_vert(edge, vert)));
+      }
+    }
+  }
+  neighbor_offsets[size] = neighbor_indices.size();
+  const OffsetIndices<int> neighbor_groups(neighbor_offsets);
+  auto neighbors_of = [&](const int i) {
+    return neighbor_indices.as_span().slice(neighbor_groups[i]);
+  };
+  /* Seed the interpolated threshold crossing of every edge, then propagate on
+   * the surface graph. Disconnected components never exchange mask values. */
+  Array<float> distance(size, std::numeric_limits<float>::infinity());
+  using Entry = std::pair<float, int>;
+  std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
+  for (const int i : positions.index_range()) {
+    if (hidden[i]) {
+      continue;
+    }
+    for (const int j : neighbors_of(i)) {
+      if (hidden[j] || (original[i] >= threshold) == (original[j] >= threshold)) {
+        continue;
+      }
+      const float length = math::distance(positions[i], positions[j]);
+      const float seed = length *
+                         std::abs((original[i] - threshold) / (original[i] - original[j]));
+      distance[i] = std::min(distance[i], seed);
+    }
+    if (distance[i] <= radius) {
+      queue.emplace(distance[i], i);
+    }
+  }
+  while (!queue.empty()) {
+    const auto [current, i] = queue.top();
+    queue.pop();
+    if (current != distance[i]) {
+      continue;
+    }
+    for (const int j : neighbors_of(i)) {
+      if (hidden[j] || (original[i] >= threshold) != (original[j] >= threshold)) {
+        continue;
+      }
+      const float next = current + math::distance(positions[i], positions[j]);
+      if (next <= radius && next < distance[j]) {
+        distance[j] = next;
+        queue.emplace(next, j);
+      }
+    }
+  }
+  Array<float> result = original;
+  for (const int i : positions.index_range()) {
+    if (!hidden[i] && distance[i] <= radius) {
+      const float t = 0.5f +
+                      (original[i] >= threshold ? distance[i] : -distance[i]) / (2.0f * radius);
+      result[i] = std::clamp(BKE_brush_curve_strength(profile, curve, 1.0f - t, 1.0f), 0.0f, 1.0f);
+    }
+  }
+  IndexMaskMemory memory;
+  const IndexMask nodes_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
+  undo::push_begin(scene, object, op);
+  /* Save all affected nodes before any mask values are written. */
+  nodes_mask.foreach_index([&](const int i) {
+    bke::pbvh::Node *node = nullptr;
+    bool changed = false;
+    if (pbvh.type() == bke::pbvh::Type::Mesh) {
+      auto &mesh_node = pbvh.nodes<bke::pbvh::MeshNode>()[i];
+      node = &mesh_node;
+      for (const int vert : mesh_node.verts()) {
+        changed |= result[vert] != original[vert];
+      }
+    }
+    else if (pbvh.type() == bke::pbvh::Type::Grids) {
+      auto &grid_node = pbvh.nodes<bke::pbvh::GridsNode>()[i];
+      node = &grid_node;
+      for (const int grid : grid_node.grids()) {
+        for (const int vert : IndexRange(grid * key.grid_area, key.grid_area)) {
+          changed |= result[vert] != original[vert];
+        }
+      }
+    }
+    else {
+      auto &bm_node = pbvh.nodes<bke::pbvh::BMeshNode>()[i];
+      node = &bm_node;
+      for (const BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&bm_node)) {
+        const int index = BM_elem_index_get(vert);
+        changed |= result[index] != original[index];
+      }
+    }
+    if (changed) {
+      undo::push_node(*depsgraph, object, node, undo::Type::Mask);
+    }
+  });
+  if (pbvh.type() == bke::pbvh::Type::Mesh) {
+    bke::SpanAttributeWriter<float> masks =
+        mesh.attributes_for_write().lookup_for_write_span<float>(".sculpt_mask");
+    masks.span.copy_from(result);
+    MutableSpan nodes = pbvh.nodes<bke::pbvh::MeshNode>();
+    nodes_mask.foreach_index(
+        [&](const int i) { bke::pbvh::node_update_mask_mesh(masks.span, nodes[i]); });
+    masks.finish();
+  }
+  else if (pbvh.type() == bke::pbvh::Type::Grids) {
+    ss.subdiv_ccg->masks.as_mutable_span().copy_from(result);
+    MutableSpan nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+    nodes_mask.foreach_index([&](const int i) {
+      bke::pbvh::node_update_mask_grids(key, ss.subdiv_ccg->masks, nodes[i]);
+    });
+  }
+  else {
+    for (const int i : result.index_range()) {
+      BM_ELEM_CD_SET_FLOAT(ss.bm->vtable[i], bm_mask_offset, result[i]);
+    }
+    MutableSpan nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
+    nodes_mask.foreach_index(
+        [&](const int i) { bke::pbvh::node_update_mask_bmesh(bm_mask_offset, nodes[i]); });
+  }
+  pbvh.tag_masks_changed(nodes_mask);
+  undo::push_end(object);
+  ed::sculpt_paint::mask_overlay_check(*C, *op);
+  flush_update_step(C, UpdateType::Mask);
+  flush_update_done(C, object, UpdateType::Mask);
+  tag_update_overlays(C);
+  return OPERATOR_FINISHED;
+}
+
+static void bevel_mask_ui(bContext *C, wmOperator *op)
+{
+  ui::Layout &layout = *op->layout;
+  layout.prop(op->ptr, "radius", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  layout.prop(op->ptr, "profile", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  layout.prop(op->ptr, "threshold", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  if (RNA_enum_get(op->ptr, "profile") == BRUSH_CURVE_CUSTOM) {
+    Scene &scene = *CTX_data_scene(C);
+    Sculpt &sculpt = *scene.toolsettings->sculpt;
+    bevel_curve_ensure(sculpt);
+    PointerRNA ptr = RNA_pointer_create_discrete(&scene.id, RNA_Sculpt, &sculpt);
+    ui::template_curve_mapping(
+        &layout, &ptr, "bevel_mask_curve", 'v', false, false, false, false, false);
+  }
+}
+
+void SCULPT_OT_bevel_mask(wmOperatorType *ot)
+{
+  ot->name = "Bevel Mask";
+  ot->idname = "SCULPT_OT_bevel_mask";
+  ot->description = "Shape the mask transition using a surface radius and falloff profile";
+  ot->poll = sculpt_mode_poll;
+  ot->exec = bevel_mask_exec;
+  ot->ui = bevel_mask_ui;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  RNA_def_float_distance(ot->srna,
+                         "radius",
+                         0.1f,
+                         0.000001f,
+                         FLT_MAX,
+                         "Radius",
+                         "Distance on either side of the mask boundary in object space",
+                         0.001f,
+                         10.0f);
+  RNA_def_enum(ot->srna,
+               "profile",
+               rna_enum_brush_curve_preset_items,
+               BRUSH_CURVE_SMOOTH,
+               "Profile",
+               "Transition profile; Custom uses the independent Bevel Mask curve");
+  RNA_def_float_factor(ot->srna,
+                       "threshold",
+                       0.5f,
+                       0.001f,
+                       0.999f,
+                       "Boundary",
+                       "Mask value defining the center of the bevel",
+                       0.01f,
+                       0.99f);
 }
 
 void SCULPT_OT_mask_filter(wmOperatorType *ot)

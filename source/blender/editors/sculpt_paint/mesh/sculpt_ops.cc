@@ -1515,8 +1515,11 @@ void operatortypes_sculpt()
   WM_operatortype_append(dyntopo::SCULPT_OT_sample_detail_size);
   WM_operatortype_append(filter::SCULPT_OT_mesh_filter);
   WM_operatortype_append(mask::SCULPT_OT_mask_filter);
+  WM_operatortype_append(mask::SCULPT_OT_bevel_mask);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_create);
+  WM_operatortype_append(face_set::SCULPT_OT_fill_holes);
+  WM_operatortype_append(face_set::SCULPT_OT_split);
   WM_operatortype_append(face_set::SCULPT_OT_face_set_change_visibility);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_randomize_colors);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_init);

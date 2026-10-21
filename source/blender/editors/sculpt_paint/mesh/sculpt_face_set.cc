@@ -19,7 +19,9 @@
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_hash.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
@@ -41,11 +43,13 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mapping.hh"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
 #include "BKE_paint_types.hh"
+#include "BKE_report.hh"
 #include "BKE_subdiv_ccg.hh"
 
 #include "DEG_depsgraph.hh"
@@ -54,7 +58,9 @@
 #include "WM_types.hh"
 
 #include "ED_sculpt.hh"
+#include "ED_screen.hh"
 
+#include "../paint_intern.hh"
 #include "mesh_brush_common.hh"
 #include "paint_hide.hh"
 #include "sculpt_boundary.hh"
@@ -67,6 +73,8 @@
 #include "RNA_define.hh"
 
 #include "bmesh.hh"
+#include "bmesh/intern/bmesh_mesh_tessellate.hh"
+#include "bmesh/tools/bmesh_intersect.hh"
 
 namespace blender::ed::sculpt_paint::face_set {
 
@@ -1788,14 +1796,227 @@ struct FaceSetOperation {
   gesture::Operation op;
 
   int new_face_set_id;
+  bool cut_geometry;
 };
+
+/* Intersect with the open side walls of the projected gesture. No solid boolean
+ * or deletion of the sculpt surface is involved; open surfaces are supported. */
+static void gesture_cut_mesh(gesture::GestureData &data)
+{
+  Object &object = *data.vc.obact;
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  const float4x4 projection = ED_view3d_ob_project_mat_get(data.vc.rv3d, &object);
+  const float4x4 inverse = math::invert(projection);
+  const float width = data.vc.region->winx;
+  const float height = data.vc.region->winy;
+  float near_depth = 1.0f, far_depth = -1.0f;
+  float extent = std::max(width, height) * 2.0f;
+  for (const float3 &position : mesh.vert_positions()) {
+    const float4 clip = projection * float4(symmetry_flip(position, data.symmpass), 1.0f);
+    if (clip.w > 0.0f) {
+      near_depth = std::min(near_depth, clip.z / clip.w);
+      far_depth = std::max(far_depth, clip.z / clip.w);
+      extent = std::max(
+          extent,
+          std::max(std::abs(clip.x / clip.w) * width, std::abs(clip.y / clip.w) * height) * 2.0f);
+    }
+  }
+  if (near_depth > far_depth) {
+    return;
+  }
+  const float margin = std::max((far_depth - near_depth) * 0.1f, 1.0e-5f);
+  near_depth = std::max(-1.0f, near_depth - margin);
+  far_depth = std::min(1.0f, far_depth + margin);
+  if (near_depth >= far_depth) {
+    return;
+  }
+  auto unproject = [&](const float2 &point, const float depth) {
+    const float4 p = inverse * float4(2.0f * point.x / width - 1.0f,
+                                      2.0f * point.y / height - 1.0f,
+                                      depth,
+                                      1.0f);
+    return symmetry_flip(float3(p) / p.w, data.symmpass);
+  };
+  Vector<float2> outline;
+  for (const float2 point : data.gesture_points) {
+    if (outline.is_empty() || math::length_squared(outline.last() - point) >= 1.0e-8f) {
+      outline.append(point);
+    }
+  }
+  if (outline.size() > 1 && math::length_squared(outline.first() - outline.last()) < 1.0e-8f) {
+    outline.remove_last();
+  }
+  if (outline.size() < 2) {
+    return;
+  }
+  if (data.shape_type == gesture::ShapeType::Line) {
+    const float2 a = outline[0], b = outline[1];
+    const float2 direction = math::normalize(b - a);
+    if (math::length_squared(b - a) < 1.0e-8f) {
+      return;
+    }
+    float2 side(-direction.y, direction.x);
+    const float3 test = unproject((a + b) * 0.5f + side, (near_depth + far_depth) * 0.5f);
+    if (plane_point_side_v3(data.line.plane, test) < 0.0f) {
+      side = -side;
+    }
+    const float2 start = data.line.use_side_planes ? a : a - direction * extent;
+    const float2 end = data.line.use_side_planes ? b : b + direction * extent;
+    outline = {start, end, end + side * extent, start + side * extent};
+  }
+  if (outline.size() < 3) {
+    return;
+  }
+  const BMAllocTemplate alloc = BMALLOC_TEMPLATE_FROM_ME(&mesh);
+  BMeshCreateParams create{};
+  BMesh *bm = BM_mesh_create(&alloc, &create);
+  BMeshFromMeshParams from{};
+  from.calc_face_normal = true;
+  BM_mesh_bm_from_me(bm, &mesh, &from);
+  int face_set_offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+  if (face_set_offset == -1) {
+    BM_data_layer_add_named(bm, &bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+    face_set_offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+    BMFace *face;
+    BMIter iter;
+    BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
+      BM_ELEM_CD_SET_INT(face, face_set_offset, 1);
+    }
+  }
+  std::string source_layer = ".bmax_gesture_source";
+  while (CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, source_layer) != -1) {
+    source_layer += "_";
+  }
+  BM_data_layer_add_named(bm, &bm->pdata, CD_PROP_INT32, source_layer);
+  int source_offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, source_layer);
+  const int mask_offset = CustomData_get_offset_named(&bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  Set<BMVert *> original_verts;
+  Set<BMEdge *> original_edges;
+  BMVert *vert;
+  BMEdge *edge;
+  BMFace *face;
+  BMIter iter;
+  BM_ITER_MESH (vert, &iter, bm, BM_VERTS_OF_MESH) {
+    if (!vert->e) {
+      original_verts.add(vert);
+    }
+  }
+  BM_ITER_MESH (edge, &iter, bm, BM_EDGES_OF_MESH) {
+    if (!edge->l) {
+      original_edges.add(edge);
+    }
+  }
+  BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
+    float mask = 0.0f;
+    BMLoop *loop = BM_FACE_FIRST_LOOP(face);
+    do {
+      mask += mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(loop->v, mask_offset);
+    } while ((loop = loop->next) != BM_FACE_FIRST_LOOP(face));
+    float3 center;
+    BM_face_calc_center_median(face, center);
+    const bool clipped = RV3D_CLIPPING_ENABLED(data.vc.v3d, data.vc.rv3d) &&
+                         ED_view3d_clipping_test(data.vc.rv3d, center, true);
+    const bool protected_face = clipped || BM_elem_flag_test(face, BM_ELEM_HIDDEN) ||
+                                mask / face->len > 1.0f - FACE_SET_MIN_FADE ||
+                                (data.front_faces_only &&
+                                 math::dot(data.view_normal, float3(face->no)) < 0.0f);
+    BM_ELEM_CD_SET_INT(face, source_offset, protected_face ? -1 : 0);
+  }
+  /* Adjacent walls share their vertical edge, so corners form one continuous
+   * intersection contour instead of coincident, disconnected cutter endpoints. */
+  Array<std::array<BMVert *, 2>> wall_verts(outline.size());
+  for (const int i : outline.index_range()) {
+    const float3 near_point = unproject(outline[i], near_depth);
+    const float3 far_point = unproject(outline[i], far_depth);
+    if (!is_finite_v3(near_point) || !is_finite_v3(far_point)) {
+      BM_mesh_free(bm);
+      return;
+    }
+    wall_verts[i][0] = BM_vert_create(bm, near_point, nullptr, BM_CREATE_NOP);
+    wall_verts[i][1] = BM_vert_create(bm, far_point, nullptr, BM_CREATE_NOP);
+  }
+  for (const int i : outline.index_range()) {
+    const int next = (i + 1) % outline.size();
+    BMVert *verts[4] = {
+        wall_verts[i][0], wall_verts[next][0], wall_verts[next][1], wall_verts[i][1]};
+    BMFace *wall = BM_face_create_verts(bm, verts, 4, nullptr, BM_CREATE_NOP, true);
+    BM_ELEM_CD_SET_INT(wall, source_offset, 1);
+  }
+  BM_mesh_normals_update(bm);
+  Array<std::array<BMLoop *, 3>> triangles(poly_to_tri_count(bm->totface, bm->totloop));
+  BM_mesh_calc_tessellation(bm, triangles);
+  BM_mesh_intersect(
+      bm,
+      triangles,
+      [](BMFace *f, void *offset) { return BM_ELEM_CD_GET_INT(f, *static_cast<int *>(offset)); },
+      &source_offset,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      BMESH_ISECT_BOOLEAN_NONE,
+      1.0e-6f);
+  BMFace *face_next;
+  BMEdge *edge_next;
+  BMVert *vert_next;
+  /* Delete cutter faces only, then their loose wires. Shared intersection vertices
+   * belong to the sculpt surface and must remain welded. */
+  BM_ITER_MESH_MUTABLE (face, face_next, &iter, bm, BM_FACES_OF_MESH) {
+    if (BM_ELEM_CD_GET_INT(face, source_offset) == 1) {
+      BM_face_kill(bm, face);
+    }
+  }
+  BM_ITER_MESH_MUTABLE (edge, edge_next, &iter, bm, BM_EDGES_OF_MESH) {
+    if (!edge->l && !original_edges.contains(edge)) {
+      BM_edge_kill(bm, edge);
+    }
+  }
+  BM_ITER_MESH_MUTABLE (vert, vert_next, &iter, bm, BM_VERTS_OF_MESH) {
+    if (!vert->e && !original_verts.contains(vert)) {
+      BM_vert_kill(bm, vert);
+    }
+  }
+  const auto *operation = reinterpret_cast<FaceSetOperation *>(data.operation);
+  BM_mesh_normals_update(bm);
+  BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
+    if (BM_ELEM_CD_GET_INT(face, source_offset) != 0) {
+      continue;
+    }
+    float3 center;
+    BM_face_calc_point_in_face(face, center);
+    bool affected = gesture::is_affected(data, center, float3(face->no));
+    if (data.shape_type == gesture::ShapeType::Lasso) {
+      const float2 screen = ED_view3d_project_float_v2_m4(
+          data.vc.region, symmetry_flip(center, data.symmpass), projection);
+      affected = isect_point_poly_v2(
+          screen, reinterpret_cast<const float (*)[2]>(outline.data()), outline.size());
+    }
+    if (affected) {
+      BM_ELEM_CD_SET_INT(face, face_set_offset, operation->new_face_set_id);
+    }
+  }
+  BM_data_layer_free_named(bm, &bm->pdata, source_layer);
+  BMeshToMeshParams to{};
+  BM_mesh_bm_to_me(nullptr, bm, &mesh, &to);
+  BM_mesh_free(bm);
+  islands::invalidate(*data.ss);
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+}
 
 static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &gesture_data)
 {
   const Scene &scene = *CTX_data_scene(&C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_begin(scene, *gesture_data.vc.obact, &op);
+  const auto *operation = reinterpret_cast<FaceSetOperation *>(gesture_data.operation);
+  if (operation->cut_geometry) {
+    undo::geometry_begin(scene, *gesture_data.vc.obact, &op);
+  }
+  else {
+    undo::push_begin(scene, *gesture_data.vc.obact, &op);
+  }
 }
 
 static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMask &node_mask)
@@ -1981,6 +2202,11 @@ static void gesture_apply_bmesh(gesture::GestureData &gesture_data, const IndexM
 
 static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureData &gesture_data)
 {
+  const auto *operation = reinterpret_cast<FaceSetOperation *>(gesture_data.operation);
+  if (operation->cut_geometry) {
+    gesture_cut_mesh(gesture_data);
+    return;
+  }
   switch (bke::object::pbvh_get(*gesture_data.vc.obact)->type()) {
     case bke::pbvh::Type::Grids:
     case bke::pbvh::Type::Mesh:
@@ -1994,12 +2220,29 @@ static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureDa
 
 static void gesture_end(bContext & /*C*/, gesture::GestureData &gesture_data)
 {
-  undo::push_end(*gesture_data.vc.obact);
+  const auto *operation = reinterpret_cast<FaceSetOperation *>(gesture_data.operation);
+  if (operation->cut_geometry) {
+    Object &object = *gesture_data.vc.obact;
+    undo::geometry_end(object);
+    BKE_sculptsession_free_pbvh(object);
+    BKE_mesh_batch_cache_dirty_tag(id_cast<Mesh *>(object.data), BKE_MESH_BATCH_DIRTY_ALL);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  }
+  else {
+    undo::push_end(*gesture_data.vc.obact);
+  }
 }
 
-static void init_operation(gesture::GestureData &gesture_data, wmOperator & /*op*/)
+static bool init_operation(gesture::GestureData &gesture_data, wmOperator &op)
 {
   Object &object = *gesture_data.vc.obact;
+  const bool cut = RNA_boolean_get(op.ptr, "use_cut_geometry");
+  if (cut && (BKE_modifiers_uses_multires(&object) || object.runtime->sculpt_session->bm)) {
+    BKE_report(op.reports,
+               RPT_ERROR,
+               "Cut Geometry requires a mesh without Multires or Dynamic Topology");
+    return false;
+  }
   gesture_data.operation = reinterpret_cast<gesture::Operation *>(
       MEM_new_zeroed<FaceSetOperation>(__func__));
 
@@ -2011,6 +2254,8 @@ static void init_operation(gesture::GestureData &gesture_data, wmOperator & /*op
   face_set_operation->op.end = gesture_end;
 
   face_set_operation->new_face_set_id = face_set::find_next_available_id(object);
+  face_set_operation->cut_geometry = cut;
+  return true;
 }
 
 static wmOperatorStatus gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2030,7 +2275,9 @@ static wmOperatorStatus gesture_box_exec(bContext *C, wmOperator *op)
   if (!gesture_data) {
     return OPERATOR_CANCELLED;
   }
-  init_operation(*gesture_data, *op);
+  if (!init_operation(*gesture_data, *op)) {
+    return OPERATOR_CANCELLED;
+  }
   ed::sculpt_paint::face_set_overlay_check(*C, *op);
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
@@ -2053,7 +2300,9 @@ static wmOperatorStatus gesture_lasso_exec(bContext *C, wmOperator *op)
   if (!gesture_data) {
     return OPERATOR_CANCELLED;
   }
-  init_operation(*gesture_data, *op);
+  if (!init_operation(*gesture_data, *op)) {
+    return OPERATOR_CANCELLED;
+  }
   ed::sculpt_paint::face_set_overlay_check(*C, *op);
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
@@ -2076,7 +2325,9 @@ static wmOperatorStatus gesture_line_exec(bContext *C, wmOperator *op)
   if (!gesture_data) {
     return OPERATOR_CANCELLED;
   }
-  init_operation(*gesture_data, *op);
+  if (!init_operation(*gesture_data, *op)) {
+    return OPERATOR_CANCELLED;
+  }
   ed::sculpt_paint::face_set_overlay_check(*C, *op);
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
@@ -2099,7 +2350,9 @@ static wmOperatorStatus gesture_polyline_exec(bContext *C, wmOperator *op)
   if (!gesture_data) {
     return OPERATOR_CANCELLED;
   }
-  init_operation(*gesture_data, *op);
+  if (!init_operation(*gesture_data, *op)) {
+    return OPERATOR_CANCELLED;
+  }
   ed::sculpt_paint::face_set_overlay_check(*C, *op);
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
@@ -2107,7 +2360,7 @@ static wmOperatorStatus gesture_polyline_exec(bContext *C, wmOperator *op)
 
 void SCULPT_OT_face_set_polyline_gesture(wmOperatorType *ot)
 {
-  ot->name = "Face Set Lasso Gesture";
+  ot->name = "Face Set Polyline Gesture";
   ot->idname = "SCULPT_OT_face_set_polyline_gesture";
   ot->description = "Add a face set in a shape defined by the cursor";
 
@@ -2117,9 +2370,15 @@ void SCULPT_OT_face_set_polyline_gesture(wmOperatorType *ot)
 
   ot->poll = sculpt_mode_poll_view3d;
 
-  ot->flag = OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 
   WM_operator_properties_gesture_polyline(ot);
+  RNA_def_boolean(
+      ot->srna,
+      "use_cut_geometry",
+      true,
+      "Cut Geometry",
+      "Insert edges along the gesture boundary before assigning the Face Set (mesh only)");
   gesture::operator_properties(ot, gesture::ShapeType::Lasso);
 }
 
@@ -2138,6 +2397,12 @@ void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER;
 
   WM_operator_properties_border(ot);
+  RNA_def_boolean(
+      ot->srna,
+      "use_cut_geometry",
+      true,
+      "Cut Geometry",
+      "Insert edges along the gesture boundary before assigning the Face Set (mesh only)");
   gesture::operator_properties(ot, gesture::ShapeType::Box);
 }
 
@@ -2153,9 +2418,15 @@ void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot)
 
   ot->poll = sculpt_mode_poll_view3d;
 
-  ot->flag = OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 
   WM_operator_properties_gesture_lasso(ot);
+  RNA_def_boolean(
+      ot->srna,
+      "use_cut_geometry",
+      true,
+      "Cut Geometry",
+      "Insert edges along the gesture boundary before assigning the Face Set (mesh only)");
   gesture::operator_properties(ot, gesture::ShapeType::Lasso);
 }
 
@@ -2174,8 +2445,265 @@ void SCULPT_OT_face_set_line_gesture(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER;
 
   WM_operator_properties_gesture_straightline(ot, WM_CURSOR_EDIT);
+  RNA_def_boolean(
+      ot->srna,
+      "use_cut_geometry",
+      true,
+      "Cut Geometry",
+      "Insert edges along the gesture boundary before assigning the Face Set (mesh only)");
   gesture::operator_properties(ot, gesture::ShapeType::Line);
 }
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Sculpt Fill Holes and Split
+ * \{ */
+
+static bool topology_poll(bContext *C)
+{
+  if (!sculpt_mode_poll(C) || !ED_operator_object_active_editable_mesh(C)) {
+    return false;
+  }
+  Object &object = *CTX_data_active_object(C);
+  if (BKE_modifiers_uses_multires(&object) || object.runtime->sculpt_session->bm) {
+    CTX_wm_operator_poll_msg_set(C, "Requires a mesh without Multires or Dynamic Topology");
+    return false;
+  }
+  return true;
+}
+
+static BMesh *topology_bmesh(bContext *C, Object &object)
+{
+  BKE_sculpt_update_object_for_edit(CTX_data_depsgraph_pointer(C), &object, false);
+  const Mesh &mesh = *id_cast<Mesh *>(object.data);
+  const BMAllocTemplate alloc = BMALLOC_TEMPLATE_FROM_ME(&mesh);
+  BMeshCreateParams create{};
+  create.use_toolflags = true;
+  BMesh *bm = BM_mesh_create(&alloc, &create);
+  BMeshFromMeshParams from{};
+  from.calc_face_normal = true;
+  BM_mesh_bm_from_me(bm, &mesh, &from);
+  return bm;
+}
+
+static void topology_commit(bContext *C, Object &object, BMesh *bm, wmOperator *op)
+{
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  undo::geometry_begin(*CTX_data_scene(C), object, op);
+  BMeshToMeshParams to{};
+  to.calc_object_remap = true;
+  BM_mesh_bm_to_me(CTX_data_main(C), bm, &mesh, &to);
+  undo::geometry_end(object);
+  BM_mesh_free(bm);
+  BKE_sculptsession_free_pbvh(object);
+  BKE_mesh_batch_cache_dirty_tag(&mesh, BKE_MESH_BATCH_DIRTY_ALL);
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &mesh);
+}
+
+static wmOperatorStatus fill_holes_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  BMesh *bm = topology_bmesh(C, object);
+  Vector<BMEdge *> boundaries;
+  BMIter iter;
+  BMEdge *edge;
+  BM_ITER_MESH (edge, &iter, bm, BM_EDGES_OF_MESH) {
+    if (BM_edge_is_boundary(edge)) {
+      boundaries.append(edge);
+    }
+  }
+  int added = 0;
+  if (!boundaries.is_empty()) {
+    BMOperator fill;
+    BMO_op_initf(bm,
+                 &fill,
+                 0,
+                 "holes_fill sides=%i use_new_face_sets=%b",
+                 RNA_int_get(op->ptr, "sides"),
+                 RNA_boolean_get(op->ptr, "use_new_face_sets"));
+    BMO_slot_buffer_from_array(&fill,
+                               BMO_slot_get(fill.slots_in, "edges"),
+                               reinterpret_cast<BMHeader **>(boundaries.data()),
+                               boundaries.size());
+    BMO_op_exec(bm, &fill);
+    added = BMO_slot_buffer_len(fill.slots_out, "faces.out");
+    BMO_op_finish(bm, &fill);
+  }
+  if (added == 0) {
+    BM_mesh_free(bm);
+    BKE_report(op->reports, RPT_INFO, "No holes filled");
+    return OPERATOR_CANCELLED;
+  }
+  topology_commit(C, object, bm, op);
+  BKE_reportf(op->reports, RPT_INFO, "Created %d hole fill faces", added);
+  return OPERATOR_FINISHED;
+}
+
+void SCULPT_OT_fill_holes(wmOperatorType *ot)
+{
+  ot->name = "Fill Holes";
+  ot->idname = "SCULPT_OT_fill_holes";
+  ot->description = "Fill surface boundary loops and assign a Face Set to each new patch";
+  ot->poll = topology_poll;
+  ot->exec = fill_holes_exec;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  RNA_def_int(ot->srna, "sides", 0, 0, 1000, "Sides",
+              "Maximum number of sides in a hole to fill (zero fills all holes)", 0, 100);
+  RNA_def_boolean(ot->srna, "use_new_face_sets", true, "New Face Sets",
+                  "Assign a different Sculpt Face Set to each newly filled patch");
+}
+
+enum class SplitMode { FaceSets, Material, Masked, Visible, Edges, Vertices };
+
+static bool split_poll(bContext *C)
+{
+  if (!topology_poll(C)) {
+    return false;
+  }
+  if (id_cast<Mesh *>(CTX_data_active_object(C)->data)->key) {
+    CTX_wm_operator_poll_msg_set(C, "Split requires a mesh without shape keys");
+    return false;
+  }
+  return true;
+}
+
+static wmOperatorStatus split_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  BMesh *bm = topology_bmesh(C, object);
+  const int old_verts = bm->totvert;
+  const int old_edges = bm->totedge;
+  const SplitMode mode = SplitMode(RNA_enum_get(op->ptr, "mode"));
+  const float threshold = RNA_float_get(op->ptr, "mask_threshold");
+  const int mask_offset = CustomData_get_offset_named(&bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  const int face_set_offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32,
+                                                         ".sculpt_face_set");
+  BMIter iter;
+  BMVert *vert;
+  Vector<BMVert *> original_verts;
+  bool has_mask = false;
+  BM_ITER_MESH (vert, &iter, bm, BM_VERTS_OF_MESH) {
+    original_verts.append(vert);
+    has_mask |= mask_offset != -1 && BM_ELEM_CD_GET_FLOAT(vert, mask_offset) >= threshold;
+  }
+  const auto masked = [&](const BMVert *v) {
+    return mask_offset != -1 && BM_ELEM_CD_GET_FLOAT(v, mask_offset) >= threshold;
+  };
+  if (ELEM(mode, SplitMode::Edges, SplitMode::Vertices)) {
+    /* Sculpt masks take the place of Edit Mode selection. Without a mask, split the
+     * visible surface. Hidden incident faces protect their vertices and edges. */
+    BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE, BM_ELEM_TAG, false);
+    for (BMVert *v : original_verts) {
+      bool eligible = !BM_elem_flag_test(v, BM_ELEM_HIDDEN) && (!has_mask || masked(v));
+      BMIter face_iter;
+      BMFace *face;
+      BM_ITER_ELEM (face, &face_iter, v, BM_FACES_OF_VERT) {
+        eligible &= !BM_elem_flag_test(face, BM_ELEM_HIDDEN);
+      }
+      BM_elem_flag_set(v, BM_ELEM_TAG, eligible);
+    }
+    BMEdge *edge;
+    BM_ITER_MESH (edge, &iter, bm, BM_EDGES_OF_MESH) {
+      const bool a = BM_elem_flag_test(edge->v1, BM_ELEM_TAG);
+      const bool b = BM_elem_flag_test(edge->v2, BM_ELEM_TAG);
+      BM_elem_flag_set(edge, BM_ELEM_TAG,
+                       !BM_elem_flag_test(edge, BM_ELEM_HIDDEN) &&
+                           (mode == SplitMode::Edges ? a && b : a || b));
+    }
+    BMO_op_callf(bm, 0, "split_edges edges=%he verts=%hv use_verts=%b",
+                 BM_ELEM_TAG, BM_ELEM_TAG, mode == SplitMode::Vertices);
+  }
+  else {
+    BM_mesh_elem_index_ensure(bm, BM_FACE);
+    Array<int64_t> face_groups(bm->totface);
+    BMFace *face;
+    BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
+      /* Hidden geometry is a single protected region, distinct from every visible ID. */
+      int64_t group = INT64_MAX;
+      if (!BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
+        switch (mode) {
+          case SplitMode::FaceSets:
+            group = face_set_offset == -1 ? 1 : BM_ELEM_CD_GET_INT(face, face_set_offset);
+            break;
+          case SplitMode::Material:
+            group = face->mat_nr;
+            break;
+          case SplitMode::Masked: {
+            bool all_masked = true;
+            BMIter vert_iter;
+            BMVert *v;
+            BM_ITER_ELEM (v, &vert_iter, face, BM_VERTS_OF_FACE) {
+              all_masked &= masked(v);
+            }
+            group = all_masked ? 1 : INT64_MAX;
+            break;
+          }
+          case SplitMode::Visible:
+            group = 1;
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+      }
+      face_groups[BM_elem_index_get(face)] = group;
+    }
+    /* Partition incident loops by group at each ORIGINAL vertex. This handles point-only
+     * contacts and non-manifold edges too, without separating faces of the same group. */
+    for (BMVert *v : original_verts) {
+      Map<int64_t, Vector<BMLoop *>> groups;
+      BMIter loop_iter;
+      BMLoop *loop;
+      BM_ITER_ELEM (loop, &loop_iter, v, BM_LOOPS_OF_VERT) {
+        groups.lookup_or_add_default(face_groups[BM_elem_index_get(loop->f)]).append(loop);
+      }
+      if (groups.size() <= 1) {
+        continue;
+      }
+      bool first = true;
+      for (Vector<BMLoop *> &loops : groups.values()) {
+        if (first) {
+          first = false;
+          continue;
+        }
+        BM_face_loop_separate_multi(bm, loops.data(), loops.size());
+      }
+    }
+  }
+  if (bm->totvert == old_verts && bm->totedge == old_edges) {
+    BM_mesh_free(bm);
+    BKE_report(op->reports, RPT_INFO, "Nothing to split");
+    return OPERATOR_CANCELLED;
+  }
+  topology_commit(C, object, bm, op);
+  return OPERATOR_FINISHED;
+}
+
+void SCULPT_OT_split(wmOperatorType *ot)
+{
+  static const EnumPropertyItem modes[] = {
+      {int(SplitMode::FaceSets), "FACE_SETS", 0, "By Face Sets", "Disconnect different Face Sets"},
+      {int(SplitMode::Material), "MATERIAL", 0, "By Material", "Disconnect different materials"},
+      {int(SplitMode::Masked), "MASKED", 0, "Masked", "Disconnect fully masked faces from the rest"},
+      {int(SplitMode::Visible), "VISIBLE", 0, "Visible", "Disconnect visible faces from hidden faces"},
+      {int(SplitMode::Edges), "EDGE", 0, "Faces by Edges",
+       "Split along edges with both vertices masked, or all visible edges without a mask"},
+      {int(SplitMode::Vertices), "VERT", 0, "Faces & Edges by Vertices",
+       "Split faces and edges at masked vertices, or all visible vertices without a mask"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  ot->name = "Split";
+  ot->idname = "SCULPT_OT_split";
+  ot->description = "Disconnect geometry while keeping all parts in the same sculpt object";
+  ot->poll = split_poll;
+  ot->exec = split_exec;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->prop = RNA_def_enum(ot->srna, "mode", modes, int(SplitMode::FaceSets), "Mode", "");
+  RNA_def_float_factor(ot->srna, "mask_threshold", 0.5f, 0.001f, 1.0f, "Mask Threshold",
+                       "Minimum vertex mask value for selection; Masked requires every face vertex",
+                       0.001f, 1.0f);
+}
+
 /** \} */
 
 }  // namespace blender::ed::sculpt_paint::face_set

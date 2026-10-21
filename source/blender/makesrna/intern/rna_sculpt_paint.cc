@@ -1201,6 +1201,11 @@ static void rna_def_sculpt(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Sculpt", "");
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
 
+  prop = RNA_def_property(srna, "bevel_mask_curve", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CurveMapping");
+  RNA_def_property_ui_text(prop, "Bevel Mask Profile", "Custom falloff for Bevel Mask");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
   prop = RNA_def_property(srna, "lock_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flags", SCULPT_LOCK_X);
   RNA_def_property_ui_text(prop, "Lock X", "Disallow changes to the X axis of vertices");

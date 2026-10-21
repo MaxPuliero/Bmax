@@ -157,6 +157,11 @@ static CustomData *rna_mesh_vdata(const PointerRNA *ptr)
 /** \name Generic CustomData Layer Functions
  * \{ */
 
+static bool rna_Mesh_remesh_fix_poles_get(PointerRNA * /*ptr*/)
+{
+  return true;
+}
+
 static bool rna_Mesh_has_custom_normals_get(PointerRNA *ptr)
 {
   Mesh *mesh = static_cast<Mesh *>(ptr->data);
@@ -3207,14 +3212,30 @@ static void rna_def_mesh(BlenderRNA *brna)
       prop,
       "Adaptivity",
       "Reduces the final face count by simplifying geometry where detail is not needed, "
-      "generating triangles. A value greater than 0 disables Fix Poles.");
+      "generating triangles. Pole cleanup remains enabled.");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 
+  prop = RNA_def_property(srna, "use_remesh_by_loose_parts", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_BY_LOOSE_PARTS);
+  RNA_def_property_ui_text(prop, "By Loose Parts", "Remesh each connected component separately without welding neighboring parts");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+
+  prop = RNA_def_property(srna, "use_remesh_fair_position", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_FAIR_HOLES);
+  RNA_def_property_ui_text(prop,
+                           "Fair Position",
+                           "Fair the interiors of newly filled hole Face Sets after remeshing; "
+                           "hole filling and pole cleanup always run");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+
   prop = RNA_def_property(srna, "use_remesh_fix_poles", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ME_REMESH_FIX_POLES);
-  RNA_def_property_ui_text(prop, "Fix Poles", "Produces fewer poles and a better topology flow");
+  RNA_def_property_boolean_funcs(prop, "rna_Mesh_remesh_fix_poles_get", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Fix Poles", "Pole cleanup is always enabled for Voxel Remesh");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);

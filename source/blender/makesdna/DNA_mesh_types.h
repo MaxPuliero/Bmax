@@ -90,8 +90,8 @@ ENUM_OPERATORS(eMesh_EditFlag)
 
 /** #Mesh.flag */
 enum eMesh_Flag : uint16_t {
-  ME_FLAG_UNUSED_0 = 1 << 0,     /* cleared */
-  ME_FLAG_UNUSED_1 = 1 << 1,     /* cleared */
+  ME_REMESH_BY_LOOSE_PARTS = 1 << 0,
+  ME_REMESH_FAIR_HOLES = 1 << 1,
   ME_FLAG_DEPRECATED_2 = 1 << 2, /* deprecated */
   /**
    * The UV selection is marked as synchronized.
