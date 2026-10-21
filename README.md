@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -16,7 +16,21 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for all implemented additions from October 1-13, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 21, 2026, their source commits, and removed items.
+
+### Sculpt remeshing, Face Set cuts, and Bevel Mask
+
+The Sculpt tools include:
+
+- **Voxel Remesh (Ctrl+R)** always runs **simple Fill Holes → Remesh with Fix Poles → optional Fair Position**, with one undo step. Enable **Fair Position** in the Remesh popover to smooth only the new cap interiors after remeshing. **By Loose Parts** voxelizes connected components independently and keeps them disconnected inside the same object. Both options are saved per mesh and initially off.
+- **Sculpt > Fill Holes** fills openings independently, creating a separate Face Set for each new patch by default.
+- **Sculpt > Split** disconnects geometry while keeping one object: **By Face Sets**, **By Material**, **Masked**, **Visible**, **Faces by Edges**, and **Faces & Edges by Vertices**. Masks replace Edit Mode selection for the edge/vertex variants; without a mask, they use the visible surface. **Face Sets > Split by Face Sets** is a direct shortcut. Fill Holes and Split stay in Sculpt Mode and support one-step undo/redo.
+- **Box, Lasso, Polyline, and Line Face Set** tools have **Cut Geometry** enabled by default. They insert edges along the gesture before assigning the Face Set. Turn it off to use the previous polygon-assignment behavior.
+- **Mask > Bevel Mask**, directly below Smooth Mask, widens the mask transition using a surface-distance **Radius** and Blender falloff profiles such as **Sharp**, **Sharper**, **Smooth**, and **Custom**. Adjust them in **F9**. Custom uses an independent curve saved with the scene. Mesh, Multires, and Dynamic Topology masks are supported.
+
+Fill Holes, Split, and Face Set topology cutting require a base mesh without Multires or Dynamic Topology; Split also requires no shape keys. See [behavior, validation, and limitations](doc/bmax/sculpt_voxel_masks.md).
+
+The implementation is included in source commit [`b98ad0b25666`](https://github.com/MaxPuliero/Bmax/commit/b98ad0b256662a12363208849e55614de64905be) on `main`. The local Windows runtime is rebuilt and verified on OpenGL/Vulkan, including undo/redo, mask save/reload, and split/remesh integration. The separately copied Desktop packages and public Windows download have not been updated.
 
 ### Outliner collection selection highlights
 
