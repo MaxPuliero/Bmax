@@ -256,3 +256,17 @@ All 95 GUI assertions passed on each of OpenGL and Vulkan. Checks cover six Spli
 ### Source publication (2026-10-21)
 
 The verified Sculpt suite is included in source commit `b98ad0b25666` on `main`. README, the feature inventory, and the technical notes describe the final simple-fill/remesh/optional-fair workflow, six same-object Sculpt Split modes, Face Set topology gestures, and Bevel Mask. The user confirmed that the Sculpt commands work. This source publication does not replace the locally installed executable or the separately distributed Desktop/public packages; the installed executable remains the verified 12:05:36 JST build described above.
+
+
+## Local Decimate cache build verified on 2026-10-22
+
+Release INSTALL completed with `--parallel 2` and `/p:CL_MPCount=2` on development branch `codex/decimate-result-cache`, based on `main` at `55c61952fd05`. Only `source/blender/modifiers/intern/MOD_decimate.cc` changes behavior, using the existing modifier runtime pointer; no DNA or shared C++ layout change was made. The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-22 11:21:16 JST, reporting base hash `55c61952fd05`. The verified implementation is included in source commit `bb4bbad2a787` on `main`; compilation preceded that commit. Desktop copies and the public download are unchanged, and the existing user session remained open.
+
+All 69 background comparison/lifecycle cases passed with guarded allocation, including exact geometry and normals, upstream and downstream changes, all Decimate modes, weights/attributes/materials, Edit Mode transitions, duplication/deletion, undo/redo, Apply, and save/reload. See [cache notes](decimate_cache.md) for the synchronous benchmark method, results, memory tradeoff, and limits. No viewport FPS or interactive undo timing is claimed. Generated verification files and build logs were external and removed after checking; build caches and dependencies were retained.
+
+
+### Saved Cache Result checkbox (2026-10-22)
+
+The follow-up Release INSTALL completed with `--parallel 2` and `/p:CL_MPCount=2`. A negative bit in the existing Decimate flag field stores `use_cache`; no member sizes/offsets or shared C++ layout changed. The checkbox appears above Face Count in all three Decimate modes, defaults on for new modifiers and old files, and releases/bypasses the cache when off on evaluation. Source changes are in `MOD_decimate.cc`, `rna_modifier.cc`, and the Decimate enum in `DNA_modifier_types.h`.
+
+The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-22 11:45:18 JST, reporting base hash `55c61952fd05`. All 34 follow-up checks passed with guarded allocation: defaults including old-file loading, on/off equality in all modes, other flags, duplication, no-op disabling, save/reload, undo/redo, invalidation and uncached Apply. A separate synchronous benchmark confirmed the cache benefit disappears when off and returns when re-enabled; see [details and limits](decimate_cache.md#cache-result-checkbox-follow-up-2026-10-22). Source commit `bb4bbad2a787` includes both cache and checkbox on `main`; the binary was compiled before that commit. Desktop/public packages are unchanged. Temporary verification artifacts were external and removed, preserving build dependencies and the user's open Desktop session.

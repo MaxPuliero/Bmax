@@ -16,7 +16,24 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 21, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 22, 2026, their source commits, and removed items.
+
+### Faster Decimate with Cache Result
+
+**Cache Result**, enabled by default, keeps Decimate's last result in memory so adding or adjusting later modifiers can reuse it. Decimate recalculates when its settings or incoming mesh change, including coordinates, topology, UVs, colors, attributes, and vertex weights. Applying Decimate can also reuse the result when the application input matches.
+
+The checkbox appears above **Face Count** in Collapse, Un-Subdivide, and Planar modes. Turn it off to release the cached meshes on the next evaluation and return to normal uncached calculation. The choice is saved per modifier; older files also default to enabled. Caching trades additional RAM for faster repeated evaluations; it does not eliminate the first calculation or the cost of modifiers before Decimate.
+
+On a **327,680-triangle** fixture:
+
+| Operation | Previous build | With Cache Result |
+| --- | ---: | ---: |
+| Change a later modifier | 1,294 ms | **0.25 ms** |
+| Apply Decimate | 1,328 ms | **2.8 ms** |
+
+These synchronous background measurements exclude interactive undo and drawing; the downstream result is a median, while Apply is one observation. Validation passed 69 initial cases and 34 checkbox follow-up checks, covering geometry and normals, invalidation, old-file defaults, save/reload, and undo/redo. See [cache behavior, memory cost, benchmark method, and limitations](doc/bmax/decimate_cache.md).
+
+The implementation is included in source commit [`bb4bbad2a787`](https://github.com/MaxPuliero/Bmax/commit/bb4bbad2a787c5b424c461bc6d45c6540827b89c) on `main`. The local Windows runtime is rebuilt and verified, and the user confirmed a noticeable speedup. Desktop packages and the public Windows download have not been updated.
 
 ### Sculpt remeshing, Face Set cuts, and Bevel Mask
 
