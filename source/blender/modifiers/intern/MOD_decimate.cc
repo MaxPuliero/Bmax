@@ -6,8 +6,11 @@
  * \ingroup modifiers
  */
 
+#include <cstring>
+
 #include <fmt/format.h>
 
+#include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -20,7 +23,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_attribute.hh"
+#include "BKE_attribute_storage.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 
 #include "UI_interface_layout.hh"
@@ -52,6 +59,194 @@ static void init_data(ModifierData *md)
 {
   DecimateModifierData *dmd = reinterpret_cast<DecimateModifierData *>(md);
   INIT_DEFAULT_STRUCT_AFTER(dmd, modifier);
+}
+
+/** Owned by the evaluated modifier, preserved by depsgraph runtime backup. Mesh copies use
+ * implicit sharing, so downstream modifiers cannot overwrite the cached input or result. */
+struct DecimateRuntimeData {
+  Mesh *input = nullptr;
+  Mesh *result = nullptr;
+  DecimateModifierData settings;
+
+  ~DecimateRuntimeData()
+  {
+    if (input) {
+      BKE_id_free(nullptr, input);
+    }
+    if (result) {
+      BKE_id_free(nullptr, result);
+    }
+  }
+};
+
+static void free_runtime_data(void *runtime)
+{
+  MEM_delete(static_cast<DecimateRuntimeData *>(runtime));
+}
+
+static void free_data(ModifierData *md)
+{
+  free_runtime_data(md->runtime);
+  md->runtime = nullptr;
+}
+
+static bool bytes_equal(const void *a, const void *b, const size_t size)
+{
+  return size == 0 || a == b || (a && b && memcmp(a, b, size) == 0);
+}
+
+static bool attribute_values_equal(const CPPType &type,
+                                   const void *a,
+                                   const void *b,
+                                   const int64_t size)
+{
+  if (a == b || size == 0) {
+    return true;
+  }
+  if (type.is_trivial) {
+    return bytes_equal(a, b, size * type.size);
+  }
+  for (const int64_t i : IndexRange(size)) {
+    if (!type.is_equal_or_false(static_cast<const char *>(a) + i * type.size,
+                                static_cast<const char *>(b) + i * type.size))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool attributes_equal(const Mesh &a, const Mesh &b)
+{
+  const bke::AttributeStorage &attrs_a = a.attribute_storage.wrap();
+  const bke::AttributeStorage &attrs_b = b.attribute_storage.wrap();
+  if (attrs_a.count() != attrs_b.count()) {
+    return false;
+  }
+  for (const int i : IndexRange(attrs_a.count())) {
+    const bke::Attribute &attr_a = attrs_a.at_index(i);
+    const bke::Attribute *attr_b = &attrs_b.at_index(i);
+    if (attr_a.name() != attr_b->name() || attr_a.domain() != attr_b->domain() ||
+        attr_a.data_type() != attr_b->data_type() ||
+        attr_a.storage_type() != attr_b->storage_type())
+    {
+      return false;
+    }
+    const CPPType &type = bke::attribute_type_to_cpp_type(attr_a.data_type());
+    if (const auto *data_a = std::get_if<bke::Attribute::ArrayData>(&attr_a.data())) {
+      const auto &data_b = std::get<bke::Attribute::ArrayData>(attr_b->data());
+      if (data_a->size != data_b.size ||
+          !attribute_values_equal(type, data_a->data, data_b.data, data_a->size))
+      {
+        return false;
+      }
+    }
+    else {
+      const auto &single_a = std::get<bke::Attribute::SingleData>(attr_a.data());
+      const auto &single_b = std::get<bke::Attribute::SingleData>(attr_b->data());
+      if (!attribute_values_equal(type, single_a.value, single_b.value, 1)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool custom_data_equal(const CustomData &a, const CustomData &b, const int size)
+{
+  int index_b = 0;
+  for (const int i : IndexRange(a.totlayer)) {
+    const CustomDataLayer &la = a.layers[i];
+    /* The BMesh conversion ignores these layers, as does the evaluated mesh snapshot copy.
+     * Requiring them in the key would prevent reuse whenever an unused vertex group exists. */
+    if (la.flag & CD_FLAG_NOCOPY) {
+      continue;
+    }
+    while (index_b < b.totlayer && (b.layers[index_b].flag & CD_FLAG_NOCOPY)) {
+      index_b++;
+    }
+    if (index_b == b.totlayer) {
+      return false;
+    }
+    const CustomDataLayer &lb = b.layers[index_b++];
+    if (la.type != lb.type || la.flag != lb.flag || la.uid != lb.uid || la.active != lb.active ||
+        la.active_rnd != lb.active_rnd || !STREQ(la.name, lb.name))
+    {
+      return false;
+    }
+    switch (la.type) {
+      case CD_MDEFORMVERT: {
+        const auto *va = static_cast<const MDeformVert *>(la.data);
+        const auto *vb = static_cast<const MDeformVert *>(lb.data);
+        if (va == vb) {
+          break;
+        }
+        for (const int j : IndexRange(size)) {
+          if (va[j].totweight != vb[j].totweight || va[j].flag != vb[j].flag ||
+              !bytes_equal(va[j].dw, vb[j].dw, sizeof(MDeformWeight) * va[j].totweight))
+          {
+            return false;
+          }
+        }
+        break;
+      }
+      case CD_ORIGINDEX:
+      case CD_NORMAL:
+      case CD_ORCO:
+      case CD_CLOTH_ORCO:
+      case CD_SHAPE_KEYINDEX:
+      case CD_SHAPEKEY:
+      case CD_ORIGSPACE_MLOOP:
+      case CD_MVERT_SKIN:
+        if (!bytes_equal(la.data, lb.data, size_t(size) * CustomData_sizeof(la.type))) {
+          return false;
+        }
+        break;
+      default:
+        /* In particular, never compare pointer-containing Multires layers as raw bytes.
+         * Unhandled layers conservatively use the ordinary evaluation path. */
+        return false;
+    }
+  }
+  while (index_b < b.totlayer && (b.layers[index_b].flag & CD_FLAG_NOCOPY)) {
+    index_b++;
+  }
+  return index_b == b.totlayer;
+}
+
+static bool mesh_input_equal(const Mesh &a, const Mesh &b)
+{
+  if (a.verts_num != b.verts_num || a.edges_num != b.edges_num || a.faces_num != b.faces_num ||
+      a.corners_num != b.corners_num || a.normal_weighting_mode != b.normal_weighting_mode ||
+      a.normal_weight != b.normal_weight ||
+      a.normal_weight_threshold != b.normal_weight_threshold || a.act_face != b.act_face ||
+      a.totselect != b.totselect ||
+      !bytes_equal(a.mselect, b.mselect, sizeof(MSelect) * size_t(a.totselect)) ||
+      !bytes_equal(a.face_offset_indices, b.face_offset_indices, sizeof(int) * (a.faces_num + 1)))
+  {
+    return false;
+  }
+  /* Group ordering controls the interpretation of deform weights. */
+  const auto *ga = static_cast<const bDeformGroup *>(a.vertex_group_names.first);
+  const auto *gb = static_cast<const bDeformGroup *>(b.vertex_group_names.first);
+  for (; ga && gb; ga = ga->next, gb = gb->next) {
+    if (!STREQ(ga->name, gb->name)) {
+      return false;
+    }
+  }
+  return ga == nullptr && gb == nullptr && attributes_equal(a, b) &&
+         custom_data_equal(a.vert_data, b.vert_data, a.verts_num) &&
+         custom_data_equal(a.edge_data, b.edge_data, a.edges_num) &&
+         custom_data_equal(a.face_data, b.face_data, a.faces_num) &&
+         custom_data_equal(a.corner_data, b.corner_data, a.corners_num);
+}
+
+static bool settings_equal(const DecimateModifierData &a, const DecimateModifierData &b)
+{
+  return a.mode == b.mode && a.percent == b.percent && a.iter == b.iter &&
+         a.delimit == b.delimit && a.symmetry_axis == b.symmetry_axis && a.angle == b.angle &&
+         STREQ(a.defgrp_name, b.defgrp_name) && a.defgrp_factor == b.defgrp_factor &&
+         a.flag == b.flag;
 }
 
 static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
@@ -98,6 +293,12 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   TIMEIT_START(decim);
 #endif
 
+  const bool use_cache = (dmd->flag & MOD_DECIM_FLAG_DISABLE_CACHE) == 0;
+  if (!use_cache) {
+    /* Release even for no-op settings or an input with too few faces. */
+    free_data(md);
+  }
+
   /* Set up front so we don't show invalid info in the UI. */
   updateFaceCount(ctx, dmd, mesh->faces_num);
 
@@ -131,6 +332,26 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     BKE_modifier_set_error(ctx->object, md, "Modifier requires more than 3 input faces");
     return mesh;
   }
+
+  auto *runtime = static_cast<DecimateRuntimeData *>(md->runtime);
+  if (use_cache && runtime && runtime->result && settings_equal(*dmd, runtime->settings) &&
+      mesh_input_equal(*mesh, *runtime->input))
+  {
+    result = BKE_mesh_copy_for_eval(*runtime->result);
+    /* Refresh non-geometric settings and ID pointers from this evaluation, not the snapshot. */
+    BLI_freelistN(&result->vertex_group_names);
+    MEM_SAFE_DELETE(result->active_color_attribute);
+    MEM_SAFE_DELETE(result->default_color_attribute);
+    MEM_SAFE_DELETE(result->active_uv_map_attribute);
+    MEM_SAFE_DELETE(result->default_uv_map_attribute);
+    MEM_SAFE_DELETE(result->stencil_uv_map_attribute);
+    MEM_SAFE_DELETE(result->clone_uv_map_attribute);
+    BKE_mesh_copy_parameters_for_eval(result, mesh);
+    updateFaceCount(ctx, dmd, result->faces_num);
+    return result;
+  }
+  /* Release an obsolete entry before doing the expensive evaluation. */
+  free_data(md);
 
   if (dmd->mode == MOD_DECIM_MODE_COLLAPSE) {
     if (dmd->defgrp_name[0] && (dmd->defgrp_factor > 0.0f)) {
@@ -210,6 +431,15 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
 
   geometry::debug_randomize_mesh_order(result);
 
+  /* A single entry per evaluated modifier. No file data or original-ID cache is retained. */
+  if (use_cache && mesh_input_equal(*mesh, *mesh)) {
+    runtime = MEM_new<DecimateRuntimeData>(__func__);
+    runtime->settings = *dmd;
+    runtime->input = BKE_mesh_copy_for_eval(*mesh);
+    runtime->result = BKE_mesh_copy_for_eval(*result);
+    md->runtime = runtime;
+  }
+
 #ifdef USE_TIMEIT
   TIMEIT_END(decim);
 #endif
@@ -262,6 +492,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     col.prop(ptr, "delimit", UI_ITEM_NONE, std::nullopt, ICON_NONE);
     layout.prop(ptr, "use_dissolve_boundaries", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   }
+  layout.prop(ptr, "use_cache", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   layout.label(count_info, ICON_NONE);
 
   modifier_error_message_draw(layout, ptr);
@@ -293,14 +524,14 @@ ModifierTypeInfo modifierType_Decimate = {
 
     /*init_data*/ init_data,
     /*required_data_mask*/ required_data_mask,
-    /*free_data*/ nullptr,
+    /*free_data*/ free_data,
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ nullptr,
     /*foreach_tex_link*/ nullptr,
-    /*free_runtime_data*/ nullptr,
+    /*free_runtime_data*/ free_runtime_data,
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,

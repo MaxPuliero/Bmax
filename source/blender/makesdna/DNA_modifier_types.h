@@ -723,6 +723,8 @@ enum DecimateModifierFlag : short {
   /** for dissolve only. collapse all verts between 2 faces */
   MOD_DECIM_FLAG_ALL_BOUNDARY_VERTS = (1 << 2),
   MOD_DECIM_FLAG_SYMMETRY = (1 << 3),
+  /** Negative flag keeps caching enabled for new modifiers and existing files. */
+  MOD_DECIM_FLAG_DISABLE_CACHE = (1 << 4),
 };
 ENUM_OPERATORS(DecimateModifierFlag);
 

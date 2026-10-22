@@ -3392,6 +3392,17 @@ static void rna_def_modifier_decimate(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Invert", "Invert vertex group influence (collapse only)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "use_cache", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", MOD_DECIM_FLAG_DISABLE_CACHE);
+  RNA_def_property_boolean_default(prop, true);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Cache Result",
+      "Reuse the result while the input mesh and modifier settings are unchanged; "
+      "disable to release the cache and use less memory");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   prop = RNA_def_property(srna, "use_collapse_triangulate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_DECIM_FLAG_TRIANGULATE);
   RNA_def_property_ui_text(
