@@ -16,7 +16,19 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 22, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 23, 2026, their source commits, and removed items.
+
+### Isolate with scene lighting and camera references
+
+**Local View (Isolate)** keeps scene lights available to **Material Preview** and **Rendered** shading while hiding the viewport widgets of lights excluded from the isolation. The shading mode's **Scene Lights** setting still controls whether scene lights are used. Lights explicitly included in Local View remain visible and editable; hidden lights and viewport filters retain their effect.
+
+Enable **Camera Data Properties > Background Images > Keep in Local View** to retain the active viewport camera and its reference images during isolation. The setting is saved per camera and defaults off. When enabled, entering Local View from camera view also preserves that view with the standard Frame Selected option. Other cameras remain subject to isolation; ordinary visibility filters still apply.
+
+<img src="doc/bmax/media/keep_in_local_view.png" alt="Camera Data Properties showing Background Images with Keep in Local View enabled" width="452">
+
+The implementation is included in source commit [`cdbaf6fefc0c`](https://github.com/MaxPuliero/Bmax/commit/cdbaf6fefc0c749cc268662e3d9d5ebbb36b3d95) on `main`. The local Windows runtime is rebuilt and verified on OpenGL/Vulkan, including EEVEE and a Cycles viewport check, and the user confirmed that both changes work. See the [feature inventory](doc/bmax/FEATURES.md) for validation scope. Desktop copies and the public Windows download have not been updated.
+
+An independent [Voxel Remesh performance investigation](doc/bmax/voxel_remesh_performance.md) identifies candidate optimizations; it does not change remeshing code.
 
 ### Faster Decimate with Cache Result
 

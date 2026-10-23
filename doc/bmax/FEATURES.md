@@ -4,6 +4,18 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Local View lighting and camera references (2026-10-23)
+
+Implementation commit: [`cdbaf6fefc0c`](https://github.com/MaxPuliero/Bmax/commit/cdbaf6fefc0c749cc268662e3d9d5ebbb36b3d95), included in `main`. Release INSTALL and runtime validation are complete, and the user confirmed that the lighting and camera-reference behavior works. Publishing the source does not update the separately distributed binary.
+
+Lights outside Local View remain available to Material Preview/Rendered shading, respecting Scene Lights and the existing hidden/type/collection filters. Their overlays, origins, names, light gizmos and picking shapes are excluded. Lights included in the isolation keep their ordinary widgets and selection behavior. Solid/Wireframe isolation retains the existing filtering.
+
+**Camera Data Properties > Background Images > Keep in Local View** is saved per camera and defaults off, including older files. It retains only the active viewport camera, including reference images, while Local View is active. The exception is evaluated dynamically so toggling the setting or changing the viewport camera takes effect without re-entering isolation. Standard visibility restrictions still apply. Entering isolation with Frame Selected enabled preserves an already active camera view when the option is on. Local-view membership bits are unchanged, so retained objects do not affect the framing bounds or keep an otherwise empty isolation alive.
+
+Validation passed 33 background assertions with guarded allocation, covering defaults, dynamic enable/disable and camera switching, hidden/type restrictions, membership, default framing, Edit Mode, explicitly isolated lights, exit and save/reload. Nine OpenGL and eleven Vulkan viewport captures confirmed actual scene-light contribution in Material Preview and EEVEE Rendered, retained references, hidden light widgets and normal explicit-light display. Vulkan additionally checked Cycles Rendered with CPU rendering. Image comparisons found the same light/reference/widget pixel counts across backends for the shared fixtures. Turning Extras off changed only the selected cube's 14 origin pixels in the excluded-light scene; explicitly including the light added 738 widget pixels. This does not claim coverage of every light/engine combination, GPU picking, camera stereo or linked-library cases. Source formatting and Python UI syntax checks also passed. The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-23 11:14:24 JST, reporting base hash `d3352ca742f4`. The user's running Desktop session was preserved. All verification files were external and removed afterward. The requested camera-panel screenshot is retained as a documentation asset and shown in the README.
+
+The option uses an unused camera flag bit; saved structure sizes and shared C++ layouts are unchanged. The drawing change is confined to overlays for excluded lights; the remesh implementation is untouched. See the [Voxel Remesh performance investigation](voxel_remesh_performance.md) for current pipeline costs, candidates and limits. Desktop packages and the public download have not been updated.
+
 ## Decimate result cache (2026-10-22)
 
 Implementation commit: [`bb4bbad2a787`](https://github.com/MaxPuliero/Bmax/commit/bb4bbad2a787c5b424c461bc6d45c6540827b89c), included in `main`. The local Release INSTALL is verified; Desktop packages and the public Windows download remain separate.
