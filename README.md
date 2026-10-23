@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender 5.2.3 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -17,6 +17,10 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 ## Features
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 23, 2026, their source commits, and removed items.
+
+### Blender 5.2.3 integration
+
+The 5.2.3 corrective-release code is included in [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac) on `main`, preserving the Bmax changes. It includes fixes for Multires masks when subdividing in Object Mode, bone picking, UV edge-ring selection, texture painting and image retention, plus stricter validation when opening damaged `.blend` files. Voxel Remesh optimizations, By Loose Parts, the default-on Fix Poles control and Decimate caching retain their implementations. See the [integration audit](doc/bmax/blender_5_2_3_sync.md) for compatibility checks, build status and scope. The local runtime is fully rebuilt and verified; Desktop copies and the public download are separate.
 
 ### Isolate with scene lighting and camera references
 
@@ -271,7 +275,7 @@ Mesh Data normal weighting is saved per mesh; official Blender ignores the extra
 
 ## Build and source
 
-This repository publishes a source snapshot based on Blender **v5.2.2**, upstream commit **d13f752e3b9c4f8c261cda552b1021f8bcc0382c**, plus the Bmax changes. It does not include Blender's complete upstream Git history. `main` is the stable development and build branch. The retired `codex/armature-ui` and `codex/bmax-publication` branches are preserved by the tags `archive/armature-ui-2026-10-05` and `archive/bmax-publication-2026-10-05`. New changes can use temporary feature branches before integration into `main`.
+This repository publishes a source snapshot based on Blender **v5.2.3**, upstream commit **e13b728c6880d3084d9d57c30031ed5df8b39dee**, plus the Bmax changes. It does not include Blender's complete upstream Git history. `main` is the stable development and build branch. The retired `codex/armature-ui` and `codex/bmax-publication` branches are preserved by the tags `archive/armature-ui-2026-10-05` and `archive/bmax-publication-2026-10-05`. New changes can use temporary feature branches before integration into `main`.
 
 Use [Blender's Windows build instructions](https://developer.blender.org/docs/handbook/building_blender/windows/). Git LFS is required: `.lfsconfig` downloads inherited assets from Blender's public LFS server and routes LFS uploads to MaxPuliero/Bmax on GitHub. Bmax-owned artwork and the animated demonstrations are stored directly in this repository. Dependency submodules retain their upstream Blender URLs. Precompiled libraries and local build output are not committed.
 

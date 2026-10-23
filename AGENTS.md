@@ -2,7 +2,7 @@
 
 ## Repository e documentazione
 
-- Questo repository contiene il fork Bmax di Blender 5.2.2. Il branch di riferimento è `main`; il remoto di pubblicazione è `origin` (`https://github.com/MaxPuliero/Bmax.git`). Non pubblicare modifiche nel repository originale di Blender.
+- Questo repository contiene il fork Bmax di Blender 5.2.3. Il branch di riferimento è `main`; il remoto di pubblicazione è `origin` (`https://github.com/MaxPuliero/Bmax.git`). Non pubblicare modifiche nel repository originale di Blender.
 - Leggere `README.md`, `doc/bmax/FEATURES.md` e `doc/bmax/BUILD_WINDOWS.md` prima di modificare funzionalità o compilazione. L'inventario delle feature descrive lo stato implementato; `doc/armature_ui_plan.md` è un documento storico.
 - Aggiornare README e inventario quando cambia il comportamento per l'utente. Aggiornare la guida di build quando cambiano i comandi, i percorsi o le verifiche. Non presentare proposte come funzionalità implementate.
 - Il filtro delle linee di relazione è stato tolto dalle attività richieste: non reintrodurlo senza una nuova richiesta.

@@ -8,7 +8,7 @@ See the [complete feature inventory](FEATURES.md) for the implemented additions,
 
 The retired branches are preserved by tags `archive/armature-ui-2026-10-05` and `archive/bmax-publication-2026-10-05`. These tags are historical snapshots, not the default build source.
 
-Bmax uses an imported Blender 5.2.2 source snapshot. Keep this source base when updating dependencies; do not replace it with upstream Blender's current development branch. Inherited LFS assets download from Blender's public server; uploads target GitHub Bmax. Reading the public upstream assets does not require permission to modify Blender's repository. Bmax artwork and demonstrations are ordinary Git files.
+Bmax uses an imported Blender 5.2.3 source snapshot. Keep this source base when updating dependencies; do not replace it with upstream Blender's current development branch. Inherited LFS assets download from Blender's public server; uploads target GitHub Bmax. Reading the public upstream assets does not require permission to modify Blender's repository. Bmax artwork and demonstrations are ordinary Git files.
 
 ## Existing local build
 
@@ -303,3 +303,21 @@ The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`
 The follow-up passed 48 guarded-memory background assertions and 52 GUI assertions on each active backend, OpenGL and Vulkan. Coverage includes legacy/new defaults, editability, save/reload, both panel draw paths, exact enabled-output comparisons against the previous installed build, disabled-output equivalence to raw voxel meshing, adaptive output, By Loose Parts, redraw and exact single-step Sculpt Undo/Redo with mode and choice retained. The script records explicit before/after Undo states to model interactive invocation; the initial missing after-state push was a verification-harness issue. The full enabled cleanup algorithm is unchanged. Python syntax, C++ formatting, source diff and normal silent profiling checks passed. The earlier six-fixture benchmark remains the documented timing source, with Fix Poles enabled in both builds.
 
 Follow-up scripts, scenes, logs and recovery data were kept in a dedicated external verification directory and removed after checking; build caches, installed runtime dependencies, the user's existing Desktop session and unrelated files were preserved.
+
+
+## Blender 5.2.3 full rebuild and verification (2026-10-23)
+
+The stable-release delta from upstream `v5.2.2` to `v5.2.3` is integrated in [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac) on `main`. `SpaceType::struct_size`, global auto-run state and the Cycles session member changes alter shared C++ layouts, so the complete executable target and referenced projects were rebuilt before INSTALL:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /t:Rebuild /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+Both commands completed successfully. The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-23 17:46:30 JST, reporting Bmax 5.2.3 LTS with base hash `08c66f5c43a6`; compilation preceded the integration commit. Existing caches, dependencies and build configuration were preserved. Submodule pointers did not change.
+
+INSTALL does not automatically prune removed Python modules. The old installed `5.2/scripts/modules/_animsys_refactor.py` was verified byte-for-byte against the official 5.2.2 source after line-ending normalization, then removed together with its matching bytecode cache. The file is intentionally absent from 5.2.3 source; unrelated files were retained.
+
+The new runtime passed 65 guarded-memory background checks, 41 GUI assertions on each active backend, fresh Multires painting on both backends with exact reference evaluated RGBA, and a Cycles CPU render using the saved painted attribute. Native Manifold Boolean and actual Sculpt Manifold Trim were exercised after the complete rebuild. See [the audit](blender_5_2_3_sync.md) for exact comparisons, scope and the unavailable authenticated upstream LFS fixtures. The earlier remesh/Decimate timing tables remain measurements of the preceding build; this integration adds no new performance claim.
+
+All verification scripts, scenes, golden data, logs, rendered images and recovery files were external and removed afterward. The user's Desktop session was preserved; source publication and local installation do not update Desktop or public binary packages.

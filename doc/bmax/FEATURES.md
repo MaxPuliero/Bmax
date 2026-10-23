@@ -4,6 +4,18 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Blender 5.2.3 LTS synchronization (2026-10-23)
+
+Implementation: [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac), included in `main`. The upstream base is now `v5.2.3` at `e13b728c6880d3084d9d57c30031ed5df8b39dee`. The release-to-release delta covers 124 upstream commits; 155 production-source/script files were imported. All 143 uncustomized imported files match the official tag, and the exact Bmax added/removed lines are preserved in all 12 shared files. New upstream test fixtures were not imported into this repository, following its test-file policy.
+
+The update imports native fixes for Multires masks after Object Mode subdivision, bone picking, UV ring selection, texture painting/image lifetime, Cycles, and invalid-file validation. Bmax remesh, Fix Poles, By Loose Parts, Decimate caching, Face Set cuts/Split, Multires color, custom theme/UI and branding remain present. No manual Bmax source adaptation was needed; the obsolete installed `_animsys_refactor.py` module was removed after verifying it matched the official old copy.
+
+A forced complete Release rebuild with project references followed by INSTALL succeeded because `SpaceType`, global state and Cycles session layouts changed. The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is the 2026-10-23 17:46:30 JST build, reporting Bmax 5.2.3 LTS and base hash `08c66f5c43a6` (built before the implementation commit).
+
+Validation passed 65 guarded-memory background assertions and 41 GUI assertions on each active backend, OpenGL and Vulkan. Compared remesh outputs, all six Split modes, all three Decimate modes and Manifold Boolean match the 5.2.2 references. Legacy remesh/cache/camera flags survive reading and new save/reload; genuinely painted Multires grids retain exact evaluated RGBA samples and modifier-application output. Object Mode Multires subdivision retains a full sculpt mask. GUI tests cover remesh with cleanup on/off, Face Set cutting, native Manifold Trim, bone picking, redraw and exact single-step Undo/Redo in Sculpt Mode. Fresh Multires Paint strokes on both backends produce exactly the reference evaluated colors, and a Cycles CPU color-attribute render passes. No new timing benchmark was run, and no additional speedup is claimed.
+
+See [the integration audit and coverage limits](blender_5_2_3_sync.md). Official corrupt-file LFS fixtures required authentication and were not downloaded; local checks do not claim that coverage. The user's Desktop instance and distributed packages are unchanged. All follow-up verification files were external and removed after checking; build caches and runtime dependencies were retained.
+
 ## Voxel Remesh performance and optional Fix Poles (2026-10-23)
 
 Implementation commit: [`83c95f81fd69`](https://github.com/MaxPuliero/Bmax/commit/83c95f81fd6990e1aebd003e7db2347742b91252), included in `main`; developed on `codex/voxel-remesh-performance` from `23181336769d`. Release INSTALL and validation are complete; Desktop packages and the public Windows download are unchanged.
