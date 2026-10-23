@@ -1,6 +1,6 @@
-# Bmax
+# Bmax - Blender 5.2.3 LTS
 
-Bmax is a custom Blender 5.2.3 build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender **5.2.3 LTS** build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -20,7 +20,7 @@ See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented addit
 
 ### Blender 5.2.3 integration
 
-The 5.2.3 corrective-release code is included in [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac) on `main`, preserving the Bmax changes. It includes fixes for Multires masks when subdividing in Object Mode, bone picking, UV edge-ring selection, texture painting and image retention, plus stricter validation when opening damaged `.blend` files. Voxel Remesh optimizations, By Loose Parts, the default-on Fix Poles control and Decimate caching retain their implementations. See the [integration audit](doc/bmax/blender_5_2_3_sync.md) for compatibility checks, build status and scope. The local runtime is fully rebuilt and verified; Desktop copies and the public download are separate.
+The 5.2.3 corrective-release code is included in [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac) on `main`, preserving the Bmax changes. It includes fixes for Multires masks when subdividing in Object Mode, bone picking, UV edge-ring selection, texture painting and image retention, plus stricter validation when opening damaged `.blend` files. Voxel Remesh optimizations, By Loose Parts, the default-on Fix Poles control and Decimate caching retain their implementations. See the [integration audit](doc/bmax/blender_5_2_3_sync.md) for compatibility checks, build status and scope. The local runtime is fully rebuilt and verified, and the user has confirmed that the updated build works in their workflow. Desktop copies and the public download are separate.
 
 ### Isolate with scene lighting and camera references
 
