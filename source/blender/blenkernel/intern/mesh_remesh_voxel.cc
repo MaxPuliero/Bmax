@@ -27,6 +27,7 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_deform.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_remesh_profile.hh"
 #include "BKE_mesh_remesh_voxel.hh" /* own include */
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.hh"
@@ -162,30 +163,57 @@ Mesh *BKE_mesh_remesh_quadriflow(const Mesh *mesh,
 }
 
 #ifdef WITH_OPENVDB
+/* Read triangle topology directly from Blender. Positions retain the float
+ * index-space rounding used by OpenVDB's meshToLevelSet wrapper. */
+struct RemeshMeshAdapter {
+  Span<openvdb::Vec3s> index_positions;
+  Span<int> corner_verts;
+  Span<int3> corner_tris;
+
+  size_t polygonCount() const
+  {
+    return corner_tris.size();
+  }
+  size_t pointCount() const
+  {
+    return index_positions.size();
+  }
+  size_t vertexCount(size_t /*polygon*/) const
+  {
+    return 3;
+  }
+
+  void getIndexSpacePoint(size_t polygon, size_t vertex, openvdb::Vec3d &position) const
+  {
+    const openvdb::Vec3s &point = index_positions[corner_verts[corner_tris[polygon][vertex]]];
+    position = openvdb::Vec3d(point.x(), point.y(), point.z());
+  }
+};
+
 static openvdb::FloatGrid::Ptr remesh_voxel_level_set_create(
     const Mesh *mesh, openvdb::math::Transform::Ptr transform)
 {
+  bke::remesh::ProfileTimer timer;
   const Span<float3> positions = mesh->vert_positions();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int3> corner_tris = mesh->corner_tris();
+  timer.step("core.input_triangulation");
 
-  std::vector<openvdb::Vec3s> points(mesh->verts_num);
-  std::vector<openvdb::Vec3I> triangles(corner_tris.size());
+  Array<openvdb::Vec3s> index_positions(positions.size());
+  timer.step("core.input_allocate");
+  threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      const float3 &co = positions[i];
+      const openvdb::Vec3d index = transform->worldToIndex(openvdb::Vec3d(co.x, co.y, co.z));
+      index_positions[i] = openvdb::Vec3s(index);
+    }
+  });
+  timer.step("core.input_index_transform");
 
-  for (const int i : IndexRange(mesh->verts_num)) {
-    const float3 &co = positions[i];
-    points[i] = openvdb::Vec3s(co.x, co.y, co.z);
-  }
-
-  for (const int i : IndexRange(corner_tris.size())) {
-    const int3 &tri = corner_tris[i];
-    triangles[i] = openvdb::Vec3I(
-        corner_verts[tri[0]], corner_verts[tri[1]], corner_verts[tri[2]]);
-  }
-
-  openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(
-      *transform, points, triangles, 1.0f);
-
+  const RemeshMeshAdapter adapter{index_positions, corner_verts, corner_tris};
+  openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(
+      adapter, *transform, 1.0f, 1.0f);
+  timer.step("core.mesh_to_level_set");
   return grid;
 }
 
@@ -195,52 +223,72 @@ static Mesh *remesh_voxel_volume_to_mesh(const openvdb::FloatGrid::Ptr level_set
                                          const bool relax_disoriented_triangles)
 {
   using namespace blender::bke;
-  std::vector<openvdb::Vec3s> vertices;
-  std::vector<openvdb::Vec4I> quads;
-  std::vector<openvdb::Vec3I> tris;
-  openvdb::tools::volumeToMesh<openvdb::FloatGrid>(
-      *level_set_grid, vertices, tris, quads, isovalue, adaptivity, relax_disoriented_triangles);
+  bke::remesh::ProfileTimer timer;
+  openvdb::tools::VolumeToMesh mesher(isovalue, adaptivity, relax_disoriented_triangles);
+  mesher(*level_set_grid);
+  timer.step("core.volume_to_mesh");
 
-  if (vertices.size() == 0 || quads.size() + tris.size() == 0) {
+  const int pools_num = mesher.polygonPoolListSize();
+  Array<int> quad_offsets(pools_num + 1);
+  Array<int> tri_offsets(pools_num + 1);
+  quad_offsets[0] = 0;
+  tri_offsets[0] = 0;
+  for (const int pool : IndexRange(pools_num)) {
+    const openvdb::tools::PolygonPool &polygons = mesher.polygonPoolList()[pool];
+    quad_offsets[pool + 1] = quad_offsets[pool] + polygons.numQuads();
+    tri_offsets[pool + 1] = tri_offsets[pool] + polygons.numTriangles();
+  }
+  const int quads_num = quad_offsets.last();
+  const int tris_num = tri_offsets.last();
+  if (mesher.pointListSize() == 0 || quads_num + tris_num == 0) {
     return nullptr;
   }
 
   Mesh *mesh = BKE_mesh_new_nomain(
-      vertices.size(), 0, quads.size() + tris.size(), quads.size() * 4 + tris.size() * 3);
-  MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
+      mesher.pointListSize(), 0, quads_num + tris_num, quads_num * 4 + tris_num * 3);
+  MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
-  MutableSpan<int> mesh_corner_verts = mesh->corner_verts_for_write();
+  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
+  offset_indices::fill_constant_group_size(4, 0, face_offsets.take_front(quads_num));
+  offset_indices::fill_constant_group_size(3, quads_num * 4, face_offsets.drop_front(quads_num));
+  timer.step("core.output_allocate");
 
-  const int triangle_loop_start = quads.size() * 4;
-  if (!face_offsets.is_empty()) {
-    offset_indices::fill_constant_group_size(4, 0, face_offsets.take_front(quads.size()));
-    offset_indices::fill_constant_group_size(
-        3, triangle_loop_start, face_offsets.drop_front(quads.size()));
-  }
-
-  for (const int i : vert_positions.index_range()) {
-    vert_positions[i] = float3(vertices[i].x(), vertices[i].y(), vertices[i].z());
-  }
-
-  for (const int i : IndexRange(quads.size())) {
-    const int loopstart = i * 4;
-    mesh_corner_verts[loopstart] = quads[i][0];
-    mesh_corner_verts[loopstart + 1] = quads[i][3];
-    mesh_corner_verts[loopstart + 2] = quads[i][2];
-    mesh_corner_verts[loopstart + 3] = quads[i][1];
-  }
-
-  for (const int i : IndexRange(tris.size())) {
-    const int loopstart = triangle_loop_start + i * 3;
-    mesh_corner_verts[loopstart] = tris[i][2];
-    mesh_corner_verts[loopstart + 1] = tris[i][1];
-    mesh_corner_verts[loopstart + 2] = tris[i][0];
-  }
-
+  threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      const openvdb::Vec3s &point = mesher.pointList()[i];
+      positions[i] = float3(point.x(), point.y(), point.z());
+    }
+  });
+  /* The wrapper emits all quads, then all triangles, in pool order. Preserve
+   * that order and winding while writing directly to the final corner array. */
+  threading::parallel_for(IndexRange(pools_num), 64, [&](const IndexRange range) {
+    for (const int pool : range) {
+      const openvdb::tools::PolygonPool &polygons = mesher.polygonPoolList()[pool];
+      for (int i = 0; i < int(polygons.numQuads()); i++) {
+        const openvdb::Vec4I &quad = polygons.quad(i);
+        const int corner = (quad_offsets[pool] + i) * 4;
+        corner_verts[corner] = quad[0];
+        corner_verts[corner + 1] = quad[3];
+        corner_verts[corner + 2] = quad[2];
+        corner_verts[corner + 3] = quad[1];
+      }
+      for (int i = 0; i < int(polygons.numTriangles()); i++) {
+        const openvdb::Vec3I &tri = polygons.triangle(i);
+        const int corner = quads_num * 4 + (tri_offsets[pool] + i) * 3;
+        corner_verts[corner] = tri[2];
+        corner_verts[corner + 1] = tri[1];
+        corner_verts[corner + 2] = tri[0];
+      }
+    }
+  });
+  mesher.pointList().reset();
+  mesher.polygonPoolList().reset();
+  timer.step("core.output_pack");
   mesh_calc_edges(*mesh, false, false);
-
+  timer.step("core.output_edges");
   return mesh;
 }
+
 #endif
 
 Mesh *BKE_mesh_remesh_voxel(const Mesh *mesh,
@@ -646,6 +694,7 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
 
 Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
 {
+  bke::remesh::ProfileTimer timer;
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh);
 
   BMeshCreateParams bmesh_create_params{};
@@ -662,6 +711,7 @@ Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
   BMFace *f, *f_next;
   BMIter iter_a, iter_b;
 
+  timer.step("poles.to_bmesh");
   /* Merge 3 edge poles vertices that exist in the same face */
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
   BM_ITER_MESH_MUTABLE (f, f_next, &iter_a, bm, BM_FACES_OF_MESH) {
@@ -718,6 +768,7 @@ Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
   }
   BM_mesh_edgenet(bm, false, true);
 
+  timer.step("poles.topology");
   /* Smooth the result */
   for (int i = 0; i < 4; i++) {
     BM_ITER_MESH (v, &iter_a, bm, BM_VERTS_OF_MESH) {
@@ -732,6 +783,7 @@ Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
     }
   }
 
+  timer.step("poles.smooth");
   BM_mesh_normals_update(bm);
 
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
@@ -742,11 +794,13 @@ Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
                BM_ELEM_TAG);
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
 
+  timer.step("poles.normals");
   BMeshToMeshParams bmesh_to_mesh_params{};
   bmesh_to_mesh_params.calc_object_remap = false;
   Mesh *result = BKE_mesh_from_bmesh_nomain(bm, &bmesh_to_mesh_params, mesh);
 
   BM_mesh_free(bm);
+  timer.step("poles.to_mesh_free");
   return result;
 }
 

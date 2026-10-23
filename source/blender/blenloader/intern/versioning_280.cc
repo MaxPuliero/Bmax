@@ -4643,7 +4643,7 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
     for (Mesh &me : bmain->meshes) {
       me.flag &= ~(ME_REMESH_BY_LOOSE_PARTS | ME_REMESH_FAIR_HOLES | ME_FLAG_UV_SELECT_SYNC_VALID |
-                   ME_FLAG_UNUSED_4 | ME_FLAG_UNUSED_6 | ME_FLAG_UNUSED_7 |
+                   ME_FLAG_UNUSED_4 | ME_REMESH_NO_FIX_POLES | ME_FLAG_UNUSED_7 |
                    ME_REMESH_REPROJECT_ATTRIBUTES);
     }
 

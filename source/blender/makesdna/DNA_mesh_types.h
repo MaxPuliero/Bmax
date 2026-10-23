@@ -100,8 +100,9 @@ enum eMesh_Flag : uint16_t {
   ME_FLAG_UV_SELECT_SYNC_VALID = 1 << 3,
   ME_FLAG_UNUSED_4 = 1 << 4,     /* cleared */
   ME_AUTOSMOOTH_LEGACY = 1 << 5, /* deprecated */
-  ME_FLAG_UNUSED_6 = 1 << 6,     /* cleared */
-  ME_FLAG_UNUSED_7 = 1 << 7,     /* cleared */
+  /** Disabled explicitly so new meshes and existing files default to pole cleanup. */
+  ME_REMESH_NO_FIX_POLES = 1 << 6,
+  ME_FLAG_UNUSED_7 = 1 << 7, /* cleared */
   ME_REMESH_REPROJECT_ATTRIBUTES = 1 << 8,
   ME_DS_EXPAND = 1 << 9,
   ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,

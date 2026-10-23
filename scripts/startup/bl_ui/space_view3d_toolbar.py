@@ -1017,6 +1017,7 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         props = row.operator("sculpt.sample_detail_size", text="", icon='EYEDROPPER')
         props.mode = 'VOXEL'
         col.prop(mesh, "remesh_voxel_adaptivity")
+        col.prop(mesh, "use_remesh_fix_poles")
         col.prop(mesh, "use_remesh_by_loose_parts")
         col.prop(mesh, "use_remesh_fair_position")
 

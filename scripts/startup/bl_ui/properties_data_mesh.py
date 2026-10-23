@@ -438,6 +438,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         if mesh.remesh_mode == 'VOXEL':
             col.prop(mesh, "remesh_voxel_size")
             col.prop(mesh, "remesh_voxel_adaptivity")
+            col.prop(mesh, "use_remesh_fix_poles")
             col.prop(mesh, "use_remesh_by_loose_parts")
             col.prop(mesh, "use_remesh_fair_position")
 

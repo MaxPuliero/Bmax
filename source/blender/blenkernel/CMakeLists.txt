@@ -458,6 +458,7 @@ set(SRC
   BKE_mesh_mapping.hh
   BKE_mesh_mirror.hh
   BKE_mesh_remap.hh
+  BKE_mesh_remesh_profile.hh
   BKE_mesh_remesh_voxel.hh
   BKE_mesh_runtime.hh
   BKE_mesh_sample.hh

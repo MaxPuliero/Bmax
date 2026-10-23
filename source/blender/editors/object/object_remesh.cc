@@ -37,6 +37,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mirror.hh"
+#include "BKE_mesh_remesh_profile.hh"
 #include "BKE_mesh_remesh_voxel.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -116,6 +117,17 @@ static bool object_remesh_poll(bContext *C)
   return ED_operator_object_active_editable_mesh(C);
 }
 
+/* Saturating face-use counts match BMesh boundary semantics: exactly one face.
+ * Loose edges (zero faces) and non-manifold edges (more than two) are not boundaries. */
+static bool remesh_has_boundary_edges(const Mesh &mesh)
+{
+  Array<uint8_t> face_uses(mesh.edges_num, 0);
+  for (const int edge : mesh.corner_edges()) {
+    face_uses[edge] = std::min<int>(face_uses[edge] + 1, 2);
+  }
+  return std::find(face_uses.begin(), face_uses.end(), uint8_t(1)) != face_uses.end();
+}
+
 /* Use the same simple holes-fill operation as Object Mode. Only the new Face Set IDs
  * are recorded here; all fairing must wait until after voxelization and projection. */
 static Set<int> fill_remesh_holes(Mesh &mesh)
@@ -169,8 +181,8 @@ static void fair_remesh_holes(Mesh &mesh, const Set<int> &patch_ids)
   if (patch_ids.is_empty()) {
     return;
   }
-  const VArraySpan<int> face_sets = *mesh.attributes().lookup<int>(
-      ".sculpt_face_set", bke::AttrDomain::Face);
+  const VArraySpan<int> face_sets = *mesh.attributes().lookup<int>(".sculpt_face_set",
+                                                                   bke::AttrDomain::Face);
   if (face_sets.is_empty()) {
     return;
   }
@@ -183,9 +195,8 @@ static void fair_remesh_holes(Mesh &mesh, const Set<int> &patch_ids)
       continue;
     }
     const int patch = face_sets[faces.first()];
-    affected[vert] = std::all_of(faces.begin(), faces.end(), [&](const int face) {
-      return face_sets[face] == patch;
-    });
+    affected[vert] = std::all_of(
+        faces.begin(), faces.end(), [&](const int face) { return face_sets[face] == patch; });
   }
   Array<int> edge_face_count(mesh.edges_num, 0);
   for (const int edge : mesh.corner_edges()) {
@@ -214,20 +225,34 @@ static Mesh *remesh_part(const Mesh &source,
                          Object &object,
                          ReportList *reports)
 {
+  bke::remesh::ProfileTimer timer;
   const Mesh &input = source;
   const float isovalue = settings.flag & ME_REMESH_REPROJECT_VOLUME ?
                              settings.remesh_voxel_size * 0.3f :
                              0.0f;
   Mesh *result = BKE_mesh_remesh_voxel(
       &input, settings.remesh_voxel_size, settings.remesh_voxel_adaptivity, isovalue, reports);
+  timer.step("part.voxelization");
   if (result) {
-    /* Pole cleanup is part of every destructive remesh, including adaptive output. */
-    Mesh *fixed = BKE_mesh_remesh_voxel_fix_poles(result);
-    BKE_id_free(nullptr, result);
-    result = fixed;
+    /* Pole cleanup remains available for adaptive output. */
+    if (!(settings.flag & ME_REMESH_NO_FIX_POLES)) {
+      Mesh *fixed = BKE_mesh_remesh_voxel_fix_poles(result);
+      BKE_id_free(nullptr, result);
+      result = fixed;
+    }
+    timer.step("part.fix_poles");
+    /* Pole fixing can remove the last faces of a tiny component. Reject it before
+     * projection attempts to sample attributes on an empty destination. */
+    if ((settings.flag & ME_REMESH_BY_LOOSE_PARTS) && result->faces_num == 0) {
+      BKE_id_free(nullptr, result);
+      BKE_report(
+          reports, RPT_ERROR, "A loose part vanished at this voxel size; reduce Voxel Size");
+      return nullptr;
+    }
     if (settings.flag & ME_REMESH_REPROJECT_VOLUME) {
       BKE_shrinkwrap_remesh_target_project(result, const_cast<Mesh *>(&input), &object);
     }
+    timer.step("part.preserve_volume");
     if (settings.flag & ME_REMESH_REPROJECT_ATTRIBUTES) {
       bke::mesh_remesh_reproject_attributes(input, *result);
     }
@@ -258,14 +283,9 @@ static Mesh *remesh_part(const Mesh &source,
       }
     }
   }
-  if (result && (settings.flag & ME_REMESH_BY_LOOSE_PARTS) && result->faces_num == 0) {
-    BKE_id_free(nullptr, result);
-    result = nullptr;
-    BKE_report(reports, RPT_ERROR, "A loose part vanished at this voxel size; reduce Voxel Size");
-  }
+  timer.step("part.preserve_attributes");
   if (result) {
     BKE_mesh_copy_parameters(result, &settings);
-    result->flag |= ME_REMESH_FIX_POLES;
   }
   return result;
 }
@@ -320,7 +340,6 @@ static Mesh *remesh_loose_parts(const Mesh &source,
   Mesh *result = joined.get_component_for_write<bke::MeshComponent>().release();
   if (result) {
     BKE_mesh_copy_parameters(result, &settings);
-    result->flag |= ME_REMESH_FIX_POLES;
   }
   return result;
 }
@@ -343,12 +362,24 @@ static wmOperatorStatus voxel_remesh_exec(bContext *C, wmOperator *op)
 
   /* Fill once before splitting so holes in different components get distinct IDs.
    * Work on a copy so any failure leaves the original geometry and undo untouched. */
-  bke::GeometrySet prepared = bke::GeometrySet::from_mesh(BKE_mesh_copy_for_eval(*mesh));
-  const Set<int> patch_ids = fill_remesh_holes(*prepared.get_mesh_for_write());
-  const Mesh &source = *prepared.get_mesh();
+  bke::remesh::ProfileTimer timer;
+  const bool has_boundary = remesh_has_boundary_edges(*mesh);
+  timer.step("operator.boundary_check");
+  bke::GeometrySet prepared;
+  Set<int> patch_ids;
+  if (has_boundary) {
+    prepared = bke::GeometrySet::from_mesh(BKE_mesh_copy_for_eval(*mesh));
+  }
+  timer.step("operator.source_copy");
+  if (has_boundary) {
+    patch_ids = fill_remesh_holes(*prepared.get_mesh_for_write());
+  }
+  timer.step("operator.fill_holes");
+  const Mesh &source = has_boundary ? *prepared.get_mesh() : *mesh;
   Mesh *new_mesh = mesh->flag & ME_REMESH_BY_LOOSE_PARTS ?
                        remesh_loose_parts(source, *mesh, *ob, op->reports) :
                        remesh_part(source, *mesh, *ob, op->reports);
+  timer.step("operator.remesh_parts");
   if (!new_mesh) {
     BKE_report(op->reports, RPT_ERROR, "Voxel remesher failed to create mesh");
     return OPERATOR_CANCELLED;
@@ -356,21 +387,27 @@ static wmOperatorStatus voxel_remesh_exec(bContext *C, wmOperator *op)
   if (mesh->flag & ME_REMESH_FAIR_HOLES) {
     fair_remesh_holes(*new_mesh, patch_ids);
   }
+  timer.step("operator.fair_holes");
   if (ob->mode == OB_MODE_SCULPT) {
     sculpt_paint::undo::geometry_begin(scene, *ob, op);
   }
 
+  timer.step("operator.undo_begin");
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob);
+  timer.step("operator.mesh_replace");
   /* Spatially organize the mesh after remesh. */
   bke::mesh_apply_spatial_organization(*mesh);
+  timer.step("operator.spatial_organization");
 
   if (ob->mode == OB_MODE_SCULPT) {
     sculpt_paint::undo::geometry_end(*ob);
     BKE_sculptsession_free_pbvh(*ob);
   }
+  timer.step("operator.undo_end_pbvh_free");
   BKE_mesh_batch_cache_dirty_tag(id_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+  timer.step("operator.tag_updates");
 
   return OPERATOR_FINISHED;
 }
