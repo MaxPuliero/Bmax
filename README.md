@@ -28,7 +28,25 @@ Enable **Camera Data Properties > Background Images > Keep in Local View** to re
 
 The implementation is included in source commit [`cdbaf6fefc0c`](https://github.com/MaxPuliero/Bmax/commit/cdbaf6fefc0c749cc268662e3d9d5ebbb36b3d95) on `main`. The local Windows runtime is rebuilt and verified on OpenGL/Vulkan, including EEVEE and a Cycles viewport check, and the user confirmed that both changes work. See the [feature inventory](doc/bmax/FEATURES.md) for validation scope. Desktop copies and the public Windows download have not been updated.
 
-An independent [Voxel Remesh performance investigation](doc/bmax/voxel_remesh_performance.md) identifies candidate optimizations; it does not change remeshing code.
+### Faster Voxel Remesh on closed meshes
+
+Bmax checks for open edges before preparing the mesh for **Voxel Remesh (Ctrl+R)**. Already closed meshes skip the full BMesh hole search. Open meshes keep the existing automatic hole filling. Input and output transfers to OpenVDB also use fewer intermediate buffers. **Fix Poles is available in the Sculpt Remesh popover and Mesh Data > Remesh, enabled by default and saved per mesh**. Disable it manually to skip pole cleanup and its smoothing; enabled cleanup remains complete, including adaptive output. Existing files open with cleanup enabled unless explicitly disabled with this control.
+
+Measured synchronous Sculpt operator times, with **Fix Poles enabled** in both builds:
+
+| Fixture | Input triangles | Output faces | Before | After | Speedup |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Closed mesh, no projection | 1,310,720 | 40,927 | 968 ms | **217 ms** | **4.46×** |
+| Closed mesh, preserved attributes | 327,680 | 114,431 | 698 ms | **558 ms** | **1.25×** |
+| Closed mesh, Face Sets only | 327,680 | 114,431 | 636 ms | **515 ms** | **1.23×** |
+| Open surface, filled and faired | 68,180 | 24,951 | 211 ms | **194 ms** | **1.08×** |
+| Eight independent parts | 163,840 | 213,184 | 839 ms | **745 ms** | **1.13×** |
+| Fine output, preserved attributes | 20,480 | 256,649 | 996 ms | 992 ms | ~1.00× |
+
+Medians use one warm-up and five fresh-input samples on an i7-14700KF with 64 GiB RAM, with profiling off. They include geometry Undo and spatial organization, exclude interactive redraw, and are not universal speedup guarantees. The fine-output case is effectively unchanged because Fix Poles dominates. The first fixture's process peak working set fell from approximately 1,661 to 1,224 MiB, including setup and Undo. These results measure the optimized pipeline with cleanup enabled; they do not measure the optional speedup from disabling it.
+
+The implementation is included in source commit [`83c95f81fd69`](https://github.com/MaxPuliero/Bmax/commit/83c95f81fd6990e1aebd003e7db2347742b91252) on `main`. The installed runtime is updated; Desktop copies and the public download are separate. See [implementation, stage profiling, validation and benchmark limits](doc/bmax/voxel_remesh_performance.md).
+
 
 ### Faster Decimate with Cache Result
 
@@ -51,7 +69,7 @@ The implementation is included in source commit [`bb4bbad2a787`](https://github.
 
 The Sculpt tools include:
 
-- **Voxel Remesh (Ctrl+R)** always runs **simple Fill Holes → Remesh with Fix Poles → optional Fair Position**, with one undo step. Enable **Fair Position** in the Remesh popover to smooth only the new cap interiors after remeshing. **By Loose Parts** voxelizes connected components independently and keeps them disconnected inside the same object. Both options are saved per mesh and initially off.
+- **Voxel Remesh (Ctrl+R)** runs **simple Fill Holes when needed → Remesh → optional Fix Poles (default on) → optional Fair Position**, with one undo step. Enable **Fair Position** in the Remesh popover to smooth only the new cap interiors after remeshing. **By Loose Parts** voxelizes connected components independently and keeps them disconnected inside the same object. Fair Position and By Loose Parts are saved per mesh and initially off.
 - **Sculpt > Fill Holes** fills openings independently, creating a separate Face Set for each new patch by default.
 - **Sculpt > Split** disconnects geometry while keeping one object: **By Face Sets**, **By Material**, **Masked**, **Visible**, **Faces by Edges**, and **Faces & Edges by Vertices**. Masks replace Edit Mode selection for the edge/vertex variants; without a mask, they use the visible surface. **Face Sets > Split by Face Sets** is a direct shortcut. Fill Holes and Split stay in Sculpt Mode and support one-step undo/redo.
 - **Box, Lasso, Polyline, and Line Face Set** tools have **Cut Geometry** enabled by default. They insert edges along the gesture before assigning the Face Set. Turn it off to use the previous polygon-assignment behavior.

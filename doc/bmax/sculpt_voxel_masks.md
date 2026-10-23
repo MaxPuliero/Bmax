@@ -6,12 +6,14 @@ Implemented in source commit `b98ad0b25666` on `main`, developed on `codex/sculp
 
 ## Voxel Remesh
 
-The Sculpt Remesh popover and Mesh Data remesh panel expose **By Loose Parts** and **Fair Position**, both initially disabled and saved per mesh. Ctrl+R uses the same native destructive remesh operator in Sculpt Mode.
+The later [performance and optional Fix Poles update](voxel_remesh_performance.md#restored-fix-poles-control-and-publication), implemented in [`83c95f81fd69`](https://github.com/MaxPuliero/Bmax/commit/83c95f81fd6990e1aebd003e7db2347742b91252), supersedes the original mandatory-cleanup behavior described in the historical validation notes.
+
+The Sculpt Remesh popover and Mesh Data remesh panel expose **Fix Poles** (initially enabled), **By Loose Parts** and **Fair Position** (initially disabled), all saved per mesh. Ctrl+R uses the same native destructive remesh operator in Sculpt Mode.
 
 Every invocation runs these stages in one operator and one undo step:
 
-1. **Simple Fill Holes**, always enabled. A temporary mesh uses the same native `holes_fill` operation and boundary selection as the existing Object Mode Fill Holes, without a sides limit. It adds ordinary caps and distinct Face Sets, without refining, adding interior vertices, moving the source surface, or applying fairing. Preparation runs once before splitting components, so hole IDs are unique across parts.
-2. **Voxel Remesh and Fix Poles**, always enabled, followed by the existing optional Preserve Volume projection and attribute reprojection against the simply filled source. Pole cleanup also runs on adaptive output. The legacy RNA Fix Poles property is read-only and always true; its checkbox is removed.
+1. **Simple Fill Holes**, when boundary edges exist; closed meshes skip BMesh preparation. A temporary mesh uses the same native `holes_fill` operation and boundary selection as the existing Object Mode Fill Holes, without a sides limit. It adds ordinary caps and distinct Face Sets, without refining, adding interior vertices, moving the source surface, or applying fairing. Preparation runs once before splitting components, so hole IDs are unique across parts.
+2. **Voxel Remesh**, followed by optional **Fix Poles** (default enabled), then the existing optional Preserve Volume projection and attribute reprojection against the prepared source. The Fix Poles checkbox remains editable with adaptive output and its choice survives remesh and save/reload. Enabled cleanup retains the full topology and smoothing algorithm.
 3. **Fair Position**, only when enabled. After voxelization, pole cleanup, projection, and attribute transfer, the existing Blender position fairing solver processes vertices surrounded exclusively by one newly filled Face Set. Patch rims, existing surface regions, and non-manifold boundaries stay fixed. Face Sets are retained even when Preserve Attributes is disabled; other attributes follow that setting. With no newly filled holes, this stage is a no-op.
 
 There is no fairing before voxelization and no separate Fill Holes and Fair Tangency command. The existing Object/Edit Mode **Mesh Fill Holes** operator remains available and unchanged. A failed remesh leaves the original mesh untouched.
