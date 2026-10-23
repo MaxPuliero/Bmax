@@ -36,6 +36,7 @@
 #include "BKE_object.hh"
 
 #include "DNA_ID.h"
+#include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_node_types.h"
@@ -1678,6 +1679,15 @@ void BKE_base_set_visible(
   BKE_view_layer_need_resync_tag(view_layer);
 }
 
+/* Keep the viewport camera available for reference images without changing local-view
+ * membership. Resolve original IDs because draw engines pass evaluated objects. */
+static bool camera_kept_in_local_view(const View3D *v3d, const Object *object)
+{
+  return object->type == OB_CAMERA && v3d->camera &&
+         DEG_get_original(object) == DEG_get_original(v3d->camera) &&
+         (id_cast<const Camera *>(object->data)->flag & CAM_KEEP_IN_LOCAL_VIEW);
+}
+
 bool BKE_base_is_visible(const View3D *v3d, const Base *base)
 {
   if ((base->flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) == 0) {
@@ -1688,7 +1698,9 @@ bool BKE_base_is_visible(const View3D *v3d, const Base *base)
     return base->flag & BASE_ENABLED_AND_VISIBLE_IN_DEFAULT_VIEWPORT;
   }
 
-  if ((v3d->localvd) && ((v3d->local_view_uid & base->local_view_bits) == 0)) {
+  if (v3d->localvd && (v3d->local_view_uid & base->local_view_bits) == 0 &&
+      !camera_kept_in_local_view(v3d, base->object))
+  {
     return false;
   }
 
@@ -1715,8 +1727,12 @@ bool BKE_object_is_visible_in_viewport(const View3D *v3d, const Object *ob)
     return false;
   }
 
-  if (v3d->localvd && ((v3d->local_view_uid & ob->base_local_view_bits) == 0)) {
-    return false;
+  if (v3d->localvd && (v3d->local_view_uid & ob->base_local_view_bits) == 0) {
+    /* Keep scene lighting for shading, but not light selection or viewport widgets. */
+    const bool keep_light = ob->type == OB_LAMP && ELEM(v3d->shading.type, OB_MATERIAL, OB_RENDER);
+    if (!keep_light && !camera_kept_in_local_view(v3d, ob)) {
+      return false;
+    }
   }
 
   if ((v3d->flag & V3D_LOCAL_COLLECTIONS) &&

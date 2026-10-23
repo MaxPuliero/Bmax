@@ -75,6 +75,7 @@ enum eCamera_Flag : short {
   CAM_SHOWSENSOR = (1 << 8),
   CAM_SHOW_SAFE_CENTER = (1 << 9),
   CAM_SHOW_BG_IMAGE = (1 << 10),
+  CAM_KEEP_IN_LOCAL_VIEW = (1 << 11),
 };
 ENUM_OPERATORS(eCamera_Flag)
 

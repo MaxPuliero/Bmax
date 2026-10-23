@@ -966,7 +966,13 @@ static bool view3d_localview_init(const Depsgraph *depsgraph,
 
       rv3d->localvd = MEM_new<RegionView3D>("localview region", dna::shallow_copy(*rv3d));
 
-      if (frame_selected) {
+      /* A retained camera reference must stay in camera view, including when
+       * Local View is invoked with its default Frame Selected option. */
+      const bool keep_camera_view = rv3d->persp == RV3D_CAMOB && v3d->camera &&
+                                    v3d->camera->type == OB_CAMERA &&
+                                    (id_cast<const Camera *>(v3d->camera->data)->flag &
+                                     CAM_KEEP_IN_LOCAL_VIEW);
+      if (frame_selected && !keep_camera_view) {
         float mid[3];
         mid_v3_v3v3(mid, min, max);
         negate_v3_v3(ofs_new, mid);

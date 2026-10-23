@@ -899,6 +899,15 @@ void RNA_def_camera(BlenderRNA *brna)
       prop, "Show Sensor Size", "Show sensor size (film gate) in Camera view");
   RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, nullptr);
 
+  prop = RNA_def_property(srna, "keep_in_local_view", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", CAM_KEEP_IN_LOCAL_VIEW);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop,
+                           "Keep in Local View",
+                           "Keep this camera and its reference images visible when it is the "
+                           "active viewport camera during Local View (Isolate)");
+  RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, "rna_Camera_update");
+
   prop = RNA_def_property(srna, "show_background_images", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CAM_SHOW_BG_IMAGE);
   RNA_def_property_ui_text(

@@ -334,6 +334,8 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
         cam = context.camera
         use_multiview = context.scene.render.use_multiview
 
+        layout.prop(cam, "keep_in_local_view")
+
         col = layout.column()
         col.operator("view3d.camera_background_image_add", text="Add Image")
 

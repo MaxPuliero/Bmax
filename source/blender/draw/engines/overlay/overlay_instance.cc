@@ -535,6 +535,14 @@ void Instance::begin_sync()
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
+  /* Lights outside local view still illuminate Material Preview/Rendered, but have
+   * no icon, origin, label, relationship lines, outline, or selection geometry. */
+  if (state.is_space_v3d() && state.v3d->localvd && ob_ref.object->type == OB_LAMP &&
+      (state.v3d->local_view_uid & ob_ref.object->base_local_view_bits) == 0)
+  {
+    return;
+  }
+
   const bool in_object_mode = ob_ref.object->mode == OB_MODE_OBJECT;
   const bool in_edit_mode = ob_ref.object->mode == OB_MODE_EDIT;
   const bool in_paint_mode = object_is_paint_mode(ob_ref.object);
