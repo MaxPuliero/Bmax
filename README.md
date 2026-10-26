@@ -167,6 +167,14 @@ The boundary geometry is cached until the mesh changes and supports evaluated me
 
 Windows application and blend-file icons retain the Bmax logo with antialiased alpha edges. Small entries through 96 pixels now use 32-bit Windows bitmap payloads with alpha and a matching transparency mask; larger previews remain PNG. Sixteen sizes from 16 to 256 pixels include intermediate DPI sizes, avoiding rescaling a neighboring icon entry. See [icon implementation and validation](doc/bmax/windows_icons.md). This is included in the local runtime; separately copied Desktop packages and the public download require their own update.
 
+### Align Master
+
+In armature **Edit Mode**, select the bones to change and make the reference bone active (select it last). Use **Armature > Transform > Align Master**, or search for **Align Master** with F3. The command immediately aligns all three axes and restores the standard **Adjust Last Operation** panel at the bottom left, showing the master and independent **X / Y / Z** buttons. The panel stays available while zooming or rotating the viewport; F9 reopens its controls. Each new invocation starts with all axes enabled; changes in the redo controls recalculate from the original state. Turning all three axes off restores the original bones without alignment. Only enabled **Euler XYZ rotation components in armature space** are copied; unchecked components retain the target's original Euler rotation. All three axes copy the complete master orientation.
+
+The tool keeps bone lengths and adjusts roll as needed. Connected descendants translate to remain joined, including the master if one of its connected ancestors changes; the master's orientation remains the reference. Hidden, locked, unselectable and zero-length targets are skipped. The operation affects selected bones in the active armature only, supports Undo/Redo and F9 adjustment, and leaves the existing Align Bones command available. This is an Edit Mode rest-bone tool, not a Pose Mode animation operation.
+
+The local Windows runtime is built and verified on OpenGL and Vulkan. Implementation: [`1a7224cacda9`](https://github.com/MaxPuliero/Bmax/commit/1a7224cacda95638640cd83d729ae69d84420a63), included in `main`. Desktop packages and the public download are unchanged. See the [feature inventory](doc/bmax/FEATURES.md#align-master-2026-10-26) for validation scope.
+
 ### Absolute Octahedral Radius
 
 Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > Item**, available in Edit and Pose Mode. One absolute radius controls the octahedral body's half-width and both endpoint spheres, independently of rest-bone length. In Wire display, the Head and Tail spheres shown in Edit Mode use this same radius. The default for newly created bones is 0.02 Blender units (2 cm with standard metric units). In Pose Mode, evaluated pose scaling and shear remain visible, including nonuniform scaling.
