@@ -79,6 +79,8 @@ The Sculpt tools include:
 - **Box, Lasso, Polyline, and Line Face Set** tools have **Cut Geometry** enabled by default. They insert edges along the gesture before assigning the Face Set. Turn it off to use the previous polygon-assignment behavior.
 - **Mask > Bevel Mask**, directly below Smooth Mask, widens the mask transition using a surface-distance **Radius** and Blender falloff profiles such as **Sharp**, **Sharper**, **Smooth**, and **Custom**. Adjust them in **F9**. Custom uses an independent curve saved with the scene. Mesh, Multires, and Dynamic Topology masks are supported.
 
+<img src="doc/bmax/media/face_set_cut_geometry.gif" alt="Face Set Cut Geometry demonstration showing edges inserted along the selection gesture" width="720">
+
 Fill Holes, Split, and Face Set topology cutting require a base mesh without Multires or Dynamic Topology; Split also requires no shape keys. See [behavior, validation, and limitations](doc/bmax/sculpt_voxel_masks.md).
 
 The implementation is included in source commit [`b98ad0b25666`](https://github.com/MaxPuliero/Bmax/commit/b98ad0b256662a12363208849e55614de64905be) on `main`. The local Windows runtime is rebuilt and verified on OpenGL/Vulkan, including undo/redo, mask save/reload, and split/remesh integration. The separately copied Desktop packages and public Windows download have not been updated.
