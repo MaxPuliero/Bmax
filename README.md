@@ -173,6 +173,8 @@ Each bone has an **Octahedral Radius** control in **3D Viewport > N sidebar > It
 
 In Octahedral display, the body now has a flat square base at the Head sphere boundary and tapers to the Tail sphere boundary. Head/Tail spheres retain their size, position, and selection behavior. Bendy Bones shown in Octahedral keep connected segment bodies with no intermediate spheres; only the two outer endpoints are trimmed. Bodies fully covered by overlapping endpoint spheres are omitted. The B-Bone box display type is unchanged. This body-shape update is included in source commit `2e4febbdb1df` and in the verified local runtime. Separately copied Desktop packages and the public Windows download require their own update.
 
+Connected Octahedral bones trim their root against the preceding bone's actual tip sphere, so different radii do not leave a gap. The shared sphere keeps the parent's radius. Extruding with E or click-extrude inherits the source bone's Octahedral Radius, Axis Size and display type; the extrusion gesture still determines the new bone's length. The correction is included in [`f90af1103223`](https://github.com/MaxPuliero/Bmax/commit/f90af110322384598de0ff545780af5be75ac4d6) on `main` and in the verified local runtime. Desktop packages and the public download are unchanged.
+
 ![Octahedral Radius demonstration](doc/bmax/media/bmax_radius.webp)
 
 ### Independent Axis Size

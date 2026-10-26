@@ -4,6 +4,16 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Connected Octahedral joints and extrusion sizes (2026-10-26)
+
+Implementation: [`f90af1103223`](https://github.com/MaxPuliero/Bmax/commit/f90af110322384598de0ff545780af5be75ac4d6), included in `main`. Connected joints use the parent's tip-sphere radius and evaluated pose basis when trimming an Octahedral child's root. The child retains its own body width and tail radius, while the shared sphere keeps the parent's size and picking. Unconnected roots use their own sphere. Bendy segment trimming uses the same endpoint spaces, and singular sphere transforms omit the body safely. Bone evaluation and endpoint geometry are unchanged.
+
+Standard extrusion (including root extrusion, mirrored and forked creation) and click-extrude copy Octahedral Radius and Axis Size from the source bone. Click-extrude also retains the source display type, matching standard extrusion. B-Bone width inheritance and gesture-defined length retain their existing behavior. No DNA or shared C++ layout changes are involved.
+
+Release INSTALL succeeded. The installed runtime is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-26 11:06:58 JST, reporting base hash `b98cf52093d0`. The installed runtime includes this correction; its metadata predates the implementation commit. Desktop packages and public downloads are unchanged.
+
+Validation passed 85 guarded-memory background assertions covering tip/root, mirrored and forked extrusion, source-specific dimensions, mode conversion, and save/reload. Both OpenGL and Vulkan passed eight click-extrude assertions and ten offscreen viewport cases: smaller/larger/equal parent radius, disconnected roots, segmented/curved Bendy Bones, angled joints, Pose Mode, nonuniform scale and shear. The reproduced 24-pixel centerline gap became zero on both backends. Equal-radius and disconnected Edit Mode captures are byte-identical to the previous runtime. Nine fixtures match exactly between backends; the curved Bendy fixture has 48 differing pixels in a small overlapping-facet region. Representative corrected captures were visually inspected. GPU picking, interactive undo/redo and production rigs were not revalidated in this focused check. All verification files and the temporary comparison executable were removed afterward; build caches and runtime dependencies were retained.
+
 ## Blender 5.2.3 LTS synchronization (2026-10-23)
 
 Implementation: [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac), included in `main`. The upstream base is now `v5.2.3` at `e13b728c6880d3084d9d57c30031ed5df8b39dee`. The release-to-release delta covers 124 upstream commits; 155 production-source/script files were imported. All 143 uncustomized imported files match the official tag, and the exact Bmax added/removed lines are preserved in all 12 shared files. New upstream test fixtures were not imported into this repository, following its test-file policy.
