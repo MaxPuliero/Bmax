@@ -198,6 +198,9 @@ static wmOperatorStatus armature_click_extrude_exec(bContext *C, wmOperator * /*
     arm->act_edbone = newbone;
     newbone->xwidth = ebone->xwidth;
     newbone->zwidth = ebone->zwidth;
+    newbone->octahedral_radius = ebone->octahedral_radius;
+    newbone->axis_size = ebone->axis_size;
+    newbone->drawtype = ebone->drawtype;
 
     if (to_root) {
       copy_v3_v3(newbone->head, ebone->head);
@@ -1751,6 +1754,8 @@ static wmOperatorStatus armature_extrude_exec(bContext *C, wmOperator *op)
 
           newbone->color = ebone->color;
           newbone->drawtype = ebone->drawtype;
+          newbone->octahedral_radius = ebone->octahedral_radius;
+          newbone->axis_size = ebone->axis_size;
 
           newbone->weight = ebone->weight;
           newbone->dist = ebone->dist;

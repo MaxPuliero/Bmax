@@ -1478,20 +1478,51 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   unit_m4(sphere_inverse);
   const bool has_sphere_space = invert_m4_m4(sphere_inverse, sphere_basis);
   const float4x4 sphere_space(sphere_inverse);
-  const float3 head_center = math::transform_point(sphere_space, float3(bone.disp_mat()[3]));
   const float3 tail_center = math::transform_point(sphere_space, float3(bone.disp_tail_mat()[3]));
+
+  /* A connected root shares the parent's tip sphere, whose radius and evaluated
+   * basis can differ from this bone's. Keep sphere drawing and picking unchanged. */
+  float4x4 head_basis(sphere_basis);
+  float4x4 head_space(sphere_inverse);
+  float head_radius = radius;
+  bool has_head_space = has_sphere_space;
+  if (bone.has_parent() && (boneflag & BONE_CONNECTED)) {
+    const UnifiedBonePtr parent = bone.is_editbone() ?
+                                      UnifiedBonePtr(bone.as_editbone()->parent) :
+                                      UnifiedBonePtr(bone.as_posebone()->parent,
+                                                     bone.posebone_bone()->parent);
+    const int parent_drawtype = bone.is_editbone() ? parent.as_editbone()->drawtype :
+                                                     parent.posebone_bone()->drawtype;
+    const int drawtype = parent_drawtype == ARM_DRAW_TYPE_ARMATURE_DEFINED ? ctx->drawtype :
+                                                                             parent_drawtype;
+    const bool absolute_radius = ELEM(drawtype, ARM_DRAW_TYPE_OCTA, ARM_DRAW_TYPE_WIRE);
+    if (parent.is_posebone()) {
+      head_basis = float4x4(parent.as_posebone()->pose_mat);
+    }
+    else {
+      head_basis = float4x4::identity();
+    }
+    head_space = math::invert(head_basis, has_head_space);
+    const float parent_length = parent.is_editbone() ? len_v3v3(parent.as_editbone()->head,
+                                                                parent.as_editbone()->tail) :
+                                                       parent.posebone_bone()->length;
+    head_radius = absolute_radius ? max_ff(parent.octahedral_radius(), 0.000001f) :
+                                    parent_length * PT_DEFAULT_RAD;
+  }
+  const float3 shared_head_center = math::transform_point(head_space, float3(bone.disp_mat()[3]));
 
   /* Trim ends inside a real endpoint sphere, including radii spanning several
    * short spline segments. Internal joints outside the spheres keep no gap. */
   auto trim_endpoint = [&](const float3 &start,
                            const float3 &delta,
                            const float3 &center,
+                           const float endpoint_radius,
                            float &start_fac,
                            float &end_fac) {
     const float3 offset = start - center;
     const float a = math::dot(delta, delta);
     const float b = math::dot(offset, delta);
-    const float c = math::dot(offset, offset) - radius * radius;
+    const float c = math::dot(offset, offset) - endpoint_radius * endpoint_radius;
     const float discriminant = b * b - a * c;
     if (discriminant < 0.0f) {
       return;
@@ -1508,7 +1539,7 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
   };
 
   auto draw_body = [&](float4x4 display_mat, const float3 &end) {
-    if (!has_sphere_space) {
+    if (!has_sphere_space || !has_head_space) {
       return;
     }
     const float3 start = display_mat.location();
@@ -1519,8 +1550,13 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
       return;
     }
     float start_fac = 0.0f, end_fac = 1.0f;
-    trim_endpoint(sphere_start, sphere_delta, head_center, start_fac, end_fac);
-    trim_endpoint(sphere_start, sphere_delta, tail_center, start_fac, end_fac);
+    const float3 head_start = math::transform_point(head_space, start);
+    const float3 head_delta = math::transform_direction(head_space, delta);
+    if (math::dot(head_delta, head_delta) < 1e-16f) {
+      return;
+    }
+    trim_endpoint(head_start, head_delta, shared_head_center, head_radius, start_fac, end_fac);
+    trim_endpoint(sphere_start, sphere_delta, tail_center, radius, start_fac, end_fac);
     /* Overlapping endpoint spheres retain their display and picking without an
      * inverted or degenerate body between them. */
     if (end_fac - start_fac <= 1e-6f) {
@@ -1530,18 +1566,21 @@ static void bone_draw_octa(const Armatures::DrawContext *ctx,
      * not merely have its center on the sphere. B-Bone roll/scale compensation can
      * otherwise leave a tilted base intersecting an unchanged endpoint sphere. */
     if (start_fac > 0.0f || end_fac < 1.0f) {
-      const float3 contact = sphere_start +
-                             sphere_delta * (start_fac > 0.0f ? start_fac : end_fac);
-      const float3 center = start_fac > 0.0f ? head_center : tail_center;
+      const bool trim_head = start_fac > 0.0f;
+      const float4x4 &contact_space = trim_head ? head_space : sphere_space;
+      const float4x4 contact_basis = trim_head ? head_basis : float4x4(sphere_basis);
+      const float3 contact = math::transform_point(
+          contact_space, start + delta * (trim_head ? start_fac : end_fac));
+      const float3 center = trim_head ? shared_head_center : tail_center;
       const float3 normal = math::normalize(contact - center);
       for (const int axis : {0, 2}) {
-        const float3 original = math::transform_direction(sphere_space, display_mat[axis].xyz());
+        const float3 original = math::transform_direction(contact_space, display_mat[axis].xyz());
         float3 tangent = original - normal * math::dot(original, normal);
         if (math::dot(tangent, tangent) < 1e-16f) {
           return;
         }
         tangent *= math::length(original) / math::length(tangent);
-        display_mat[axis].xyz() = math::transform_direction(float4x4(sphere_basis), tangent);
+        display_mat[axis].xyz() = math::transform_direction(contact_basis, tangent);
       }
     }
     display_mat.location() = start + delta * start_fac;
