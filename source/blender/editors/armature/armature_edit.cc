@@ -35,6 +35,8 @@
 #include "RNA_prototypes.hh"
 
 #include "UI_interface_icons.hh"
+#include "UI_interface_layout.hh"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1191,6 +1193,126 @@ void ARMATURE_OT_align(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+
+/* Align individual XYZ Euler components in the active armature's coordinate space. */
+static wmOperatorStatus armature_align_master_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_edit_object(C);
+  bArmature *arm = id_cast<bArmature *>(ob->data);
+  EditBone *master = CTX_data_active_bone(C);
+  bool axes[3];
+  RNA_boolean_get_array(op->ptr, "axes", axes);
+  if (!axes[0] && !axes[1] && !axes[2]) {
+    /* Redo has restored the original bones; retain this no-op in the redo panel. */
+    return OPERATOR_FINISHED;
+  }
+  if (!master || !animrig::bone_is_visible(arm, master) ||
+      len_v3v3(master->head, master->tail) < 1e-8f)
+  {
+    BKE_report(op->reports, RPT_ERROR, "Choose a visible, nonzero-length active master bone");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Freeze the reference before changing connected ancestors of the master. */
+  float master_mat[3][3];
+  ED_armature_ebone_to_mat3(master, master_mat);
+  int aligned = 0;
+  for (EditBone &bone : *arm->edbo) {
+    if (&bone == master || !EBONE_EDITABLE(&bone) || !EBONE_SELECTABLE(arm, &bone) ||
+        len_v3v3(bone.head, bone.tail) < 1e-8f)
+    {
+      continue;
+    }
+    float result[3][3];
+    if (axes[0] && axes[1] && axes[2]) {
+      copy_m3_m3(result, master_mat);
+    }
+    else {
+      float bone_mat[3][3], rotation[3], reference[3];
+      ED_armature_ebone_to_mat3(&bone, bone_mat);
+      mat3_normalized_to_eul(rotation, bone_mat);
+      /* Use the equivalent master Euler solution nearest to this bone, avoiding
+       * unnecessary half-turns when copying only part of the orientation. */
+      mat3_normalized_to_compatible_eul(reference, rotation, master_mat);
+      for (int axis = 0; axis < 3; axis++) {
+        if (axes[axis]) {
+          rotation[axis] = reference[axis];
+        }
+      }
+      eul_to_mat3(result, rotation);
+    }
+    ED_armature_ebone_from_mat3(&bone, result);
+    aligned++;
+  }
+  if (aligned == 0) {
+    BKE_report(op->reports,
+               RPT_WARNING,
+               "Select an editable bone besides the active master in the active armature");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Repair entire chains once, after all rotations. This keeps the outcome
+   * independent of bone creation order and translates rather than rotates children. */
+  for (EditBone &bone : *arm->edbo) {
+    if (!bone.parent || !(bone.flag & BONE_CONNECTED)) {
+      fix_editbone_connected_children(arm->edbo, &bone);
+    }
+  }
+  DEG_id_tag_update(&arm->id, ID_RECALC_SYNC_TO_EVAL);
+  WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+  return OPERATOR_FINISHED;
+}
+
+static wmOperatorStatus armature_align_master_invoke(bContext *C,
+                                                     wmOperator *op,
+                                                     const wmEvent * /*event*/)
+{
+  const bool axes[3] = {true, true, true};
+  RNA_boolean_set_array(op->ptr, "axes", axes);
+  /* Finish normally so Blender registers the persistent Adjust Last Operation panel. */
+  return armature_align_master_exec(C, op);
+}
+
+static void armature_align_master_ui(bContext *C, wmOperator *op)
+{
+  ui::Layout &layout = *op->layout;
+  if (EditBone *master = CTX_data_active_bone(C)) {
+    layout.label(master->name, ICON_BONE_DATA);
+  }
+  layout.label(IFACE_("Euler XYZ / Armature Space"), ICON_NONE);
+  layout.label(IFACE_("Rotation Axes"), ICON_NONE);
+  ui::Layout &row = layout.row(true);
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "axes");
+  const char *axis_names[3] = {"X", "Y", "Z"};
+  for (int axis = 0; axis < 3; axis++) {
+    row.prop(op->ptr, prop, axis, 0, ui::ITEM_R_TOGGLE, axis_names[axis], ICON_NONE);
+  }
+}
+
+void ARMATURE_OT_align_master(wmOperatorType *ot)
+{
+  ot->name = "Align Master";
+  ot->idname = "ARMATURE_OT_align_master";
+  ot->description =
+      "Copy chosen XYZ Euler rotation components from the active master bone to selected bones "
+      "in the active armature, preserving other components and bone lengths";
+  ot->exec = armature_align_master_exec;
+  ot->invoke = armature_align_master_invoke;
+  ot->ui = armature_align_master_ui;
+  ot->poll = ED_operator_editarmature;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  static const bool default_axes[3] = {true, true, true};
+  PropertyRNA *prop = RNA_def_boolean_vector(
+      ot->srna,
+      "axes",
+      3,
+      default_axes,
+      "Rotation Axes",
+      "Euler XYZ components to copy in armature space; unchecked components retain their rotation");
+  RNA_def_property_subtype(prop, PROP_XYZ);
 }
 
 /** \} */

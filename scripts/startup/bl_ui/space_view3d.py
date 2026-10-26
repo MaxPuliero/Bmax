@@ -1373,6 +1373,7 @@ class VIEW3D_MT_transform_armature(VIEW3D_MT_transform_base, Menu):
             layout.separator()
 
             layout.operator("armature.align")
+            layout.operator("armature.align_master")
 
 
 class VIEW3D_MT_mirror(Menu):

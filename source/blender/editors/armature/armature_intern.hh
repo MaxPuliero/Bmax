@@ -39,6 +39,7 @@ struct wmOperatorType;
 void ARMATURE_OT_bone_primitive_add(wmOperatorType *ot);
 
 void ARMATURE_OT_align(wmOperatorType *ot);
+void ARMATURE_OT_align_master(wmOperatorType *ot);
 void ARMATURE_OT_calculate_roll(wmOperatorType *ot);
 void ARMATURE_OT_roll_clear(wmOperatorType *ot);
 void ARMATURE_OT_switch_direction(wmOperatorType *ot);

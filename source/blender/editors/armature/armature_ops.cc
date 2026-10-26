@@ -28,6 +28,7 @@ void ED_operatortypes_armature()
   WM_operatortype_append(ARMATURE_OT_bone_primitive_add);
 
   WM_operatortype_append(ARMATURE_OT_align);
+  WM_operatortype_append(ARMATURE_OT_align_master);
   WM_operatortype_append(ARMATURE_OT_calculate_roll);
   WM_operatortype_append(ARMATURE_OT_roll_clear);
   WM_operatortype_append(ARMATURE_OT_switch_direction);
