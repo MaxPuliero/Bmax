@@ -1344,6 +1344,23 @@ bool context_copy_to_selected_list(bContext *C,
       *r_use_path_from_id = true;
       *r_path = RNA_path_from_ID_to_property(ptr, prop);
     }
+    else if (GS(id->name) == ID_MA) {
+      Object *active = ed::object::context_object(C);
+      if (!active || BKE_object_material_get(active, active->actcol) != id_cast<Material *>(id)) {
+        return false;
+      }
+      Vector<Material *> materials;
+      CTX_DATA_BEGIN (C, Object *, object, selected_editable_objects) {
+        Material *material = BKE_object_material_get(object, object->actcol);
+        if (material && ID_IS_EDITABLE(material) && !materials.contains(material)) {
+          materials.append(material);
+          r_lb->append(RNA_id_pointer_create(&material->id));
+        }
+      }
+      CTX_DATA_END;
+      *r_use_path_from_id = true;
+      *r_path = RNA_path_from_ID_to_property(ptr, prop);
+    }
     else if (OB_DATA_SUPPORT_ID(GS(id->name))) {
       /* check we're using the active object */
       const short id_code = GS(id->name);

@@ -1424,9 +1424,7 @@ static wmOperatorStatus modifier_add_exec(bContext *C, wmOperator *op)
 
 static wmOperatorStatus modifier_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (event->modifier & KM_ALT || CTX_wm_view3d(C)) {
-    RNA_boolean_set(op->ptr, "use_selected_objects", true);
-  }
+  multi_edit_operator_set_from_event(op, event);
   if (!RNA_struct_property_is_set(op->ptr, "type")) {
     return WM_menu_invoke(C, op, event);
   }
@@ -1624,9 +1622,7 @@ static bool edit_modifier_invoke_properties_with_hover(bContext *C,
                                                        wmOperatorStatus *r_retval)
 {
   if (RNA_struct_find_property(op->ptr, "use_selected_objects")) {
-    if (event->modifier & KM_ALT) {
-      RNA_boolean_set(op->ptr, "use_selected_objects", true);
-    }
+    multi_edit_operator_set_from_event(op, event);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "modifier")) {

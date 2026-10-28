@@ -13,6 +13,8 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_constants.h"
+#include "BLI_set.hh"
+#include "BLI_string.h"
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
@@ -444,44 +446,48 @@ void MESH_OT_uv_texture_remove(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static bool mesh_customdata_mask_clear_poll(bContext *C)
+static bool mesh_customdata_poll(bContext *C)
 {
-  Object *ob = ed::object::context_object(C);
-  if (!ob) {
-    return false;
-  }
-  if (ob->type != OB_MESH) {
-    return false;
-  }
-  if (ob->mode & OB_MODE_SCULPT) {
-    return false;
-  }
-  Mesh *mesh = id_cast<Mesh *>(ob->data);
-  if (!ID_IS_EDITABLE(mesh) || ID_IS_OVERRIDE_LIBRARY(mesh)) {
-    return false;
-  }
-  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
-    if (CustomData_has_layer_named(&em->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask")) {
-      return true;
-    }
-    if (CustomData_has_layer(&em->bm->ldata, CD_GRID_PAINT_MASK)) {
-      return true;
-    }
-    return false;
-  }
-  if (CustomData_has_layer(&mesh->corner_data, CD_GRID_PAINT_MASK)) {
-    return true;
-  }
-  if (mesh->attributes().contains(".sculpt_mask")) {
-    return true;
-  }
-  return false;
+  return ED_operator_editable_mesh(C);
 }
 
-static wmOperatorStatus mesh_customdata_mask_clear_exec(bContext *C, wmOperator * /*op*/)
+static bool mesh_customdata_mask_poll(bContext *C)
 {
   Object *object = ed::object::context_object(C);
-  Mesh *mesh = id_cast<Mesh *>(object->data);
+  return mesh_customdata_poll(C) && object && !(object->mode & OB_MODE_SCULPT);
+}
+
+using MeshCustomDataFn = wmOperatorStatus (*)(bContext *, Object *, Mesh *);
+
+static wmOperatorStatus mesh_customdata_exec(bContext *C, wmOperator *op, MeshCustomDataFn apply)
+{
+  Set<Mesh *> visited;
+  bool changed = false;
+  const bool is_mask = STREQ(op->type->idname, "MESH_OT_customdata_mask_add") ||
+                       STREQ(op->type->idname, "MESH_OT_customdata_mask_clear");
+  for (Object *object : ed::object::multi_edit_objects(*C, *op)) {
+    if (object->type != OB_MESH || (is_mask && (object->mode & OB_MODE_SCULPT))) {
+      continue;
+    }
+    Mesh *mesh = id_cast<Mesh *>(object->data);
+    if (!ID_IS_EDITABLE(mesh) || ID_IS_OVERRIDE_LIBRARY(mesh) || !visited.add(mesh)) {
+      continue;
+    }
+    changed |= apply(C, object, mesh) == OPERATOR_FINISHED;
+  }
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
+static wmOperatorStatus mesh_customdata_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ed::object::multi_edit_operator_set_from_event(op, event);
+  return op->type->exec(C, op);
+}
+
+static wmOperatorStatus mesh_customdata_mask_clear_single(bContext *C,
+                                                          Object * /*object*/,
+                                                          Mesh *mesh)
+{
   if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     const bool removed_a = CustomData_free_layer_named(&em->bm->vdata, ".sculpt_mask");
     const bool removed_b = CustomData_free_layers(&em->bm->ldata, CD_GRID_PAINT_MASK);
@@ -501,29 +507,10 @@ static wmOperatorStatus mesh_customdata_mask_clear_exec(bContext *C, wmOperator 
   return OPERATOR_FINISHED;
 }
 
-static bool mesh_customdata_face_sets_clear_poll(bContext *C)
+static wmOperatorStatus mesh_customdata_face_sets_clear_single(bContext *C,
+                                                               Object * /*object*/,
+                                                               Mesh *mesh)
 {
-  Object *object = ed::object::context_object(C);
-  if (!object || object->type != OB_MESH) {
-    return false;
-  }
-
-  Mesh *mesh = id_cast<Mesh *>(object->data);
-  if (!ID_IS_EDITABLE(mesh) || ID_IS_OVERRIDE_LIBRARY(mesh)) {
-    return false;
-  }
-
-  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
-    return CustomData_has_layer_named(&em->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
-  }
-
-  return mesh->attributes().contains(".sculpt_face_set");
-}
-
-static wmOperatorStatus mesh_customdata_face_sets_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  Object *object = ed::object::context_object(C);
-  Mesh *mesh = id_cast<Mesh *>(object->data);
 
   bool changed = false;
   if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
@@ -543,16 +530,28 @@ static wmOperatorStatus mesh_customdata_face_sets_clear_exec(bContext *C, wmOper
   return OPERATOR_FINISHED;
 }
 
+static wmOperatorStatus mesh_customdata_face_sets_clear_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_face_sets_clear_single);
+}
+
 void MESH_OT_customdata_face_sets_clear(wmOperatorType *ot)
 {
   ot->name = "Clear Sculpt Face Sets";
   ot->idname = "MESH_OT_customdata_face_sets_clear";
   ot->description = "Clear sculpt face set data from the mesh";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_face_sets_clear_exec;
-  ot->poll = mesh_customdata_face_sets_clear_poll;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static wmOperatorStatus mesh_customdata_mask_clear_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_mask_clear_single);
 }
 
 void MESH_OT_customdata_mask_clear(wmOperatorType *ot)
@@ -561,48 +560,25 @@ void MESH_OT_customdata_mask_clear(wmOperatorType *ot)
   ot->idname = "MESH_OT_customdata_mask_clear";
   ot->description = "Clear vertex sculpt masking data from the mesh";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_mask_clear_exec;
-  ot->poll = mesh_customdata_mask_clear_poll;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_mask_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-enum class SkinState {
-  Invalid = -1,
-  NoSkin = 0,
-  HasSkin = 1,
-};
-static SkinState mesh_customdata_skin_state(bContext *C)
+static wmOperatorStatus mesh_customdata_skin_add_single(bContext *C,
+                                                        Object * /*object*/,
+                                                        Mesh *mesh)
 {
-  Object *ob = ed::object::context_object(C);
-  if (!ob) {
-    return SkinState::Invalid;
-  }
-  if (ob->type != OB_MESH) {
-    return SkinState::Invalid;
-  }
-  Mesh *mesh = id_cast<Mesh *>(ob->data);
-  if (!ID_IS_EDITABLE(mesh) || ID_IS_OVERRIDE_LIBRARY(mesh)) {
-    return SkinState::Invalid;
-  }
-  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
-    return CustomData_has_layer(&em->bm->vdata, CD_MVERT_SKIN) ? SkinState::HasSkin :
-                                                                 SkinState::NoSkin;
-  }
-  return CustomData_has_layer(&mesh->vert_data, CD_MVERT_SKIN) ? SkinState::HasSkin :
-                                                                 SkinState::NoSkin;
-}
 
-static bool mesh_customdata_skin_add_poll(bContext *C)
-{
-  return mesh_customdata_skin_state(C) == SkinState::NoSkin;
-}
-
-static wmOperatorStatus mesh_customdata_skin_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  Object *ob = ed::object::context_object(C);
-  Mesh *mesh = id_cast<Mesh *>(ob->data);
-
+  if ((mesh->runtime->edit_mesh &&
+       CustomData_has_layer(&mesh->runtime->edit_mesh->bm->vdata, CD_MVERT_SKIN)) ||
+      (!mesh->runtime->edit_mesh && CustomData_has_layer(&mesh->vert_data, CD_MVERT_SKIN)))
+  {
+    return OPERATOR_CANCELLED;
+  }
   BKE_mesh_ensure_skin_customdata(mesh);
 
   DEG_id_tag_update(&mesh->id, 0);
@@ -611,27 +587,29 @@ static wmOperatorStatus mesh_customdata_skin_add_exec(bContext *C, wmOperator * 
   return OPERATOR_FINISHED;
 }
 
+static wmOperatorStatus mesh_customdata_skin_add_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_skin_add_single);
+}
+
 void MESH_OT_customdata_skin_add(wmOperatorType *ot)
 {
   ot->name = "Add Skin Data";
   ot->idname = "MESH_OT_customdata_skin_add";
   ot->description = "Add a vertex skin layer";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_skin_add_exec;
-  ot->poll = mesh_customdata_skin_add_poll;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static bool mesh_customdata_skin_clear_poll(bContext *C)
+static wmOperatorStatus mesh_customdata_skin_clear_single(bContext *C,
+                                                          Object * /*object*/,
+                                                          Mesh *mesh)
 {
-  return mesh_customdata_skin_state(C) == SkinState::HasSkin;
-}
-
-static wmOperatorStatus mesh_customdata_skin_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  Object *object = ed::object::context_object(C);
-  Mesh *mesh = id_cast<Mesh *>(object->data);
   if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     if (!CustomData_has_layer(&em->bm->vdata, CD_MVERT_SKIN)) {
       return OPERATOR_CANCELLED;
@@ -648,22 +626,29 @@ static wmOperatorStatus mesh_customdata_skin_clear_exec(bContext *C, wmOperator 
   return OPERATOR_FINISHED;
 }
 
+static wmOperatorStatus mesh_customdata_skin_clear_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_skin_clear_single);
+}
+
 void MESH_OT_customdata_skin_clear(wmOperatorType *ot)
 {
   ot->name = "Clear Skin Data";
   ot->idname = "MESH_OT_customdata_skin_clear";
   ot->description = "Clear vertex skin layer";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_skin_clear_exec;
-  ot->poll = mesh_customdata_skin_clear_poll;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static wmOperatorStatus mesh_customdata_custom_splitnormals_add_exec(bContext *C,
-                                                                     wmOperator * /*op*/)
+static wmOperatorStatus mesh_customdata_custom_splitnormals_add_single(bContext *C,
+                                                                       Object * /*object*/,
+                                                                       Mesh *mesh)
 {
-  Mesh *mesh = ED_mesh_context(C);
   if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     if (BM_data_layer_lookup(*em->bm, "custom_normal")) {
       return OPERATOR_CANCELLED;
@@ -684,22 +669,29 @@ static wmOperatorStatus mesh_customdata_custom_splitnormals_add_exec(bContext *C
   return OPERATOR_FINISHED;
 }
 
+static wmOperatorStatus mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_custom_splitnormals_add_single);
+}
+
 void MESH_OT_customdata_custom_splitnormals_add(wmOperatorType *ot)
 {
   ot->name = "Add Custom Normals Data";
   ot->idname = "MESH_OT_customdata_custom_splitnormals_add";
   ot->description = "Add a custom normals layer, if none exists yet";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_custom_splitnormals_add_exec;
-  ot->poll = ED_operator_editable_mesh;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static wmOperatorStatus mesh_customdata_custom_splitnormals_clear_exec(bContext *C,
-                                                                       wmOperator * /*op*/)
+static wmOperatorStatus mesh_customdata_custom_splitnormals_clear_single(bContext *C,
+                                                                         Object * /*object*/,
+                                                                         Mesh *mesh)
 {
-  Mesh *mesh = ED_mesh_context(C);
   if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMesh &bm = *em->bm;
     if (!CustomData_has_layer_named(&bm.ldata, CD_PROP_INT16_2D, "custom_normal")) {
@@ -724,16 +716,114 @@ static wmOperatorStatus mesh_customdata_custom_splitnormals_clear_exec(bContext 
   return OPERATOR_FINISHED;
 }
 
+static wmOperatorStatus mesh_customdata_custom_splitnormals_clear_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_custom_splitnormals_clear_single);
+}
+
 void MESH_OT_customdata_custom_splitnormals_clear(wmOperatorType *ot)
 {
   ot->name = "Clear Custom Normals Data";
   ot->idname = "MESH_OT_customdata_custom_splitnormals_clear";
   ot->description = "Remove the custom normals layer, if it exists";
 
+  ot->invoke = mesh_customdata_invoke;
   ot->exec = mesh_customdata_custom_splitnormals_clear_exec;
-  ot->poll = ED_operator_editable_mesh;
+  ed::object::multi_edit_operator_properties(ot);
+  ot->poll = mesh_customdata_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static wmOperatorStatus mesh_customdata_mask_add_single(bContext *C,
+                                                        Object * /*object*/,
+                                                        Mesh *mesh)
+{
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
+    if (CustomData_has_layer_named(&em->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask")) {
+      return OPERATOR_CANCELLED;
+    }
+    BM_data_layer_ensure_named(em->bm, &em->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  }
+  else {
+    auto attributes = mesh->attributes_for_write();
+    if (attributes.contains(".sculpt_mask")) {
+      return OPERATOR_CANCELLED;
+    }
+    auto values = attributes.lookup_or_add_for_write_span<float>(".sculpt_mask",
+                                                                 bke::AttrDomain::Point);
+    values.span.fill(0.0f);
+    values.finish();
+  }
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
+  return OPERATOR_FINISHED;
+}
+
+static wmOperatorStatus mesh_customdata_mask_add_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_mask_add_single);
+}
+
+void MESH_OT_customdata_mask_add(wmOperatorType *ot)
+{
+  ot->name = "Add Sculpt Mask Data";
+  ot->idname = "MESH_OT_customdata_mask_add";
+  ot->description = "Add sculpt mask data without replacing existing data";
+  ot->invoke = mesh_customdata_invoke;
+  ot->exec = mesh_customdata_mask_add_exec;
+  ot->poll = mesh_customdata_mask_poll;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ed::object::multi_edit_operator_properties(ot);
+}
+
+static wmOperatorStatus mesh_customdata_face_sets_add_single(bContext *C,
+                                                             Object * /*object*/,
+                                                             Mesh *mesh)
+{
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
+    if (CustomData_has_layer_named(&em->bm->pdata, CD_PROP_INT32, ".sculpt_face_set")) {
+      return OPERATOR_CANCELLED;
+    }
+    BM_data_layer_ensure_named(em->bm, &em->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+    const int offset = CustomData_get_offset_named(
+        &em->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+    BMIter iter;
+    BMFace *face;
+    BM_ITER_MESH (face, &iter, em->bm, BM_FACES_OF_MESH) {
+      BM_ELEM_CD_SET_INT(face, offset, 1);
+    }
+  }
+  else {
+    auto attributes = mesh->attributes_for_write();
+    if (attributes.contains(".sculpt_face_set")) {
+      return OPERATOR_CANCELLED;
+    }
+    auto values = attributes.lookup_or_add_for_write_span<int>(".sculpt_face_set",
+                                                               bke::AttrDomain::Face);
+    values.span.fill(1);
+    values.finish();
+  }
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
+  return OPERATOR_FINISHED;
+}
+
+static wmOperatorStatus mesh_customdata_face_sets_add_exec(bContext *C, wmOperator *op)
+{
+  return mesh_customdata_exec(C, op, mesh_customdata_face_sets_add_single);
+}
+
+void MESH_OT_customdata_face_sets_add(wmOperatorType *ot)
+{
+  ot->name = "Add Sculpt Face Sets";
+  ot->idname = "MESH_OT_customdata_face_sets_add";
+  ot->description = "Add sculpt face sets without replacing existing data";
+  ot->invoke = mesh_customdata_invoke;
+  ot->exec = mesh_customdata_face_sets_add_exec;
+  ot->poll = mesh_customdata_poll;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ed::object::multi_edit_operator_properties(ot);
 }
 
 static void mesh_add_verts(Mesh *mesh, int len)

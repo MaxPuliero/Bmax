@@ -27,6 +27,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_collection_types.h"
+#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_workspace_types.h"
 
@@ -71,6 +72,29 @@ struct TemplateID {
   float scale = 0.0f;
 };
 
+/* Material selectors assign one shared ID to the corresponding slot of selected objects. */
+static void template_material_assign_selected(bContext *C, TemplateID &template_ui)
+{
+  const bool is_object_material = RNA_struct_is_a(template_ui.ptr.type, RNA_Object) &&
+                                  STREQ(RNA_property_identifier(template_ui.prop),
+                                        "active_material");
+  const bool is_material_slot = RNA_struct_is_a(template_ui.ptr.type, RNA_MaterialSlot) &&
+                                STREQ(RNA_property_identifier(template_ui.prop), "material");
+  if (!is_object_material && !is_material_slot) {
+    return;
+  }
+  if (!template_ui.ptr.owner_id || GS(template_ui.ptr.owner_id->name) != ID_OB ||
+      !RNA_struct_is_a(RNA_property_pointer_type(&template_ui.ptr, template_ui.prop),
+                       RNA_Material) ||
+      (CTX_wm_window(C)->runtime->eventstate->modifier & KM_ALT))
+  {
+    return;
+  }
+  Object *object = id_cast<Object *>(template_ui.ptr.owner_id);
+  PointerRNA material_ptr = RNA_property_pointer_get(&template_ui.ptr, template_ui.prop);
+  ed::object::material_assign_selected(C, object, static_cast<Material *>(material_ptr.data));
+}
+
 /* Search browse menu, assign. */
 static void template_ID_set_property_exec_fn(bContext *C, void *arg_template, void *item)
 {
@@ -81,6 +105,7 @@ static void template_ID_set_property_exec_fn(bContext *C, void *arg_template, vo
     PointerRNA idptr = RNA_id_pointer_create(static_cast<ID *>(item));
     RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
     RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+    template_material_assign_selected(C, *template_ui);
   }
 }
 
@@ -735,6 +760,7 @@ static void template_ui_delete(bContext &C, TemplateID &template_ui)
   idptr = {};
   RNA_property_pointer_set(&template_ui.ptr, template_ui.prop, idptr, nullptr);
   RNA_property_update(&C, &template_ui.ptr, template_ui.prop);
+  template_material_assign_selected(&C, template_ui);
 
   if (id && CTX_wm_window(&C)->runtime->eventstate->modifier & KM_SHIFT) {
     /* only way to force-remove data (on save) */

@@ -114,6 +114,65 @@
 
 namespace blender::ed::object {
 
+Vector<Object *> multi_edit_objects(const bContext &C, const wmOperator &op)
+{
+  Vector<Object *> objects;
+  if (RNA_boolean_get(op.ptr, "use_selected_objects")) {
+    CTX_DATA_BEGIN (&C, Object *, object, selected_editable_objects) {
+      objects.append(object);
+    }
+    CTX_DATA_END;
+  }
+  Object *active = context_object(&C);
+  if (active && !objects.contains(active)) {
+    objects.append(active);
+  }
+  return objects;
+}
+
+void multi_edit_operator_properties(wmOperatorType *ot)
+{
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna,
+      "use_selected_objects",
+      false,
+      "Selected Objects",
+      "Affect selected editable objects; hold Alt for the active object only");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
+}
+
+void multi_edit_operator_set_from_event(wmOperator *op, const wmEvent *event)
+{
+  if (!RNA_struct_property_is_set(op->ptr, "use_selected_objects")) {
+    RNA_boolean_set(op->ptr, "use_selected_objects", (event->modifier & KM_ALT) == 0);
+  }
+}
+
+void material_assign_selected(bContext *C, Object *source, Material *material)
+{
+  if (!source) {
+    return;
+  }
+  Main *bmain = CTX_data_main(C);
+  const short slot = std::max<short>(source->actcol, 1);
+  CTX_DATA_BEGIN (C, Object *, object, selected_editable_objects) {
+    if (object == source || !OB_TYPE_SUPPORT_MATERIAL(object->type) ||
+        !ED_operator_object_active_local_editable_ex(C, object) ||
+        (!material && object->totcol < slot) ||
+        (object->data &&
+         (!ID_IS_EDITABLE(object->data) || ID_IS_OVERRIDE_LIBRARY(object->data))) ||
+        ((source->type == OB_GREASE_PENCIL) != (object->type == OB_GREASE_PENCIL)))
+    {
+      continue;
+    }
+    BKE_object_material_assign(bmain, object, material, slot, BKE_MAT_ASSIGN_EXISTING);
+    object->actcol = slot;
+    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY | ID_RECALC_SHADING);
+    WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, object);
+  }
+  CTX_DATA_END;
+}
+
 static CLG_LogRef LOG = {"object.edit"};
 
 /* prototypes */

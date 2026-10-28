@@ -334,9 +334,7 @@ static wmOperatorStatus modifier_add_asset_invoke(bContext *C,
                                                   wmOperator *op,
                                                   const wmEvent *event)
 {
-  if (event->modifier & KM_ALT || CTX_wm_view3d(C)) {
-    RNA_boolean_set(op->ptr, "use_selected_objects", true);
-  }
+  multi_edit_operator_set_from_event(op, event);
   return modifier_add_asset_exec(C, op);
 }
 

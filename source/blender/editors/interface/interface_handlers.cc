@@ -280,6 +280,7 @@ struct BlockInteraction_Handle {
 
 struct uiSelectContextElem {
   PointerRNA ptr;
+  Array<float> val_array;
   union {
     bool val_b;
     int val_i;
@@ -304,15 +305,16 @@ static void selectcontext_apply(bContext *C,
                                 Button *but,
                                 uiSelectContextStore *selctx_data,
                                 const double value,
-                                const double value_orig);
+                                const double value_orig,
+                                bool cancel = false);
 
 /**
- * Ideally we would only respond to events which are expected to be used for multi button editing
- * (additionally checking if this is a mouse[wheel] or return-key event to avoid the ALT conflict
- * with button array pasting, see #108096, but unfortunately wheel events are not part of
- * `win->runtime->eventstate` with modifiers held down). Instead, the conflict is avoided by
- * specifically filtering out CTRL ALT V in #apply_but(). */
-#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) != 0)
+ * Edit compatible selected items by default; holding Alt restricts editing to the active item.
+ * Array pasting is filtered separately in #apply_but(), see #108096. Mouse wheel events are not
+ * part of `win->runtime->eventstate` with modifiers held down, so test the modifier state here
+ * rather than restricting this to particular event types.
+ */
+#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) == 0)
 
 /** just show a tinted color so users know its activated */
 #  define BUT_IS_SELECT_CONTEXT BUT_NODE_ACTIVE
@@ -1937,8 +1939,11 @@ static bool selectcontext_begin(bContext *C, Button *but, uiSelectContextStore *
   PropertyRNA *prop = but->rnaprop;
   const int index = but->rnaindex;
 
-  /* for now don't support whole colors */
-  if (index == -1) {
+  /* Whole color/vector buttons use -1; other unsupported whole arrays stay local. */
+  const bool whole_float_array = prop && index == -1 && RNA_property_type(prop) == PROP_FLOAT &&
+                                 RNA_property_array_check(prop) &&
+                                 RNA_property_array_length(&ptr, prop) <= 4;
+  if (index == -1 && !whole_float_array) {
     return false;
   }
 
@@ -1974,7 +1979,11 @@ static bool selectcontext_begin(bContext *C, Button *but, uiSelectContextStore *
 
         uiSelectContextElem *other = &selctx_data->elems[i];
         other->ptr = lptr;
-        if (is_array) {
+        if (whole_float_array) {
+          other->val_array.reinitialize(RNA_property_array_length(&lptr, lprop));
+          RNA_property_float_get_array(&lptr, lprop, other->val_array.data());
+        }
+        else if (is_array) {
           if (rna_type == PROP_FLOAT) {
             other->val_f = RNA_property_float_get_index(&lptr, lprop, index);
           }
@@ -2033,13 +2042,25 @@ static void selectcontext_apply(bContext *C,
                                 Button *but,
                                 uiSelectContextStore *selctx_data,
                                 const double value,
-                                const double value_orig)
+                                const double value_orig,
+                                const bool cancel)
 {
   if (!selctx_data->elems.is_empty()) {
     PropertyRNA *prop = but->rnaprop;
     PropertyRNA *lprop = but->rnaprop;
     const int index = but->rnaindex;
     const bool use_delta = (selctx_data->is_copy == false);
+
+    if (index == -1 && RNA_property_type(prop) == PROP_FLOAT && RNA_property_array_check(prop)) {
+      Array<float> value(RNA_property_array_length(&but->rnapoin, prop));
+      RNA_property_float_get_array(&but->rnapoin, prop, value.data());
+      for (uiSelectContextElem &other : selctx_data->elems) {
+        RNA_property_float_set_array(
+            &other.ptr, prop, cancel ? other.val_array.data() : value.data());
+        RNA_property_update(C, &other.ptr, prop);
+      }
+      return;
+    }
 
     std::variant<bool, int, float, std::string, PointerRNA> delta, min, max;
 
@@ -2373,7 +2394,7 @@ static void apply_but(
       /* May have been enabled before activating, don't do for array pasting. */
       if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
         /* See comment for #IS_ALLSELECT_EVENT why this needs to be filtered here. */
-        const bool is_array_paste = (event->val == KM_PRESS) &&
+        const bool is_array_paste = (event->val == KM_PRESS) && (event->modifier & KM_ALT) &&
                                     (event->modifier & (KM_CTRL | KM_OSKEY)) &&
                                     (event->modifier & KM_SHIFT) == 0 && (event->type == EVT_VKEY);
         if (!is_array_paste) {
@@ -2527,7 +2548,7 @@ static void apply_but(
 #endif
 
 #ifdef USE_ALLSELECT
-  selectcontext_apply(C, but, &data->select_others, data->value, data->origvalue);
+  selectcontext_apply(C, but, &data->select_others, data->value, data->origvalue, data->cancel);
 #endif
 
   if (data->cancel) {
@@ -2682,6 +2703,9 @@ static void but_paste_numeric_value(bContext *C,
   double value;
   if (button_string_eval_number(C, but, buf_paste, &value)) {
     button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+#ifdef USE_ALLSELECT
+    data->select_others.is_copy = true;
+#endif
     data->value = value;
     button_string_set(C, but, buf_paste);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
@@ -4915,6 +4939,10 @@ static void block_open_begin(bContext *C, Button *but, HandleButtonData *data)
   {
     if (IS_ALLSELECT_EVENT(data->window->runtime->eventstate)) {
       data->select_others.is_enabled = true;
+      if (but->type == ButtonType::Color) {
+        /* Snapshot before popup controls modify the selected colors. */
+        selectcontext_begin(C, but, &data->select_others);
+      }
     }
   }
 #endif
@@ -4931,6 +4959,11 @@ static void block_open_begin(bContext *C, Button *but, HandleButtonData *data)
 
 static void block_open_end(bContext *C, Button *but, HandleButtonData *data)
 {
+#ifdef USE_ALLSELECT
+  if (but && but->type == ButtonType::Color && data->cancel) {
+    selectcontext_apply(C, but, &data->select_others, 0.0, 0.0, true);
+  }
+#endif
   if (but) {
     but->editval = nullptr;
     but->editvec = nullptr;

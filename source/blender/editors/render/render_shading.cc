@@ -26,6 +26,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_path_utils.hh"
+#include "BLI_set.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
@@ -195,28 +196,39 @@ static bool material_slot_populated_poll(bContext *C)
 /** \name Material Slot Add Operator
  * \{ */
 
-static wmOperatorStatus material_slot_add_exec(bContext *C, wmOperator * /*op*/)
+static wmOperatorStatus material_slot_add_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Object *ob = ed::object::context_object(C);
+  bool changed = false;
+  Set<ID *> visited;
+  for (Object *ob : ed::object::multi_edit_objects(*C, *op)) {
+    if (!object_materials_supported_poll_ex(C, ob)) {
+      continue;
+    }
+    if (!visited.add(ob->data)) {
+      continue;
+    }
+    changed = true;
 
-  if (!ob) {
-    return OPERATOR_CANCELLED;
+    BKE_object_material_slot_add(bmain, ob);
+
+    if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+      Scene *scene = CTX_data_scene(C);
+      ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
+      WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+    }
+
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+    WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
+    WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_PREVIEW, ob);
   }
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
 
-  BKE_object_material_slot_add(bmain, ob);
-
-  if (ob->mode & OB_MODE_TEXTURE_PAINT) {
-    Scene *scene = CTX_data_scene(C);
-    ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
-    WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
-  }
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
-  WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
-  WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_PREVIEW, ob);
-
-  return OPERATOR_FINISHED;
+static wmOperatorStatus material_slot_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ed::object::multi_edit_operator_set_from_event(op, event);
+  return material_slot_add_exec(C, op);
 }
 
 void OBJECT_OT_material_slot_add(wmOperatorType *ot)
@@ -227,7 +239,9 @@ void OBJECT_OT_material_slot_add(wmOperatorType *ot)
   ot->description = "Add a new material slot";
 
   /* API callbacks. */
+  ot->invoke = material_slot_add_invoke;
   ot->exec = material_slot_add_exec;
+  ed::object::multi_edit_operator_properties(ot);
   ot->poll = object_materials_supported_poll;
 
   /* flags */
@@ -260,28 +274,43 @@ static bool material_slot_remove_poll(bContext *C)
   return true;
 }
 
-static wmOperatorStatus material_slot_remove_exec(bContext *C, wmOperator * /*op*/)
+static wmOperatorStatus material_slot_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ed::object::context_object(C);
+  bool changed = false;
+  Set<ID *> visited;
+  for (Object *ob : ed::object::multi_edit_objects(*C, *op)) {
+    if (!object_materials_supported_poll_ex(C, ob) || BKE_object_is_in_editmode(ob) ||
+        ob->actcol == 0)
+    {
+      continue;
+    }
+    if (!visited.add(ob->data)) {
+      continue;
+    }
+    changed = true;
 
-  if (!ob) {
-    return OPERATOR_CANCELLED;
+    BKE_object_material_slot_remove(CTX_data_main(C), ob);
+
+    if (ob->mode & OB_MODE_TEXTURE_PAINT) {
+      Scene *scene = CTX_data_scene(C);
+      ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
+      WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+    }
+
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+    WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
+    WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_PREVIEW, ob);
   }
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
 
-  BKE_object_material_slot_remove(CTX_data_main(C), ob);
-
-  if (ob->mode & OB_MODE_TEXTURE_PAINT) {
-    Scene *scene = CTX_data_scene(C);
-    ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
-    WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
-  }
-
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
-  WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, ob);
-  WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_PREVIEW, ob);
-
-  return OPERATOR_FINISHED;
+static wmOperatorStatus material_slot_remove_invoke(bContext *C,
+                                                    wmOperator *op,
+                                                    const wmEvent *event)
+{
+  ed::object::multi_edit_operator_set_from_event(op, event);
+  return material_slot_remove_exec(C, op);
 }
 
 void OBJECT_OT_material_slot_remove(wmOperatorType *ot)
@@ -292,7 +321,9 @@ void OBJECT_OT_material_slot_remove(wmOperatorType *ot)
   ot->description = "Remove the selected material slot";
 
   /* API callbacks. */
+  ot->invoke = material_slot_remove_invoke;
   ot->exec = material_slot_remove_exec;
+  ed::object::multi_edit_operator_properties(ot);
   ot->poll = material_slot_remove_poll;
 
   /* flags */
@@ -800,7 +831,7 @@ void OBJECT_OT_material_slot_remove_all(wmOperatorType *ot)
 /** \name New Material Operator
  * \{ */
 
-static wmOperatorStatus new_material_exec(bContext *C, wmOperator * /*op*/)
+static wmOperatorStatus new_material_exec(bContext *C, wmOperator *op)
 {
   Material *ma = static_cast<Material *>(
       CTX_data_pointer_get_type(C, "material", RNA_Material).data);
@@ -853,9 +884,18 @@ static wmOperatorStatus new_material_exec(bContext *C, wmOperator * /*op*/)
     RNA_property_update(C, &ptr, prop);
   }
 
+  if (ob && RNA_boolean_get(op->ptr, "use_selected_objects")) {
+    ed::object::material_assign_selected(C, ob, ma);
+  }
   WM_event_add_notifier(C, NC_MATERIAL | NA_ADDED, ma);
 
   return OPERATOR_FINISHED;
+}
+
+static wmOperatorStatus new_material_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ed::object::multi_edit_operator_set_from_event(op, event);
+  return new_material_exec(C, op);
 }
 
 void MATERIAL_OT_new(wmOperatorType *ot)
@@ -866,7 +906,9 @@ void MATERIAL_OT_new(wmOperatorType *ot)
   ot->description = "Add a new material";
 
   /* API callbacks. */
+  ot->invoke = new_material_invoke;
   ot->exec = new_material_exec;
+  ed::object::multi_edit_operator_properties(ot);
   ot->poll = object_materials_supported_poll;
 
   /* flags */

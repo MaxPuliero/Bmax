@@ -465,17 +465,16 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        me = context.mesh
         col = layout.column()
 
-        col.operator("mesh.customdata_mask_clear", icon='X')
-        col.operator("mesh.customdata_face_sets_clear", icon='X')
-        col.operator("mesh.customdata_skin_clear", icon='X')
+        for label, stem in (("Sculpt Mask", "mask"), ("Sculpt Face Sets", "face_sets"), ("Skin Data", "skin")):
+            row = col.row(align=True)
+            row.operator("mesh.customdata_" + stem + "_add", text="Add " + label, icon='ADD')
+            row.operator("mesh.customdata_" + stem + "_clear", text="", icon='X')
         col.operator("mesh.reorder_vertices_spatial")
-        if me.has_custom_normals:
-            col.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
-        else:
-            col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
+        row = col.row(align=True)
+        row.operator("mesh.customdata_custom_splitnormals_add", text="Add Custom Normals", icon='ADD')
+        row.operator("mesh.customdata_custom_splitnormals_clear", text="", icon='X')
 
 
 class DATA_PT_mesh_animation(MeshButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):

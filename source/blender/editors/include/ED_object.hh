@@ -30,6 +30,7 @@ struct ID;
 struct KeyBlock;
 struct GpencilModifierData;
 struct Main;
+struct Material;
 struct ModifierData;
 struct Object;
 struct PointerRNA;
@@ -42,6 +43,7 @@ struct bConstraint;
 struct bContext;
 struct bPoseChannel;
 struct wmKeyConfig;
+struct wmEvent;
 struct wmOperator;
 struct wmOperatorType;
 enum eReportType : uint16_t;
@@ -61,6 +63,12 @@ struct XFormObjectData;
 
 /** `context.object` */
 Object *context_object(const bContext *C);
+/** UI invocation defaults to selected objects; explicit execution remains active-only. */
+Vector<Object *> multi_edit_objects(const bContext &C, const wmOperator &op);
+void multi_edit_operator_properties(wmOperatorType *ot);
+void multi_edit_operator_set_from_event(wmOperator *op, const wmEvent *event);
+/** Assign the same material to the source slot on other selected editable objects. */
+void material_assign_selected(bContext *C, Object *source, Material *material);
 /**
  * Find the correct active object per context (`context.object` or `context.active_object`)
  * \note context can be NULL when called from a enum with #PROP_ENUM_NO_CONTEXT.
