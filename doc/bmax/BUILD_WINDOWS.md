@@ -16,21 +16,36 @@ The verified local setup uses these paths:
 
 | Item | Path |
 | --- | --- |
-| Source checkout | `D:\blender_prj` |
+| Source checkout | `D:\Bmax` |
 | CMake build directory | `D:\blender_build\octahedral_radius` |
 | Installed executable | `D:\blender_build\octahedral_radius\bin\blender.exe` |
 
-The build directory's name is historical: it now builds all of Bmax, including Mesh Holes. Keep the directory to reuse its compilation cache. These commands assume the existing Visual Studio 2022 / MSVC v143 configuration and installed dependencies; a fresh machine also needs the dependencies described in the Windows build instructions linked from the root README.
+The build directory's name is historical: it now builds all of Bmax, including Mesh Holes. Keep the directory to reuse its compilation cache. These commands assume the existing Visual Studio 2022 / MSVC v143 configuration and installed dependencies; a fresh machine also needs the dependencies described in the Windows build instructions linked from the root README. Earlier build records below used `D:\blender_prj`; the current checkout is `D:\Bmax`.
+
+For a fresh configuration matching the local build, initialize the pinned Windows library submodule and explicitly select the generator and runtime destination:
+
+```powershell
+git -C D:\Bmax submodule update --init --checkout --depth 1 -- lib/windows_x64
+if ($LASTEXITCODE -ne 0) { throw 'Windows dependencies could not be initialized' }
+
+cmake -S D:\Bmax -B D:\blender_build\octahedral_radius `
+  -G "Visual Studio 17 2022" -A x64 -T v143 `
+  -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF `
+  -DWITH_CYCLES_DEVICE_OPTIX=OFF -DWITH_CYCLES_CUDA_BINARIES=OFF `
+  -DWITH_CYCLES_HIP_BINARIES=OFF -DWITH_CYCLES_ONEAPI_BINARIES=OFF `
+  -DCMAKE_INSTALL_PREFIX=D:\blender_build\octahedral_radius\bin
+if ($LASTEXITCODE -ne 0) { throw 'Initial CMake configuration failed' }
+```
 
 Run in PowerShell. Inspect the working tree before switching branches; preserve any unfinished changes first.
 
 ```powershell
-git -C D:\blender_prj status --short
-git -C D:\blender_prj switch main
+git -C D:\Bmax status --short
+git -C D:\Bmax switch main
 if ($LASTEXITCODE -ne 0) { throw 'Could not switch to main' }
-git -C D:\blender_prj log -1 --oneline
+git -C D:\Bmax log -1 --oneline
 
-cmake -S D:\blender_prj -B D:\blender_build\octahedral_radius `
+cmake -S D:\Bmax -B D:\blender_build\octahedral_radius `
   -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed' }
 
@@ -346,3 +361,11 @@ Incremental Release INSTALL completed on `codex/default-multi-object-edit` with 
 Validation passed 81 native operator/data/mode assertions, 25 initial UI checks, six color/slot follow-up checks, four protection/clipboard checks and a final material-selector smoke check. See the [feature inventory](FEATURES.md#default-multi-selection-property-editing-2026-10-28) for coverage and limitations, including the preserved Sculpt Mask restriction, shared data behavior, OpenGL-only UI verification and the small BMesh memory-pool shutdown report. C++ formatting, Python UI syntax and diff whitespace checks passed. No performance claim is made.
 
 Verification used factory startup, isolated temporary preferences and internal event simulation in separate Blender processes. Existing user sessions were preserved. Scripts, scenes, captures, preferences, recovery files and logs were external and removed after checking; build caches and runtime dependencies were retained.
+
+## Fresh Windows build from the current checkout (2026-10-28)
+
+The current machine uses `D:\Bmax` rather than the earlier `D:\blender_prj` checkout. No prior build directory was present. The pinned `lib/windows_x64` submodule at `60d6e96b917568278d400a4024c98da0fb777338` was initialized, and a fresh Visual Studio 2022 / MSVC v143 x64 configuration completed with the commands above. All components were compiled from scratch; Release INSTALL completed with parallelism 2 and CL_MPCount=2, retaining the downloaded libraries and new compilation cache.
+
+The installed executable is `D:\blender_build\octahedral_radius\bin\blender.exe`, timestamp 2026-10-28 22:49:14 JST. It reports Bmax 5.2.3 LTS, source hash `fad8b2fa426f`, and `main (modified)` because this build-guide update was in the working tree during compilation. Production source files were unchanged. The complete runtime is in the adjacent `bin` directory; distribute that directory rather than the executable alone.
+
+An inline factory-startup background check passed for startup/version, Mesh Holes enabled, Octahedral Radius and Axis Size defaults, 20 cm new armatures with Octahedral/In Front/Wire display, native Manifold Boolean, and Cycles/internationalization availability. The installed Italian, Japanese, French and Spanish MO catalogs contain translated Mesh Holes labels and tooltips. This was a build smoke check; interactive viewport, GPU backends and the full feature regression suite were not repeated. No test scene or script was saved, and the external temporary build log was removed after inspection. Desktop copies and the public download were not updated.
