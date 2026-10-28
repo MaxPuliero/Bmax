@@ -16,7 +16,19 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 23, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 28, 2026, their source commits, and removed items.
+
+### Edit selected items by default
+
+With multiple items selected, editing a compatible property affects the selection automatically. Hold **Alt** to edit only the active item. Typing or pasting a number assigns the same value; dragging retains Blender's existing per-item delta behavior.
+
+- **Modifiers:** compatible parameters and commands such as Add, Remove, Apply, Duplicate and supported stack movement use the selection by default. Adding a modifier asset follows the same rule. Parameter editing requires existing modifiers with matching names and compatible types.
+- **Materials:** New creates one shared material for the selected editable objects. Choosing an existing material, unlinking, and adding/removing slots also affect the selection. Assignment uses the source slot index and activates that slot on destination objects, preserving other slots. Property editing targets each object's active material, including **Viewport Display**, **Line Art**, **Settings**, and colors. Color-picker cancellation and undo/redo preserve distinct original values.
+- **Mesh Data > Geometry Data:** Add and Clear are available for **Sculpt Mask**, **Sculpt Face Sets**, **Skin Data**, and **Custom Normals**. Add preserves existing data; Clear skips missing data. Object and mesh Edit Mode are supported. Sculpt Mask keeps its existing restriction outside Sculpt Mode; the other commands retain their previous Sculpt Mode availability.
+
+Shared meshes and materials are processed once and remain shared, including when using Alt. Non-editable or incompatible targets are skipped. Shader node graphs and material face-assignment operations are outside this feature; see the [inventory and validation scope](doc/bmax/FEATURES.md#default-multi-selection-property-editing-2026-10-28).
+
+The implementation is included in source commit [`d46c5d5ecdbe`](https://github.com/MaxPuliero/Bmax/commit/d46c5d5ecdbeb3984b5f811c486c3318c8ea100e) on `main`. The local Windows runtime is rebuilt and verified, and the user confirmed the feature. Desktop copies and the public Windows download have not been updated.
 
 ### Blender 5.2.3 integration
 
