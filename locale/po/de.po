@@ -58627,3 +58627,18 @@ msgstr "Durch Geometrie auswählen"
 #: source/blender/makesrna/intern/rna_space.cc
 msgid "Select occluded mesh vertices, edges and faces with click, box, lasso and circle selection without enabling X-Ray"
 msgstr "Verdeckte Mesh-Punkte, Kanten und Flächen per Klick, Rechteck-, Lasso- und Kreisauswahl auswählen, ohne Röntgen zu aktivieren"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow Negative Scaling"
+msgstr "Negative Skalierung erlauben"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow interactive scaling past zero in the 3D Viewport; explicitly typed values can always be negative"
+msgstr "Interaktive Skalierung im 3D-Ansichtsfenster über Null hinaus erlauben; ausdrücklich eingegebene Werte dürfen immer negativ sein"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid " | %s: Allow Negative Scaling (%s)"
+msgstr " | %s: Negative Skalierung erlauben (%s)"

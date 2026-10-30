@@ -894,6 +894,15 @@ static void TRANSFORM_OT_resize(wmOperatorType *ot)
       ot->srna, "value", 3, VecOne, -FLT_MAX, FLT_MAX, "Scale", "", -FLT_MAX, FLT_MAX);
 
   PropertyRNA *prop;
+  prop = RNA_def_boolean(
+      ot->srna,
+      "allow_negative_scaling",
+      false,
+      "Allow Negative Scaling",
+      "Allow interactive scaling past zero in the 3D Viewport; explicitly typed "
+      "values can always be negative");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   prop = RNA_def_float_vector(ot->srna,
                               "mouse_dir_constraint",
                               3,

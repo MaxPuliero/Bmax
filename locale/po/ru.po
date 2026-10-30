@@ -163871,3 +163871,18 @@ msgstr "Сквозное выделение"
 #: source/blender/makesrna/intern/rna_space.cc
 msgid "Select occluded mesh vertices, edges and faces with click, box, lasso and circle selection without enabling X-Ray"
 msgstr "Выделять перекрытые вершины, рёбра и грани меша щелчком, рамкой, лассо и кругом без включения рентгена"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow Negative Scaling"
+msgstr "Разрешить отрицательный масштаб"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow interactive scaling past zero in the 3D Viewport; explicitly typed values can always be negative"
+msgstr "Разрешить интерактивное масштабирование за пределы нуля в 3D-вьюпорте; явно введённые значения всегда могут быть отрицательными"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid " | %s: Allow Negative Scaling (%s)"
+msgstr " | %s: Разрешить отрицательный масштаб (%s)"

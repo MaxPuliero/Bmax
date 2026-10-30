@@ -13,6 +13,7 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_string_utf8.h"
 #include "BLI_task.hh"
 
 #include "BKE_context.hh"
@@ -27,6 +28,8 @@
 #include "RNA_access.hh"
 
 #include "UI_interface.hh"
+
+#include "WM_keymap.hh"
 
 #include "transform.hh"
 #include "transform_constraints.hh"
@@ -188,6 +191,16 @@ static void applyResize(TransInfo *t)
     }
 
     transform_snap_mixed_apply(t, t->values_final);
+
+    /* Clamp the shared interactive factor, before constraints and proportional falloff.
+     * Explicit values (numeric input, Python, redo and Mirror) retain their signs. */
+    if (t->spacetype == SPACE_VIEW3D && (t->flag & T_MODAL) &&
+        !(t->modifiers & MOD_ALLOW_NEGATIVE_SCALE) && !hasNumInput(&t->num))
+    {
+      for (float &value : t->values_final) {
+        value = std::max(value, 0.0f);
+      }
+    }
   }
 
   size_to_mat3(mat, t->values_final);
@@ -209,6 +222,18 @@ static void applyResize(TransInfo *t)
   }
   else {
     headerResize(t, t->values_final, str, sizeof(str));
+  }
+
+  if (t->spacetype == SPACE_VIEW3D && (t->flag & T_MODAL)) {
+    const std::string key = WM_modalkeymap_items_to_string(
+                                t->keymap, TFM_MODAL_ALLOW_NEGATIVE_SCALE, false)
+                                .value_or("");
+    const size_t ofs = strlen(str);
+    BLI_snprintf_utf8(str + ofs,
+                      sizeof(str) - ofs,
+                      IFACE_(" | %s: Allow Negative Scaling (%s)"),
+                      key.c_str(),
+                      (t->modifiers & MOD_ALLOW_NEGATIVE_SCALE) ? IFACE_("On") : IFACE_("Off"));
   }
 
   copy_m3_m3(t->mat, mat); /* Used in gizmo. */
@@ -260,6 +285,14 @@ static void resize_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
 
 static void initResize(TransInfo *t, wmOperator *op)
 {
+  t->modifiers &= ~MOD_ALLOW_NEGATIVE_SCALE;
+  if (op) {
+    PropertyRNA *prop = RNA_struct_find_property(op->ptr, "allow_negative_scaling");
+    if (prop && RNA_property_boolean_get(op->ptr, prop)) {
+      t->modifiers |= MOD_ALLOW_NEGATIVE_SCALE;
+    }
+  }
+
   float mouse_dir_constraint[3];
   if (op) {
     PropertyRNA *prop = RNA_struct_find_property(op->ptr, "mouse_dir_constraint");

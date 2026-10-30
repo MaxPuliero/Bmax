@@ -794,6 +794,8 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
         return false;
       }
       return t->vod != nullptr;
+    case TFM_MODAL_ALLOW_NEGATIVE_SCALE:
+      return t->mode == TFM_RESIZE && t->spacetype == SPACE_VIEW3D;
     case TFM_MODAL_STRIP_CLAMP:
       if (t->spacetype != SPACE_SEQ) {
         return false;
@@ -859,6 +861,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_PASSTHROUGH_NAVIGATE, "PASSTHROUGH_NAVIGATE", 0, "Navigate", ""},
       {TFM_MODAL_NODE_FRAME, "NODE_FRAME", 0, "Attach/Detach Frame", ""},
       {TFM_MODAL_STRIP_CLAMP, "STRIP_CLAMP_TOGGLE", 0, "Clamp Strips", ""},
+      {TFM_MODAL_ALLOW_NEGATIVE_SCALE, "ALLOW_NEGATIVE_SCALE", 0, "Allow Negative Scaling", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1407,6 +1410,14 @@ wmOperatorStatus transformEvent(TransInfo *t, wmOperator *op, const wmEvent *eve
           t->redraw |= TREDRAW_HARD;
         }
         break;
+      case TFM_MODAL_ALLOW_NEGATIVE_SCALE:
+        if (t->mode == TFM_RESIZE && t->spacetype == SPACE_VIEW3D &&
+            !(event->flag & WM_EVENT_IS_REPEAT))
+        {
+          t->modifiers ^= MOD_ALLOW_NEGATIVE_SCALE;
+          t->redraw |= TREDRAW_HARD;
+        }
+        break;
       case TFM_MODAL_STRIP_CLAMP:
         t->modifiers ^= MOD_STRIP_CLAMP_HOLDS;
         t->redraw |= TREDRAW_HARD;
@@ -1848,6 +1859,12 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     else {
       RNA_property_float_set(op->ptr, prop, t->values_final[0]);
     }
+  }
+
+  if (t->mode == TFM_RESIZE &&
+      (prop = RNA_struct_find_property(op->ptr, "allow_negative_scaling")))
+  {
+    RNA_property_boolean_set(op->ptr, prop, (t->modifiers & MOD_ALLOW_NEGATIVE_SCALE) != 0);
   }
 
   /* Shear uses offset internally, but the operator property is angle.

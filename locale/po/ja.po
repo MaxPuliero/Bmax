@@ -165689,3 +165689,18 @@ msgstr "透過選択"
 #: source/blender/makesrna/intern/rna_space.cc
 msgid "Select occluded mesh vertices, edges and faces with click, box, lasso and circle selection without enabling X-Ray"
 msgstr "X-Rayを有効にせず、クリック、ボックス、投げ縄、サークル選択で隠れたメッシュの頂点・辺・面を選択します"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow Negative Scaling"
+msgstr "負のスケールを許可"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid "Allow interactive scaling past zero in the 3D Viewport; explicitly typed values can always be negative"
+msgstr "3Dビューポートでのインタラクティブなスケールをゼロ未満にできます。数値を直接入力する場合は常に負の値を使用できます"
+
+#. Bmax interactive scaling
+#: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
+msgid " | %s: Allow Negative Scaling (%s)"
+msgstr " | %s: 負のスケールを許可 (%s)"

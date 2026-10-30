@@ -208,6 +208,7 @@ enum eTModifier {
   MOD_EDIT_SNAP_SOURCE = 1 << 7,
   MOD_NODE_FRAME = 1 << 8,
   MOD_STRIP_CLAMP_HOLDS = 1 << 9,
+  MOD_ALLOW_NEGATIVE_SCALE = 1 << 10,
 };
 ENUM_OPERATORS(eTModifier)
 
@@ -338,6 +339,7 @@ enum {
   TFM_MODAL_NODE_FRAME = 37,
 
   TFM_MODAL_STRIP_CLAMP = 38,
+  TFM_MODAL_ALLOW_NEGATIVE_SCALE = 39,
 };
 
 /** \} */
