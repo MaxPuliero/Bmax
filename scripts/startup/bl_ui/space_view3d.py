@@ -1098,6 +1098,11 @@ class VIEW3D_HT_header(Header):
 
         _toggle_xray_operator(row, context, text="")
 
+        if mode_string == 'EDIT_MESH':
+            row = layout.row(align=True)
+            row.active = context.tool_settings.mesh_select_mode[0]
+            row.prop(view, "use_select_through_vertices", text="", icon='VERTEXSEL')
+
         row = layout.row(align=True)
         row.prop(shading, "type", text="", expand=True)
         sub = row.row(align=True)
@@ -1912,7 +1917,7 @@ class VIEW3D_MT_edit_mesh_select_loops(Menu):
 class VIEW3D_MT_select_edit_mesh(Menu):
     bl_label = "Select"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
         # primitive
@@ -1925,6 +1930,9 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        row = layout.row()
+        row.active = context.tool_settings.mesh_select_mode[0]
+        row.prop(context.space_data, "use_select_through_vertices")
 
         # numeric
         layout.separator()
@@ -4568,7 +4576,6 @@ class VIEW3D_MT_edit_mesh(Menu):
         layout.operator("mesh.bisect")
         layout.operator("mesh.knife_project")
         props = layout.operator("mesh.knife_tool")
-        props.use_occlude_geometry = True
         props.only_selected = False
 
         if with_bullet:

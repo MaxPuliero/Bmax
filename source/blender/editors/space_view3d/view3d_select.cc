@@ -855,9 +855,12 @@ static bool do_lasso_select_mesh(const ViewContext *vc,
   GPU_matrix_set(vc->rv3d->viewmat);
 
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf_verts = use_zbuf && !(vc->v3d->flag2 & V3D_SELECT_THROUGH_VERTICES);
+  const bool needs_zbuf = use_zbuf && (use_zbuf_verts ||
+                                       (ts->selectmode & (SCE_SELECT_EDGE | SCE_SELECT_FACE)));
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
-  if (use_zbuf) {
+  if (needs_zbuf) {
     if (wm_userdata->data == nullptr) {
       editselect_buf_cache_init_with_generic_userdata(wm_userdata, vc, ts->selectmode);
       esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
@@ -867,7 +870,7 @@ static bool do_lasso_select_mesh(const ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_VERTEX) {
-    if (use_zbuf) {
+    if (use_zbuf_verts) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
           esel, vc->depsgraph, vc->obedit, vc->em, data.uv_selctx, sel_op);
     }
@@ -4111,9 +4114,12 @@ static bool do_mesh_box_select(const ViewContext *vc,
   GPU_matrix_set(vc->rv3d->viewmat);
 
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf_verts = use_zbuf && !(vc->v3d->flag2 & V3D_SELECT_THROUGH_VERTICES);
+  const bool needs_zbuf = use_zbuf && (use_zbuf_verts ||
+                                       (ts->selectmode & (SCE_SELECT_EDGE | SCE_SELECT_FACE)));
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
-  if (use_zbuf) {
+  if (needs_zbuf) {
     if (wm_userdata->data == nullptr) {
       editselect_buf_cache_init_with_generic_userdata(wm_userdata, vc, ts->selectmode);
       esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
@@ -4123,7 +4129,7 @@ static bool do_mesh_box_select(const ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_VERTEX) {
-    if (use_zbuf) {
+    if (use_zbuf_verts) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
           esel, vc->depsgraph, vc->obedit, vc->em, data.uv_selctx, sel_op);
     }
@@ -4853,15 +4859,18 @@ static bool mesh_circle_select(const ViewContext *vc,
   view3d_userdata_circleselect_init(&data, vc, select, mval, rad);
 
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf_verts = use_zbuf && !(vc->v3d->flag2 & V3D_SELECT_THROUGH_VERTICES);
+  const bool needs_zbuf = use_zbuf && (use_zbuf_verts ||
+                                       (ts->selectmode & (SCE_SELECT_EDGE | SCE_SELECT_FACE)));
 
-  if (use_zbuf) {
+  if (needs_zbuf) {
     if (wm_userdata->data == nullptr) {
       editselect_buf_cache_init_with_generic_userdata(wm_userdata, vc, ts->selectmode);
     }
   }
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
 
-  if (use_zbuf) {
+  if (needs_zbuf) {
     if (esel->select_bitmap == nullptr) {
       esel->select_bitmap = DRW_select_buffer_bitmap_from_circle(
           vc->depsgraph, vc->region, vc->v3d, mval, int(rad + 1.0f), nullptr);
@@ -4869,7 +4878,7 @@ static bool mesh_circle_select(const ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_VERTEX) {
-    if (use_zbuf) {
+    if (use_zbuf_verts) {
       if (esel->select_bitmap != nullptr) {
         changed |= edbm_backbuf_check_and_select_verts(esel,
                                                        vc->depsgraph,

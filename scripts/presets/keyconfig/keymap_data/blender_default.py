@@ -5638,7 +5638,7 @@ def km_edit_mesh(params):
         ("mesh.dissolve_mode", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
         op_tool_optional(
             ("mesh.knife_tool", {"type": 'K', "value": 'PRESS'},
-             {"properties": [("use_occlude_geometry", True), ("only_selected", False)]}),
+             {"properties": [("only_selected", False)]}),
             (op_tool_cycle, "builtin.knife"), params),
         ("mesh.knife_tool", {"type": 'K', "value": 'PRESS', "shift": True},
          {"properties": [("use_occlude_geometry", False), ("only_selected", True)]}),

@@ -4586,6 +4586,11 @@ static wmOperatorStatus knifetool_modal(bContext *C, wmOperator *op, const wmEve
 
 static wmOperatorStatus knifetool_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  /* Choose a fresh shading-dependent default, preserving explicit keymap/tool/script settings. */
+  if (!RNA_struct_property_is_set(op->ptr, "use_occlude_geometry")) {
+    const View3D *v3d = CTX_wm_view3d(C);
+    RNA_boolean_set(op->ptr, "use_occlude_geometry", v3d->shading.type != OB_WIRE);
+  }
   const bool only_select = RNA_boolean_get(op->ptr, "only_selected");
   const bool cut_through = !RNA_boolean_get(op->ptr, "use_occlude_geometry");
   const bool xray = !RNA_boolean_get(op->ptr, "xray");
@@ -4691,11 +4696,12 @@ void MESH_OT_knife_tool(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  RNA_def_boolean(ot->srna,
-                  "use_occlude_geometry",
-                  true,
-                  "Occlude Geometry",
-                  "Only cut the front most geometry");
+  prop = RNA_def_boolean(ot->srna,
+                         "use_occlude_geometry",
+                         true,
+                         "Occlude Geometry",
+                         "Only cut the front most geometry (off by default in Wireframe)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_boolean(ot->srna, "only_selected", false, "Only Selected", "Only cut selected geometry");
   RNA_def_boolean(ot->srna, "xray", true, "X-Ray", "Show cuts hidden by geometry");
 

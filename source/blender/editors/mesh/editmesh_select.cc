@@ -447,7 +447,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 {
   uint base_index = 0;
 
-  if (!XRAY_FLAG_ENABLED(vc->v3d)) {
+  if (!XRAY_FLAG_ENABLED(vc->v3d) && !(vc->v3d->flag2 & V3D_SELECT_THROUGH_VERTICES)) {
     uint dist_px_manhattan_test = uint(
         ED_view3d_backbuf_sample_size_clamp(vc->region, *dist_px_manhattan_p));
     uint index;
