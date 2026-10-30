@@ -16,7 +16,7 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 28, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 30, 2026, their source commits, and removed items.
 
 ### Edit selected items by default
 
@@ -255,7 +255,7 @@ New **Weighted Normal** modifiers use **Face Area & Angle** with **Keep Sharp** 
 
 ### UV shell outlines and diagnostics
 
-UV diagnostics read original mesh data only. Curves, surfaces, and text evaluated as meshes retain their normal UV display without interpreting their original data as a mesh, preventing crashes when selecting or pasting them with UV overlays enabled. This correction is included in source commit `bcb82e789062` and in the verified local runtime. Desktop packages and the public download have not been updated.
+UV diagnostics inspect objects whose original type is Mesh. Curves, surfaces, and text evaluated as meshes retain their normal UV display without interpreting their original data as a mesh, preventing crashes when selecting or pasting them with UV overlays enabled. This correction is included in source commit `bcb82e789062` and in the verified local runtime. Desktop packages and the public download have not been updated.
 
 In **UV Editor > Overlays > Geometry**, three controls help inspect visible UVs in both **Object Mode and Edit Mode**. In Object Mode they inspect the selected mesh objects:
 
@@ -265,7 +265,11 @@ In **UV Editor > Overlays > Geometry**, three controls help inspect visible UVs 
 
 **Faces** has a separate **Opacity** slider, also defaulting to **0.5 (50%)**. It controls the face fill independently of UV line opacity. All three fill opacity controls work in Object and Edit Mode.
 
-When both diagnostics are enabled, red takes priority in overlapping areas. In Object Mode, UV lines are drawn after the face and diagnostic fills so Flipped and Overlap do not cover the lines. Object Mode lines use the chosen UV line opacity without the automatic quarter-strength fading of modifier/paint guides. White shell outlines appear above the diagnostics. The main Overlays toggle hides these UV diagnostics. Both modes use the same Geometry panel, diagnostic flags, fill opacities, UV line opacity, and face visibility settings. Changing a control in either mode is reflected when switching to the other. Diagnostics use the original UV map, so modifiers that repeat geometry do not create false UV overlaps.
+When both diagnostics are enabled, red takes priority in overlapping areas. In Object Mode, UV lines are drawn after the face and diagnostic fills so Flipped and Overlap do not cover the lines. Object Mode lines use the chosen UV line opacity without the automatic quarter-strength fading of modifier/paint guides. White shell outlines appear above the diagnostics. The main Overlays toggle hides these UV diagnostics. Both modes use the same Geometry panel, diagnostic flags, fill opacities, UV line opacity, and face visibility settings. Changing a control in either mode is reflected when switching to the other. Shell Outline, Overlap, and Flipped follow **Modified Edges**: when enabled they inspect the evaluated modifier UVs, including repeated or inverted UVs; when disabled they inspect the original UV map. The original cage and evaluated surface are never counted together.
+
+Modified Edges retains the full evaluated UV resolution; no pixel approximation or geometry simplification is used. On dense modifier results, diagnostics process more faces and GPU subdivision may also require CPU mesh evaluation. Disable Modified Edges to inspect the lighter original UVs. The evaluated diagnostic path is skipped when all three diagnostic overlays are off. No performance benchmark or speedup is claimed.
+
+The Modified Edges implementation is included in source commit [`5b1bd4c7a742`](https://github.com/MaxPuliero/Bmax/commit/5b1bd4c7a742151fc546a4dfc0665e5fcac762eb) on `main`. The local Windows runtime is rebuilt and verified with 28 GUI cases on each backend, OpenGL and Vulkan. Desktop packages and the public Windows download have not been updated.
 
 #### Partial UV overlap
 
