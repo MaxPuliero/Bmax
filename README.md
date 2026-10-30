@@ -30,11 +30,17 @@ Shared meshes and materials are processed once and remain shared, including when
 
 The implementation is included in source commit [`d46c5d5ecdbe`](https://github.com/MaxPuliero/Bmax/commit/d46c5d5ecdbeb3984b5f811c486c3318c8ea100e) on `main`. The local Windows runtime is rebuilt and verified, and the user confirmed the feature. Desktop copies and the public Windows download have not been updated.
 
-### Select vertices through opaque meshes
+### Bmax interface languages
 
-In mesh Edit Mode, enable **Select > Select Through Vertices**, or use the vertex button beside X-Ray in the viewport header. The option is **off by default**, saved per viewport, and lets click, Box, Lasso and Circle select occluded vertices while Solid shading stays opaque. Hidden vertices and viewport clipping still restrict selection. Direct edge/face selection retains its normal occlusion rules; selecting vertices can still select their connecting edges/faces through the usual mesh selection flush.
+Bmax-specific labels, menus, tooltips and operator messages are localized in **Japanese, French, Spanish, Simplified Chinese, German, Russian, Portuguese (Portugal and Brazil), and Italian**. Choose the language in Preferences > Interface and enable translation for Interface, Tooltips and Reports as desired. Standard Blender controls retain their existing upstream translations.
 
-**Knife (K)** starts with **Cut Through enabled in Wireframe** and its usual front-surface behavior in other shading modes. Press **C** during Knife to toggle Cut Through. Explicit keymap, tool or Python choices take priority; Shift+K keeps its existing selected-geometry behavior. The local Windows runtime is rebuilt and verified with 68 interactive checks on each backend, OpenGL and Vulkan, plus old-file defaults and saved-option reload checks. The implementation is included in source commit [`ec3e80c36fac`](https://github.com/MaxPuliero/Bmax/commit/ec3e80c36fac9033e6dc35851d72adb700b64cd1) on `main`; the user confirmed the feature. Desktop copies and public packages have not been updated.
+The local catalogs are installed and verified across 159 context/message keys per catalog. See [localization coverage and validation](doc/bmax/localization.md). The implementation is included in source commit [`1d0507ec174c`](https://github.com/MaxPuliero/Bmax/commit/1d0507ec174c14d8814a9ad5cde9e7b66aae9a23) on `main`. The local Windows runtime is updated; Desktop copies and the public download have not been updated.
+
+### Select through opaque meshes
+
+In mesh Edit Mode, enable **Select > Select Through**, or use the selection button beside X-Ray in the viewport header. This **single toggle** works in Vertex, Edge and Face modes, including mixed selection modes, for click, Box, Lasso and Circle selection in **Solid, Material Preview and Rendered** shading. It is **off by default**, saved per viewport, and leaves shading and transparency unchanged. Hidden geometry and existing projection/clipping filters still restrict selection. The shared-toggle extension is built and verified with 474 checks per backend on OpenGL and Vulkan, including EEVEE and Cycles Rendered views. The extension is included in source commit [`1d0507ec174c`](https://github.com/MaxPuliero/Bmax/commit/1d0507ec174c14d8814a9ad5cde9e7b66aae9a23) on `main`.
+
+**Knife (K)** starts with **Cut Through enabled in Wireframe** and its usual front-surface behavior in other shading modes. Press **C** during Knife to toggle Cut Through. Explicit keymap, tool or Python choices take priority; Shift+K keeps its existing selected-geometry behavior. The local Windows runtime is rebuilt and verified with 68 interactive checks on each backend, OpenGL and Vulkan, plus old-file defaults and saved-option reload checks. The original vertex-only selection and Knife defaults are included in source commit [`ec3e80c36fac`](https://github.com/MaxPuliero/Bmax/commit/ec3e80c36fac9033e6dc35851d72adb700b64cd1) on `main`; the user confirmed the feature. Desktop copies and public packages have not been updated.
 
 ### Blender 5.2.3 integration
 
