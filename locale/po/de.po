@@ -57933,3 +57933,697 @@ msgstr "Alle durch den Benutzer installierten Add-Ons"
 msgid "Import-Export"
 msgstr "Importieren/Expotieren"
 
+
+
+#. Bmax interface localization
+#: source/blender/editors/object/object_remesh.cc:248
+#: source/blender/editors/object/object_remesh.cc:333
+msgid "A loose part vanished at this voxel size; reduce Voxel Size"
+msgstr "Ein freier Teil ist bei dieser Voxelgröße verschwunden; Voxelgröße verringern"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:1438
+msgid "Absolute Octahedral X/Z half-width and head/tail sphere radius in armature space, independent of bone length; affects Octahedral display and Wire endpoint spheres"
+msgstr "Absolute X/Z-Halbbreite des Oktaeders und Radius der Kopf-/Endkugeln im Armaturraum, unabhängig von der Knochenlänge; betrifft die Oktaederdarstellung und die Endkugeln im Drahtgitter"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3206
+msgid "Adaptivity"
+msgstr "Adaptivität"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py:476
+msgid "Add Custom Normals"
+msgstr "Benutzerdefinierte Normalen hinzufügen"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/mesh_data.cc:821
+msgid "Add sculpt face sets without replacing existing data"
+msgstr "Skulptur-Flächengruppen hinzufügen, ohne vorhandene Daten zu ersetzen"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/mesh_data.cc:772
+msgid "Add sculpt mask data without replacing existing data"
+msgstr "Skulpturmaskendaten hinzufügen, ohne vorhandene Daten zu ersetzen"
+
+#. Bmax interface localization
+#: source/blender/editors/object/object_edit.cc:135
+msgid "Affect selected editable objects; hold Alt for the active object only"
+msgstr "Ausgewählte bearbeitbare Objekte beeinflussen; Alt gedrückt halten, um nur das aktive Objekt zu bearbeiten"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5412
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2553
+msgid "Assign a different Sculpt Face Set to each newly filled patch"
+msgstr "Jedem neu gefüllten Bereich eine eigene Skulptur-Flächengruppe zuweisen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3330
+msgid "Automatic shading normals; custom normals take precedence and sharp edges are preserved"
+msgstr "Automatische Schattierungsnormalen; benutzerdefinierte Normalen haben Vorrang und scharfe Kanten bleiben erhalten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:1451
+msgid "Axis Size"
+msgstr "Achsengröße"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4258
+msgid "Background Image Opacity"
+msgstr "Deckkraft des Hintergrundbildes"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_view3d.py:3981
+msgid "Bevel Mask"
+msgstr "Maske abfasen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_sculpt_paint.cc:1206
+msgid "Bevel Mask Profile"
+msgstr "Maskenfasenprofil"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2685
+msgid "By Face Sets"
+msgstr "Nach Flächengruppen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_view3d.py:3415
+#: source/blender/makesrna/intern/rna_mesh.cc:3217
+msgid "By Loose Parts"
+msgstr "Nach freien Teilen"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1214
+msgid "Choose a visible, nonzero-length active master bone"
+msgstr "Einen sichtbaren aktiven Referenzknochen mit einer Länge ungleich null wählen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3236
+msgid "Clean up poles and smooth the remeshed surface, including adaptive output"
+msgstr "Pole bereinigen und die neu vernetzte Oberfläche glätten, auch bei adaptiver Ausgabe"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_color.cc:562
+msgid "Color Filter is not supported on multiresolution grids"
+msgstr "Farbfilter werden auf Multiresolution-Gittern nicht unterstützt"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4284
+msgid "Color UVs with reversed winding magenta"
+msgstr "UVs mit umgekehrter Umlaufrichtung magenta einfärben"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3273
+msgid "Color and opacity of object selection outlines behind scene geometry (ignored in X-Ray)"
+msgstr "Farbe und Deckkraft von Objektauswahlumrissen hinter Szenengeometrie (bei Röntgen ignoriert)"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3150
+msgid "Color of selected Hair Curves guides in Edit and Sculpt Mode"
+msgstr "Farbe ausgewählter Haarkurvenführungen im Bearbeitungs- und Skulpturmodus"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3142
+msgid "Color of unselected Hair Curves guides in Edit and Sculpt Mode"
+msgstr "Farbe nicht ausgewählter Haarkurvenführungen im Bearbeitungs- und Skulpturmodus"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4270
+msgid "Color only the intersecting area of visible UV faces red, including between objects"
+msgstr "Nur die Schnittflächen sichtbarer UV-Flächen rot einfärben, auch zwischen Objekten"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1298
+msgid "Copy chosen XYZ Euler rotation components from the active master bone to selected bones in the active armature, preserving other components and bone lengths"
+msgstr "Gewählte XYZ-Euler-Rotationskomponenten des aktiven Referenzknochens auf ausgewählte Knochen der aktiven Armatur kopieren; andere Komponenten und Knochenlängen bleiben erhalten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3338
+msgid "Corrective factor for face weights; 50 is neutral"
+msgstr "Korrekturfaktor für Flächengewichte; 50 ist neutral"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5384
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2539
+msgid "Created %d hole fill faces"
+msgstr "%d Flächen zum Füllen von Löchern erstellt"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_sculpt_paint.cc:1206
+msgid "Custom falloff for Bevel Mask"
+msgstr "Benutzerdefinierter Abfall für die Maskenfase"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py:187
+msgid "Custom normals take precedence"
+msgstr "Benutzerdefinierte Normalen haben Vorrang"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2376
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2400
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2424
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2448
+msgid "Cut Geometry"
+msgstr "Geometrie schneiden"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2241
+msgid "Cut Geometry requires a mesh without Multires or Dynamic Topology"
+msgstr "Geometrieschnitte erfordern ein Mesh ohne Multiresolution oder dynamische Topologie"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3344
+msgid "Difference below which face weights are considered equal"
+msgstr "Differenz, unterhalb derer Flächengewichte als gleich gelten"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2685
+msgid "Disconnect different Face Sets"
+msgstr "Unterschiedliche Flächengruppen trennen"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2686
+msgid "Disconnect different materials"
+msgstr "Unterschiedliche Materialien trennen"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2687
+msgid "Disconnect fully masked faces from the rest"
+msgstr "Vollständig maskierte Flächen vom Rest trennen"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2697
+msgid "Disconnect geometry while keeping all parts in the same sculpt object"
+msgstr "Geometrie trennen und alle Teile im selben Skulpturobjekt behalten"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2688
+msgid "Disconnect visible faces from hidden faces"
+msgstr "Sichtbare von ausgeblendeten Flächen trennen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:2343
+msgid "Display names of selected bones"
+msgstr "Namen ausgewählter Knochen anzeigen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:2312
+msgid "Display selected bone axes, using each bone's Axis Size"
+msgstr "Achsen ausgewählter Knochen mit deren jeweiliger Achsengröße anzeigen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:1451
+msgid "Display-axis length in armature space, independent of Octahedral Radius"
+msgstr "Länge der Anzeigeachsen im Armaturraum, unabhängig vom Oktaederradius"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1339
+msgid "Distance on either side of the mask boundary in object space"
+msgstr "Abstand beiderseits der Maskengrenze im Objektraum"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4264
+msgid "Draw UV shell boundaries in white, two pixels inside each shell"
+msgstr "UV-Inselgrenzen weiß zeichnen, zwei Pixel innerhalb jeder Insel"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1284
+msgid "Euler XYZ / Armature Space"
+msgstr "Euler XYZ / Armaturraum"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1308
+msgid "Euler XYZ components to copy in armature space; unchecked components retain their rotation"
+msgstr "Im Armaturraum zu kopierende XYZ-Euler-Komponenten; nicht gewählte Komponenten behalten ihre Rotation"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3321
+msgid "Face Area & Angle"
+msgstr "Flächeninhalt und Winkel"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2691
+msgid "Faces & Edges by Vertices"
+msgstr "Flächen und Kanten nach Punkten"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2689
+msgid "Faces by Edges"
+msgstr "Flächen nach Kanten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3226
+msgid "Fair Position"
+msgstr "Positionen glätten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3226
+msgid "Fair the interiors of newly filled hole Face Sets after remeshing; hole filling always runs"
+msgstr "Nach der Neuvernetzung das Innere neu gefüllter Loch-Flächengruppen glätten; Löcher werden immer gefüllt"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5393
+msgid "Fill boundary edge loops of selected mesh objects or selected edges in Edit Mode"
+msgstr "Randkantenschleifen ausgewählter Mesh-Objekte oder ausgewählter Kanten im Bearbeitungsmodus füllen"
+
+#. Bmax interface localization
+#: source/blender/editors/object/object_remesh.cc:419
+msgid "Fill holes, voxel remesh and fix poles, then optionally fair the new hole patches"
+msgstr "Löcher füllen, Voxel-Neuvernetzung durchführen und Pole korrigieren; anschließend neue Füllbereiche bei Bedarf glätten"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2547
+msgid "Fill surface boundary loops and assign a Face Set to each new patch"
+msgstr "Oberflächenränder füllen und jedem neuen Bereich eine Flächengruppe zuweisen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3236
+msgid "Fix Poles"
+msgstr "Pole korrigieren"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4290
+msgid "Flipped UV Opacity"
+msgstr "Deckkraft umgekehrter UVs"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4284
+msgid "Flipped UVs"
+msgstr "Umgekehrte UVs"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3150
+msgid "Hair Curves Selected"
+msgstr "Ausgewählte Haarkurven"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3142
+msgid "Hair Curves Unselected"
+msgstr "Nicht ausgewählte Haarkurven"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3158
+msgid "Hair Curves Width"
+msgstr "Breite der Haarkurven"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:5120
+msgid "Highlight open boundary edges of selected meshes with a minimum width of 2 pixels"
+msgstr "Offene Randkanten ausgewählter Meshes mit mindestens 2 Pixeln Breite hervorheben"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2376
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2400
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2424
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2448
+msgid "Insert edges along the gesture boundary before assigning the Face Set (mesh only)"
+msgstr "Vor dem Zuweisen der Flächengruppe Kanten entlang der Gestengrenze einfügen (nur Meshes)"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_camera.cc:905
+msgid "Keep in Local View"
+msgstr "In lokaler Ansicht beibehalten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_camera.cc:905
+msgid "Keep this camera and its reference images visible when it is the active viewport camera during Local View (Isolate)"
+msgstr "Diese Kamera und ihre Referenzbilder sichtbar halten, wenn sie in der lokalen Ansicht die aktive Viewport-Kamera ist"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_add.cc:2090
+msgid "Length of the new bone"
+msgstr "Länge des neuen Knochens"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_topbar.py:323
+msgid "Load Factory Bmax Settings"
+msgstr "Bmax-Werkseinstellungen laden"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2702
+msgid "Mask Threshold"
+msgstr "Maskenschwelle"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_ops.cc:770
+msgid "Mask by Color is not supported on multiresolution grids"
+msgstr "Maskieren nach Farbe wird auf Multiresolution-Gittern nicht unterstützt"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1354
+msgid "Mask value defining the center of the bevel"
+msgstr "Maskenwert, der die Mitte der Fase festlegt"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2687
+msgid "Masked"
+msgstr "Maskiert"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5403
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2551
+msgid "Maximum number of sides in a hole to fill (zero fills all holes)"
+msgstr "Maximale Seitenzahl eines zu füllenden Lochs (null füllt alle Löcher)"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:5120
+msgid "Mesh Holes"
+msgstr "Mesh-Löcher"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2702
+msgid "Minimum vertex mask value for selection; Masked requires every face vertex"
+msgstr "Minimaler Scheitelpunkt-Maskenwert für die Auswahl; Maskiert erfordert den Wert an allen Punkten einer Fläche"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5412
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2553
+msgid "New Face Sets"
+msgstr "Neue Flächengruppen"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_tools.cc:5381
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2535
+msgid "No holes filled"
+msgstr "Keine Löcher gefüllt"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2675
+msgid "Nothing to split"
+msgstr "Nichts zu teilen"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_knife.cc:4699
+msgid "Occlude Geometry"
+msgstr "Geometrie verdecken"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3273
+msgid "Occluded Selection Outline"
+msgstr "Verdeckter Auswahlumriss"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_armature.cc:1438
+msgid "Octahedral Radius"
+msgstr "Oktaederradius"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/editmesh_knife.cc:4699
+msgid "Only cut the front most geometry (off by default in Wireframe)"
+msgstr "Nur die vorderste Geometrie schneiden (im Drahtgitter standardmäßig aus)"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4296
+msgid "Opacity of face fills in the UV Editor"
+msgstr "Deckkraft der Flächenfüllungen im UV-Editor"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4258
+msgid "Opacity of the background image in the UV Editor"
+msgstr "Deckkraft des Hintergrundbildes im UV-Editor"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4290
+msgid "Opacity of the magenta flipped UV overlay"
+msgstr "Deckkraft der magentafarbenen Überlagerung umgekehrter UVs"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4279
+msgid "Opacity of the red overlap overlay"
+msgstr "Deckkraft der roten Überlappungsanzeige"
+
+#. Bmax interface localization
+#: source/blender/windowmanager/intern/wm_splash_screen.cc:512
+msgid "Open a window with information about Bmax"
+msgstr "Ein Fenster mit Informationen über Bmax öffnen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4279
+msgid "Overlap Opacity"
+msgstr "Überlappungsdeckkraft"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4270
+msgid "Overlapping UVs"
+msgstr "Überlappende UVs"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1348
+msgid "Profile"
+msgstr "Profil"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3206
+msgid "Reduces the final face count by simplifying geometry where detail is not needed, generating triangles. Fix Poles can also clean up adaptive output."
+msgstr "Die endgültige Flächenzahl durch Vereinfachung unnötiger Details und Erzeugung von Dreiecken verringern. Pole korrigieren kann auch adaptive Ergebnisse bereinigen."
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3217
+msgid "Remesh each connected component separately without welding neighboring parts"
+msgstr "Jede zusammenhängende Komponente getrennt neu vernetzen, ohne benachbarte Teile zu verschweißen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_topbar.py:628
+msgid "Report a Bmax Bug"
+msgstr "Bmax-Fehler melden"
+
+#. Bmax interface localization
+#: scripts/startup/bl_operators/wm.py:1132
+msgid "Report a Bmax bug on GitHub with pre-filled system and version information"
+msgstr "Einen Bmax-Fehler auf GitHub mit vorausgefüllten System- und Versionsinformationen melden"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2469
+msgid "Requires a mesh without Multires or Dynamic Topology"
+msgstr "Erfordert ein Mesh ohne Multiresolution oder dynamische Topologie"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_modifier.cc:3399
+msgid "Reuse the result while the input mesh and modifier settings are unchanged; disable to release the cache and use less memory"
+msgstr "Ergebnis wiederverwenden, solange Eingangsmesh und Modifikatoreinstellungen unverändert sind; zum Freigeben des Caches und Sparen von Speicher deaktivieren"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1285
+#: source/blender/editors/armature/armature_edit.cc:1308
+msgid "Rotation Axes"
+msgstr "Rotationsachsen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:5772
+msgid "Select Through Vertices"
+msgstr "Punkte durch Geometrie auswählen"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1250
+msgid "Select an editable bone besides the active master in the active armature"
+msgstr "In der aktiven Armatur einen bearbeitbaren Knochen neben dem aktiven Referenzknochen auswählen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:5772
+msgid "Select occluded mesh vertices with click, box, lasso and circle selection without enabling X-Ray"
+msgstr "Verdeckte Mesh-Punkte per Klick, Rechteck-, Lasso- und Kreisauswahl auswählen, ohne Röntgen zu aktivieren"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1334
+msgid "Shape the mask transition using a surface radius and falloff profile"
+msgstr "Den Maskenübergang mit Oberflächenradius und Abfallprofil formen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4264
+msgid "Shell Outline"
+msgstr "UV-Inselumriss"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2689
+msgid "Split along edges with both vertices masked, or all visible edges without a mask"
+msgstr "Entlang von Kanten mit zwei maskierten Endpunkten teilen; ohne Maske alle sichtbaren Kanten verwenden"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_view3d.py:4095
+msgid "Split by Face Sets"
+msgstr "Nach Flächengruppen teilen"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2691
+msgid "Split faces and edges at masked vertices, or all visible vertices without a mask"
+msgstr "Flächen und Kanten an maskierten Punkten teilen; ohne Maske alle sichtbaren Punkte verwenden"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2565
+msgid "Split requires a mesh without shape keys"
+msgstr "Teilen erfordert ein Mesh ohne Formschlüssel"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1348
+msgid "Transition profile; Custom uses the independent Bevel Mask curve"
+msgstr "Übergangsprofil; Benutzerdefiniert verwendet die unabhängige Maskenfasenkurve"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4296
+msgid "UV Faces Opacity"
+msgstr "Deckkraft der UV-Flächen"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3310
+msgid "Unweighted"
+msgstr "Ungewichtet"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3310
+msgid "Use Blender's automatic normals"
+msgstr "Automatische Normalen von Blender verwenden"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_nodetree.cc:6050
+msgid "Use the same Random value for objects and instances sharing a geometry source"
+msgstr "Denselben Zufallswert für Objekte und Instanzen mit derselben Geometriequelle verwenden"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_space.cc:4894
+msgid "Use the same random color for objects and instances sharing a geometry source"
+msgstr "Dieselbe Zufallsfarbe für Objekte und Instanzen mit derselben Geometriequelle verwenden"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3316
+msgid "Weight normals by corner angle"
+msgstr "Normalen nach Eckwinkel gewichten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3315
+msgid "Weight normals by face area"
+msgstr "Normalen nach Flächeninhalt gewichten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_mesh.cc:3321
+msgid "Weight normals by face area and corner angle"
+msgstr "Normalen nach Flächeninhalt und Eckwinkel gewichten"
+
+#. Bmax interface localization
+#: source/blender/makesrna/intern/rna_userdef.cc:3158
+msgid "Width of Hair Curves guides in physical pixels, independent of hair radius"
+msgstr "Breite der Haarkurvenführungen in physischen Pixeln, unabhängig vom Haarradius"
+
+#. Bmax interface localization
+#: source/blender/windowmanager/intern/wm_splash_screen.cc:510
+msgctxt "Operator"
+msgid "About Bmax"
+msgstr "Über Bmax"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/mesh_data.cc:819
+msgctxt "Operator"
+msgid "Add Sculpt Face Sets"
+msgstr "Skulptur-Flächengruppen hinzufügen"
+
+#. Bmax interface localization
+#: source/blender/editors/mesh/mesh_data.cc:770
+msgctxt "Operator"
+msgid "Add Sculpt Mask Data"
+msgstr "Skulpturmaskendaten hinzufügen"
+
+#. Bmax interface localization
+#: source/blender/editors/armature/armature_edit.cc:1296
+msgctxt "Operator"
+msgid "Align Master"
+msgstr "Am Referenzknochen ausrichten"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_filter_mask.cc:1332
+msgctxt "Operator"
+msgid "Bevel Mask"
+msgstr "Maske abfasen"
+
+#. Bmax interface localization
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2363
+msgctxt "Operator"
+msgid "Face Set Polyline Gesture"
+msgstr "Polyliniengeste für Flächengruppen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Hair Curves"
+msgstr "Haarkurven"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgctxt "Operator"
+msgid "Add Sculpt Mask"
+msgstr "Skulpturmaske hinzufügen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgctxt "Operator"
+msgid "Add Skin Data"
+msgstr "Hautdaten hinzufügen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgctxt "Operator"
+msgid "Add Custom Normals"
+msgstr "Benutzerdefinierte Normalen hinzufügen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Sculpt Mask"
+msgstr "Skulpturmaske"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Sculpt Face Sets"
+msgstr "Skulptur-Flächengruppen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Skin Data"
+msgstr "Hautdaten"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_topbar.py:323
+msgctxt "Operator"
+msgid "Load Factory Bmax Settings"
+msgstr "Bmax-Werkseinstellungen laden"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_topbar.py:628
+msgctxt "Operator"
+msgid "Report a Bmax Bug"
+msgstr "Bmax-Fehler melden"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_view3d.py:4095
+msgctxt "Operator"
+msgid "Split by Face Sets"
+msgstr "Nach Flächengruppen teilen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/space_view3d.py:3416
+#: source/blender/editors/sculpt_paint/mesh/sculpt_face_set.cc:2686
+msgctxt "Operator"
+msgid "By Material"
+msgstr "Nach Material"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Add Sculpt Mask"
+msgstr "Skulpturmaske hinzufügen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Add Sculpt Face Sets"
+msgstr "Skulptur-Flächengruppen hinzufügen"
+
+#. Bmax interface localization
+#: scripts/startup/bl_ui/properties_data_mesh.py
+msgid "Add Skin Data"
+msgstr "Hautdaten hinzufügen"
+
+#. Bmax unified mesh selection through occlusion
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Select Through"
+msgstr "Durch Geometrie auswählen"
+
+#. Bmax unified mesh selection through occlusion
+#: source/blender/makesrna/intern/rna_space.cc
+msgid "Select occluded mesh vertices, edges and faces with click, box, lasso and circle selection without enabling X-Ray"
+msgstr "Verdeckte Mesh-Punkte, Kanten und Flächen per Klick, Rechteck-, Lasso- und Kreisauswahl auswählen, ohne Röntgen zu aktivieren"

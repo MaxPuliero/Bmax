@@ -5770,9 +5770,9 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_select_through_vertices", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag2", V3D_SELECT_THROUGH_VERTICES);
   RNA_def_property_ui_text(prop,
-                           "Select Through Vertices",
-                           "Select occluded mesh vertices with click, box, lasso and circle "
-                           "selection without enabling X-Ray");
+                           "Select Through",
+                           "Select occluded mesh vertices, edges and faces with click, box, lasso "
+                           "and circle selection without enabling X-Ray");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "lock_object", PROP_POINTER, PROP_NONE);

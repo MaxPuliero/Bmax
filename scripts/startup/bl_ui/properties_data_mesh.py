@@ -467,9 +467,13 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
 
         col = layout.column()
 
-        for label, stem in (("Sculpt Mask", "mask"), ("Sculpt Face Sets", "face_sets"), ("Skin Data", "skin")):
+        for label, stem in (
+            (iface_("Add Sculpt Mask"), "mask"),
+            (iface_("Add Sculpt Face Sets"), "face_sets"),
+            (iface_("Add Skin Data"), "skin"),
+        ):
             row = col.row(align=True)
-            row.operator("mesh.customdata_" + stem + "_add", text="Add " + label, icon='ADD')
+            row.operator("mesh.customdata_" + stem + "_add", text=label, icon='ADD', translate=False)
             row.operator("mesh.customdata_" + stem + "_clear", text="", icon='X')
         col.operator("mesh.reorder_vertices_spatial")
         row = col.row(align=True)

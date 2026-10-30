@@ -1100,8 +1100,7 @@ class VIEW3D_HT_header(Header):
 
         if mode_string == 'EDIT_MESH':
             row = layout.row(align=True)
-            row.active = context.tool_settings.mesh_select_mode[0]
-            row.prop(view, "use_select_through_vertices", text="", icon='VERTEXSEL')
+            row.prop(view, "use_select_through_vertices", text="", icon='SELECT_SET')
 
         row = layout.row(align=True)
         row.prop(shading, "type", text="", expand=True)
@@ -1931,7 +1930,6 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
         row = layout.row()
-        row.active = context.tool_settings.mesh_select_mode[0]
         row.prop(context.space_data, "use_select_through_vertices")
 
         # numeric
