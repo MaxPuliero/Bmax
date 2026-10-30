@@ -47,3 +47,9 @@ The implementation is included in source commit [`1d0507ec174c`](https://github.
 ## Unified Select Through follow-up
 
 The visible toggle is now named Select Through and its tooltip includes vertices, edges and faces. Both strings have translations in the same nine catalogs. The original vertex-only translations are retained for historical/compatibility use; the saved property identifier is unchanged. The localization and selection extension are included in source commit [`1d0507ec174c`](https://github.com/MaxPuliero/Bmax/commit/1d0507ec174c14d8814a9ad5cde9e7b66aae9a23) on `main`. The two added translations in each catalog (18 total) passed installed MO checks and interface/tooltip lookups on both OpenGL and Vulkan. The shared-toggle extension passed 474 selection, state and translation checks per backend; see the current feature inventory. The executable and catalogs are installed locally.
+
+## Interactive Scale follow-up (2026-10-30)
+
+Source commit [`1dcd95fe7eb0`](https://github.com/MaxPuliero/Bmax/commit/1dcd95fe7eb06988cb127f1de2d49f198f5c9fcb), included in `main`, adds Allow Negative Scaling, its tooltip and its formatted On/Off header in all nine Bmax locales (27 additional translations). Existing On/Off translations are reused. The earlier audit counts describe the previous published localization revision; this extension is tracked separately in the feature inventory.
+
+All 27 additional messages passed installed-MO lookup and printf-placeholder checks after the full Release INSTALL. The installed runtime and source branch are recorded in the [Scale inventory entry](FEATURES.md#interactive-scale-zero-clamp-2026-10-30).

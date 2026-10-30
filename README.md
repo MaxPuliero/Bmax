@@ -18,6 +18,14 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 30, 2026, their source commits, and removed items.
 
+### Scale without accidental inversion
+
+Interactive **Scale (S)** in the 3D Viewport stops at **zero** by default. Press **N — Allow Negative Scaling** during the operation to toggle scaling past zero. The header shows the current state, and each new operation starts with the option off. **Typing a negative number** still allows inversion directly.
+
+This applies to Object Mode and supported Edit Mode geometry, including meshes, legacy curves/surfaces, Hair Curves, lattices, armatures, metaballs, point clouds and Grease Pencil. Axis/plane constraints, proportional editing and directional gizmos use the same limit. Existing negative object scales, explicit Python values and Mirror remain valid. Other editors retain their existing scaling behavior.
+
+The implementation is included in source commit [`1dcd95fe7eb0`](https://github.com/MaxPuliero/Bmax/commit/1dcd95fe7eb06988cb127f1de2d49f198f5c9fcb) on `main`. The local Windows runtime is rebuilt and verified with **411 interactive checks across OpenGL and Vulkan**, and the user confirmed the feature. The controls are translated in all nine Bmax locales. Desktop copies and the public Windows download have not been updated. See [validation and installation status](doc/bmax/FEATURES.md#interactive-scale-zero-clamp-2026-10-30).
+
 ### Edit selected items by default
 
 With multiple items selected, editing a compatible property affects the selection automatically. Hold **Alt** to edit only the active item. Typing or pasting a number assigns the same value; dragging retains Blender's existing per-item delta behavior.
@@ -39,6 +47,8 @@ The local catalogs are installed and verified across 159 context/message keys pe
 ### Select through opaque meshes
 
 In mesh Edit Mode, enable **Select > Select Through**, or use the selection button beside X-Ray in the viewport header. This **single toggle** works in Vertex, Edge and Face modes, including mixed selection modes, for click, Box, Lasso and Circle selection in **Solid, Material Preview and Rendered** shading. It is **off by default**, saved per viewport, and leaves shading and transparency unchanged. Hidden geometry and existing projection/clipping filters still restrict selection. The shared-toggle extension is built and verified with 474 checks per backend on OpenGL and Vulkan, including EEVEE and Cycles Rendered views. The extension is included in source commit [`1d0507ec174c`](https://github.com/MaxPuliero/Bmax/commit/1d0507ec174c14d8814a9ad5cde9e7b66aae9a23) on `main`.
+
+<img src="doc/bmax/media/xrayselection.png" alt="Select Through toggle beside X-Ray in the 3D Viewport header, highlighted with a red circle" width="348">
 
 **Knife (K)** starts with **Cut Through enabled in Wireframe** and its usual front-surface behavior in other shading modes. Press **C** during Knife to toggle Cut Through. Explicit keymap, tool or Python choices take priority; Shift+K keeps its existing selected-geometry behavior. The local Windows runtime is rebuilt and verified with 68 interactive checks on each backend, OpenGL and Vulkan, plus old-file defaults and saved-option reload checks. The original vertex-only selection and Knife defaults are included in source commit [`ec3e80c36fac`](https://github.com/MaxPuliero/Bmax/commit/ec3e80c36fac9033e6dc35851d72adb700b64cd1) on `main`; the user confirmed the feature. Desktop copies and public packages have not been updated.
 

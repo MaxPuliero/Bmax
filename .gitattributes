@@ -113,3 +113,4 @@ scripts/modules/_bpy_internal/assets/remote_library/*_openapi.py linguist-genera
 
 # Bmax-owned assets are stored directly in Git.
 release/datafiles/bmax_logo.png -filter -diff -merge -text
+doc/bmax/media/xrayselection.png -filter -diff -merge -text
