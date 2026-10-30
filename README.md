@@ -30,6 +30,12 @@ Shared meshes and materials are processed once and remain shared, including when
 
 The implementation is included in source commit [`d46c5d5ecdbe`](https://github.com/MaxPuliero/Bmax/commit/d46c5d5ecdbeb3984b5f811c486c3318c8ea100e) on `main`. The local Windows runtime is rebuilt and verified, and the user confirmed the feature. Desktop copies and the public Windows download have not been updated.
 
+### Select vertices through opaque meshes
+
+In mesh Edit Mode, enable **Select > Select Through Vertices**, or use the vertex button beside X-Ray in the viewport header. The option is **off by default**, saved per viewport, and lets click, Box, Lasso and Circle select occluded vertices while Solid shading stays opaque. Hidden vertices and viewport clipping still restrict selection. Direct edge/face selection retains its normal occlusion rules; selecting vertices can still select their connecting edges/faces through the usual mesh selection flush.
+
+**Knife (K)** starts with **Cut Through enabled in Wireframe** and its usual front-surface behavior in other shading modes. Press **C** during Knife to toggle Cut Through. Explicit keymap, tool or Python choices take priority; Shift+K keeps its existing selected-geometry behavior. The local Windows runtime is rebuilt and verified with 68 interactive checks on each backend, OpenGL and Vulkan, plus old-file defaults and saved-option reload checks. The implementation is included in source commit [`ec3e80c36fac`](https://github.com/MaxPuliero/Bmax/commit/ec3e80c36fac9033e6dc35851d72adb700b64cd1) on `main`; the user confirmed the feature. Desktop copies and public packages have not been updated.
+
 ### Blender 5.2.3 integration
 
 The 5.2.3 corrective-release code is included in [`776763085e8a`](https://github.com/MaxPuliero/Bmax/commit/776763085e8a3cdc2b17eae2680d6f22841847ac) on `main`, preserving the Bmax changes. It includes fixes for Multires masks when subdividing in Object Mode, bone picking, UV edge-ring selection, texture painting and image retention, plus stricter validation when opening damaged `.blend` files. Voxel Remesh optimizations, By Loose Parts, the default-on Fix Poles control and Decimate caching retain their implementations. See the [integration audit](doc/bmax/blender_5_2_3_sync.md) for compatibility checks, build status and scope. The local runtime is fully rebuilt and verified, and the user has confirmed that the updated build works in their workflow. Desktop copies and the public download are separate.
