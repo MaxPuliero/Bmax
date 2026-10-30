@@ -10,6 +10,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_mesh_types.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BLI_array.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
@@ -192,8 +193,11 @@ class UVDiagnostics {
     }
   }
 
-  /** Read original object-mode UVs directly, avoiding an evaluated modifier mesh or BMesh copy. */
-  void object_sync_object(const Mesh &mesh, StringRef uv_map)
+  /** Read mesh UVs directly, optionally inheriting Edit Mode visibility from source faces. */
+  void object_sync_object(const Mesh &mesh,
+                          StringRef uv_map,
+                          BMesh *edit_bmesh = nullptr,
+                          const ToolSettings *toolsettings = nullptr)
   {
     if (!enabled_) {
       return;
@@ -206,6 +210,30 @@ class UVDiagnostics {
     const VArraySpan<float2> uv = *uv_attribute;
     const VArray<bool> hidden = *attributes.lookup_or_default<bool>(
         ".hide_poly", bke::AttrDomain::Face, false);
+    const VArray<bool> selected = *attributes.lookup_or_default<bool>(
+        ".select_poly", bke::AttrDomain::Face, false);
+    const int *orig_index = static_cast<const int *>(
+        CustomData_get_layer(&mesh.face_data, CD_ORIGINDEX));
+    Array<bool> visible(mesh.faces_num);
+    if (edit_bmesh) {
+      BM_mesh_elem_table_ensure(edit_bmesh, BM_FACE);
+    }
+    for (const int face : visible.index_range()) {
+      visible[face] = !hidden[face];
+      if (!edit_bmesh) {
+        continue;
+      }
+      if (orig_index && orig_index[face] >= 0 && orig_index[face] < edit_bmesh->totface) {
+        visible[face] = visible[face] &&
+                        uvedit_face_visible_test_ex(
+                            toolsettings, BM_face_at_index(edit_bmesh, orig_index[face]));
+      }
+      else {
+        /* Generated faces have no source face. Modifiers propagate their visibility attributes. */
+        visible[face] = visible[face] &&
+                        ((toolsettings->uv_flag & UV_FLAG_SELECT_SYNC) || selected[face]);
+      }
+    }
     const OffsetIndices faces = mesh.faces();
     const Span<int> corner_faces = mesh.corner_to_face_map();
     const Span<int> corner_vertices = mesh.corner_verts();
@@ -226,7 +254,7 @@ class UVDiagnostics {
       }
       Array<bool> visited(mesh.faces_num, false);
       for (const int face : faces.index_range()) {
-        if (hidden[face] || visited[face]) {
+        if (!visible[face] || visited[face]) {
           continue;
         }
         Vector<int> shell;
@@ -241,7 +269,7 @@ class UVDiagnostics {
                  other = radial_next[other])
             {
               const int other_face = corner_faces[other];
-              if (other_face == shell[i] || hidden[other_face]) {
+              if (other_face == shell[i] || !visible[other_face]) {
                 continue;
               }
               const int other_next = next_corner(other);
@@ -270,7 +298,7 @@ class UVDiagnostics {
     }
     for (const int3 &triangle : mesh.corner_tris()) {
       const int face = corner_faces[triangle.x];
-      if (hidden[face]) {
+      if (!visible[face]) {
         continue;
       }
       const float2 a = uv[triangle.x], b = uv[triangle.y], c = uv[triangle.z];
@@ -284,6 +312,23 @@ class UVDiagnostics {
       vertices_.append({b, roots[face], flipped});
       vertices_.append({c, roots[face], flipped});
     }
+  }
+
+  /** Use exactly one UV surface, so the original cage is never counted as an overlap. */
+  void object_sync_modified(const Mesh &mesh, const Mesh &original, const State &state)
+  {
+    if (!enabled_) {
+      return;
+    }
+    if (mesh.runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
+      object_sync(original, original.active_or_default_uv_map_name(), state);
+      return;
+    }
+    /* GPU subdivision normally leaves the CPU drawing mesh at its coarse resolution. */
+    const Mesh &evaluated = *BKE_mesh_wrapper_ensure_subdivision(&mesh);
+    BMesh *bm = original.runtime->edit_mesh ? original.runtime->edit_mesh->bm : nullptr;
+    object_sync_object(
+        evaluated, evaluated.active_or_default_uv_map_name(), bm, state.scene->toolsettings);
   }
 
   void end_sync()
