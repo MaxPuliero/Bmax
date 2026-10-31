@@ -1,6 +1,6 @@
 # Bmax - Blender 5.2.3 LTS
 
-Bmax is a custom Blender **5.2.3 LTS** build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, and Multires color painting in Sculpt Mode. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
+Bmax is a custom Blender **5.2.3 LTS** build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, Multires color painting, and layered Multires sculpting. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
 
@@ -16,7 +16,21 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through October 30, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 1, 2026, their source commits, and removed items.
+
+### Multires sculpt layers (experimental)
+
+**Mesh Data Properties > Sculpt Layers**, below Shape Keys, appears for Multires meshes. **Layer 1 is the static sculpt base: it has no Influence slider and cannot be removed.** From **Layer 2 onward**, each row has its own Influence slider. Use **+ / −** to add or delete those layers; the active row receives sculpt strokes. Layers cannot be reordered.
+
+With **Layer 1 alone**, strokes and undo use the native Multires path, without separate layer-delta recording, a surface scan at stroke completion, or an authoring copy of the base. Adding Layer 2 captures the current sculpt as the static base and enables layer recording. Zeroing the additional layers restores that base, including edits subsequently made on Layer 1. Removing the final additional layer returns to the native single-layer path.
+
+**Bake All Layers** merges the currently visible weighted result into static Layer 1 and removes the other layers. The visible shape stays the same, and the native single-layer path resumes. The previous unsculpted mesh is no longer retained through a Layer 1 slider; **Undo** can restore the pre-Bake state. Add, Remove, Bake and strokes support Undo/Redo, and authoring data is saved in `.blend` files. Earlier prototype files are migrated while preserving their visible shape.
+
+Sculpt at **any Multires Sculpt level, including level 0**. Lower-level strokes propagate higher-resolution detail through native Multires behavior. Adding subdivisions and Delete Higher preserve additional layer contributions at the resulting resolution. **Ordinary mesh sculpting, Voxel Remesh and Dyntopo use no layers**; applying or removing Multires removes its authoring stack.
+
+Additional-layer authoring requires single-user editable meshes without shape keys, packed displacement, Sculpt Base Mesh disabled and no other enabled modifiers. Colors remain separate. See [implementation, validation and performance limits](doc/bmax/sculpt_layers_design.md). The measured single-layer brush times are close to the internal native reference; this is not a guarantee of identical timings to an official Blender binary.
+
+The implementation is included in source commit [`af594efca925`](https://github.com/MaxPuliero/Bmax/commit/af594efca9257511279692edd73f24b2f9084832) on `main`, developed on `codex/sculpt-layers-prototype`. The user confirmed the feature. The local Windows runtime is rebuilt and verified with **137 OpenGL checks and 84 Vulkan checks**, including the single-layer performance comparison. It is installed at `D:\blender_build\octahedral_radius\bin\blender.exe`; see the [build and benchmark record](doc/bmax/BUILD_WINDOWS.md#static-layer-1-and-native-single-layer-path-2026-11-01). Desktop copies and the public download have not been updated.
 
 ### Scale without accidental inversion
 

@@ -2,6 +2,218 @@
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
 
+## Static Layer 1 and native single-layer path (2026-11-01)
+
+The implementation in source commit [`af594efca925`](https://github.com/MaxPuliero/Bmax/commit/af594efca9257511279692edd73f24b2f9084832), included in `main` and developed on
+`codex/sculpt-layers-prototype`, uses
+Layer 1 as a fixed base without an Influence slider. Only Layer 2 onward has
+adjustable influence. The singleton uses native stroke/undo without a base copy,
+layer delta recording or a surface comparison at stroke completion. Adding Layer 2
+captures the current sculpt as the static base. Removing the final overlay or
+baking releases authoring buffers and returns to the native singleton path.
+
+Bake retains the visible weighted geometry as static Layer 1 and removes the
+other layers. There is no global slider restoring the original unsculpted mesh;
+Undo restores the pre-Bake state. Earlier prototype files are migrated by folding
+the old first layer at its saved influence into the static base, retaining their
+visible shape. This supersedes the earlier reversible Layer 1 described below.
+
+The existing Release INSTALL command completed using MSVC v143, parallelism 2 and
+CL_MPCount=2. This static-base optimization does not change DNA or shared C++
+structure layouts relative to the earlier local prototype; static Layer 1 reserves
+UID zero in the existing data. The initial DNA build had already received its full
+Rebuild. Dependencies, build cache and runtime files were retained.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is timestamped
+2026-11-01 00:48:57 JST, 98,010,624 bytes, SHA-256
+`E95963B3C14CE03556E9C25BCE88B9190006B940169EA8A99028D62884933C5A`.
+It matches `bin/Release/blender.exe`. Compilation preceded implementation commit
+[`af594efca925`](https://github.com/MaxPuliero/Bmax/commit/af594efca9257511279692edd73f24b2f9084832); binary metadata still reports the starting hash `15f7bbc89857` and modified
+feature branch. The source is published on `main`. Desktop copies and the public
+download were not updated by source publication.
+
+Verification passed **137 checks on OpenGL and 84 on Vulkan**. OpenGL includes
+extra benchmark validation. Checks cover fixed/read-only Layer 1, absence of all
+authoring buffers for singleton strokes/undo, native high/low stroke comparisons,
+Layer 2 isolation and weights, edits on the static base with overlays present,
+cage level 0, exact overlay-payload independence, base/overlay Undo/Redo, Bake and
+its Object/Sculpt undo transitions, final-overlay removal, single/multiple-layer
+subdivision and Delete Higher, save/reload, previous-prototype migration, color
+painting, modifier application, Remesh and Dyntopo. The actual GPU backend is
+asserted. The installed panel was visually inspected on Vulkan: Layer 1 has no
+slider, Layer 2 has its row slider, and Remove is disabled with Layer 1 selected.
+UI syntax, installed-source equality and both revised tooltips passed in all nine
+installed locale catalogs. This is not exhaustive brush or color validation.
+
+The OpenGL synchronous-brush benchmark uses the same installed Bmax executable,
+two worker threads, a cube with 96 base quads and Multires level 5 (98,304 evaluated
+quads), a 90-pixel Draw brush and three input samples per stroke. Cases ran in
+native/single/single/native order, with three warm-up and nine measured strokes per
+block: **18 measurements per case**. Hit positions and the viewport are refreshed
+outside each timed operator. Every warm-up and measured stroke is checked to
+deform geometry, and final shapes match. Timing includes the brush operator and
+native undo, excluding setup, redraw and the subsequent explicit Object Mode flush.
+
+| Case | Median |
+| --- | ---: |
+| Internal native Multires reference | 0.630 ms |
+| Static Layer 1 only | 0.634 ms |
+
+The observed difference is about 0.6%; block medians range from 0.625–0.644 ms for
+the reference and 0.625–0.646 ms for the singleton. This is a small local measurement,
+not an FPS result or proof of equal performance on every mesh. The reference uses
+the existing native path with authoring bypassed by a no-axis Mirror modifier; it
+is not a separate official Blender executable. Additional layers still pay their
+authoring costs. Tiny metadata and constant-time checks remain for a singleton.
+
+Verification scripts, scenes, logs, captures and recovery files use an external
+task directory and are removed after checking. No user Blender session is closed.
+No tests or compiled artifacts are added to the source repository. Implementation
+and documentation are committed separately; publishing source does not replace the
+installed executable or distribute a new binary package.
+
+## Multires sculpt layer revision (2026-11-01)
+
+Historical record: the static-base revision above supersedes its Layer 1 and Bake behavior.
+
+Local uncommitted work on `codex/sculpt-layers-prototype`, based on
+`15f7bbc89857`, now makes layers a Multires workflow. Layer 1 is created at
+influence 1 when a supported Multires modifier is added and cannot be deleted.
+Bake merges visible weighted contributions into Layer 1 at influence 1 while
+preserving the original base. Sculpt recording supports levels 0 through the
+highest level; adding subdivision and Delete Higher retain authoring contributions.
+Ordinary mesh sculpting, Remesh and Dyntopo do not record layers. This replaces the
+October 31 Bake behavior and highest-level-only restriction described below.
+
+Release INSTALL completed with the existing MSVC v143 configuration:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+This revision does not change DNA or shared C++ structure layouts. The full
+`/t:Rebuild` required for the initial Mesh DNA change was already completed for the
+October 31 build. Kernel/editor changes in this revision were recompiled and the
+runtime and all nine locale catalogs installed. Build caches and dependencies were
+retained.
+
+The installed executable at
+`D:\blender_build\octahedral_radius\bin\blender.exe` is timestamped
+2026-11-01 00:18:36 JST, 98,009,088 bytes, with SHA-256
+`BA55C44BADB6E5A96A2081357CC04EE2476EC72EF964FB341A883C6CA650FDB9`.
+It matches `bin/Release/blender.exe`. Its base hash identifies the starting commit,
+not a published commit containing the layer implementation.
+
+Verification uses native Draw strokes and compares layered high/low-level edits
+against a native Multires reference without authoring data. It checks immediate
+Layer 1 creation, its protected lifetime, independent layers, original-base
+restoration, lower-level detail propagation, exact persistent payload Undo/Redo,
+Bake from Layer 1 at 0.35 to a merged Layer 1 at 1, Bake Undo/Redo in Object and
+Sculpt modes, subdivision with weighted contributions, level switching without
+strokes, Delete Higher, save/reload, Multires application, and layer-free Remesh
+and Dyntopo. Additional checks cover level 0 cage strokes mixed with grid strokes,
+their reversible Bake, Paint preserving layered geometry, geometry weights
+preserving colors, and native comparisons for Simple/Linear subdivision in Sculpt
+Mode. **123 checks passed on OpenGL and 123 on Vulkan**, with the actual GPU
+backend asserted by each run. The high/low native stroke comparison matched the
+reference geometry within 2e-5; the Simple/Linear comparisons differed by at most
+1.2e-7. This is a correctness check, not a performance benchmark or exhaustive
+brush/color regression.
+
+UI Python syntax and installed translations for the revised Bake tooltip,
+Multires requirement and existing panel/operator labels passed in all nine locales.
+All verification scripts, scenes, logs and recovery files use an external task
+directory and are removed afterward. No user Blender instance is closed. No
+commit, push, Desktop-copy update or public-download update was performed.
+
+## Native sculpt layers local build (2026-10-31)
+
+Historical record: this executable has been superseded locally by the revision above.
+
+The local `codex/sculpt-layers-prototype` branch now includes native Mesh and
+Multires authoring, persistence, Undo/Redo, RNA and the Mesh Data panel. This is
+uncommitted work based on `15f7bbc89857`, not published `main`. The earlier
+backend-only milestone below is historical and has been superseded locally.
+
+The Mesh DNA change received a complete rebuild of the executable and all project
+references before installation, preserving dependencies and the build directory:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /t:Rebuild /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+Later editor/UI fixes used incremental Release INSTALL with the same compiler and
+parallelism. The final installed executable is
+`D:\blender_build\octahedral_radius\bin\blender.exe`, timestamped
+2026-10-31 23:43:14 JST, 98,003,968 bytes, with SHA-256
+`D510248FF8D8F6E246CD9ED36BF2AD1FBA3DB013A51F91A2F6CA50161A11023A`.
+It reports Bmax 5.2.3 LTS, base hash `15f7bbc89857` and the modified feature branch;
+the base hash does not identify a committed sculpt-layer implementation.
+
+Executable verification uses native geometry strokes and the actual requested GPU
+backend: **97 checks passed on OpenGL and 97 on Vulkan**, including Bake while
+Multires remains in Sculpt Mode. It checks automatic Layer 1, first-stroke undo/redo and base recovery,
+independent layers, active selection, influence 0/0.5/1, partial-influence recording,
+save/reload, independent mesh copies, removal, Multires persistent grids and
+composition, repeated influence toggles without drift, and Multires application.
+Bake checks preserve weighted geometry on ordinary mesh and Multires, restore
+layers/weights through undo, reapply through redo, and verify the new Layer 1 base
+after baking. The panel was inspected in the installed application: sliders are
+beside each layer and Bake All Layers appears below the list; no reorder buttons
+are present.
+
+Native Manifold Boolean and Sculpt Trim, including Trim undo/redo, passed after
+the shared-layout rebuild. Existing armature defaults and the installed Mesh Holes
+translations also passed smoke checks. New panel/operator labels are installed in
+all nine Bmax catalogs. This is not an exhaustive brush/color regression or a
+performance benchmark. Verification scripts, scenes, logs and caches are external
+temporary files and are removed after checking; no tests are added to the source.
+No user Blender session was closed. Desktop copies and public downloads were not
+updated, and no commit or push was made.
+
+The final catalog-only operator-context correction used the existing `locales`
+target followed by `cmake --install D:\blender_build\octahedral_radius --config Release`.
+Installed lookups passed for panel labels and all four operator-context labels in
+each of the nine catalogs; the executable hash above remained unchanged.
+
+## Sculpt layer backend local build (2026-10-31, historical)
+
+At the user's request, Release INSTALL completed from `D:\Bmax` on the local
+`codex/sculpt-layers-prototype` branch, based on `15f7bbc89857` with uncommitted
+backend and documentation changes:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+The prototype adds an independent translation unit and header to `bf_blenkernel`;
+it does not change DNA or pre-existing shared C++ layouts, so a forced Rebuild
+was not required. The build regenerated shader targets and linked and installed
+the executable successfully, retaining caches and dependencies.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is timestamped
+2026-10-31 19:20:40 JST, is 97,981,440 bytes, and reports Bmax 5.2.3 LTS,
+base hash `15f7bbc89857`, and `codex/sculpt-layers-prototype (modified)`.
+It matches `bin/Release/blender.exe` with SHA-256
+`4B104829D9CF942234DB4BC82A832F63447F527901E580ECC71B2D3FFE4602FA`.
+
+An inline factory-startup background smoke check passed startup, Mesh Holes,
+Octahedral Radius/Axis Size defaults, 20 cm new armatures with Octahedral/In
+Front/Wire display, native Manifold Boolean (14 vertices, nine faces), and two
+Multires subdivisions (98 evaluated vertices). Installed Italian, Japanese,
+French, and Spanish MO catalogs contain translated Mesh Holes labels and tooltips.
+The initial sandbox launch was denied by Windows with `0xC0000022`; execution
+outside that sandbox passed normally. Interactive viewports, GPU backends,
+Sculpt Trim, and the full regression suite were not repeated for this build.
+
+The [sculpt layer backend](sculpt_layers_design.md) is internal groundwork with
+no Sculpt Mode/UI/persistence integration. Compilation does not make sculpt
+layers available to users; unused backend code may be removed by the linker.
+There was no commit, push, Desktop-copy update, or public-download update.
+No existing Blender process was closed. No verification scene or script was
+saved, and the external temporary build log was removed after inspection.
+
 ## Branch and source
 
 `main` is the stable Bmax branch and includes Mesh Holes, armature display controls, UV diagnostics, origin axes, modifier defaults, 20 cm new bones, coincident selection outlines, and Multires Sculpt color painting. Use a temporary feature branch for a new change, then integrate it into `main` when ready.
