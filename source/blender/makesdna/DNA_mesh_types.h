@@ -150,6 +150,36 @@ enum eMeshSymmetryType : char {
 };
 ENUM_OPERATORS(eMeshSymmetryType)
 
+/** Sparse high-resolution payload. Arrays use the Multires tangent-space convention. */
+struct SculptLayerGrid {
+  float (*data)[3] = nullptr;
+  int samples_num = 0;
+  int _pad = 0;
+};
+
+struct SculptLayer {
+  SculptLayer *next = nullptr, *prev = nullptr;
+  char name[64] = {};
+  int uid = 0;
+  float influence = 1.0f;
+  float (*positions)[3] = nullptr;
+  SculptLayerGrid *grids = nullptr;
+};
+
+/** Authoring data; the Mesh positions/MDisps remain the evaluated combined result. */
+struct SculptLayerStack {
+  ListBaseT<SculptLayer> layers = {nullptr, nullptr};
+  float (*base_positions)[3] = nullptr;
+  SculptLayerGrid *base_grids = nullptr;
+  uint64_t topology_hash = 0;
+  int verts_num = 0;
+  int grids_num = 0;
+  int level = 0;
+  int active_index = 0;
+  int next_uid = 1;
+  int _pad = 0;
+};
+
 struct Mesh {
 #ifdef __cplusplus
   DNA_DEFINE_CXX_METHODS(Mesh)
@@ -162,6 +192,9 @@ struct Mesh {
   struct AnimData *adt = nullptr;
 
   struct Key *key = nullptr;
+
+  /** Native sculpt layers; null in files which have never used layered sculpting. */
+  SculptLayerStack *sculpt_layer_stack = nullptr;
 
   /**
    * An array of materials, with length #totcol. These can be overridden by material slots

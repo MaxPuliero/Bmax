@@ -6,6 +6,8 @@
  * \ingroup RNA
  */
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 #include "DNA_mesh_types.h"
@@ -104,9 +106,11 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 #  include <fmt/format.h>
 
 #  include "DNA_material_types.h"
+#  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 #  include "DNA_world_types.h"
 
+#  include "BLI_listbase.h"
 #  include "BLI_math_geom.h"
 #  include "BLI_math_vector.h"
 #  include "BLI_string.h"
@@ -120,7 +124,9 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 #  include "BKE_main.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.hh"
+#  include "BKE_multires.hh"
 #  include "BKE_report.hh"
+#  include "BKE_sculpt_layers_mesh.hh"
 
 #  include "DEG_depsgraph.hh"
 
@@ -202,6 +208,63 @@ static void rna_Mesh_update_geom_and_params(Main * /*bmain*/, Scene * /*scene*/,
 
   DEG_id_tag_update(id, ID_RECALC_GEOMETRY | ID_RECALC_PARAMETERS);
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+}
+
+static void rna_Mesh_sculpt_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  Mesh *mesh = static_cast<Mesh *>(ptr->data);
+  if (!mesh->sculpt_layer_stack) {
+    iter->valid = false;
+    return;
+  }
+  rna_iterator_listbase_begin(iter, ptr, &mesh->sculpt_layer_stack->layers, nullptr);
+}
+
+static int rna_Mesh_sculpt_layer_active_get(PointerRNA *ptr)
+{
+  const Mesh *mesh = static_cast<const Mesh *>(ptr->data);
+  return mesh->sculpt_layer_stack ? mesh->sculpt_layer_stack->active_index : 0;
+}
+
+static void rna_Mesh_sculpt_layer_active_set(PointerRNA *ptr, int value)
+{
+  Mesh *mesh = static_cast<Mesh *>(ptr->data);
+  if (mesh->sculpt_layer_stack) {
+    mesh->sculpt_layer_stack->active_index = std::clamp(
+        value, 0, std::max(0, BLI_listbase_count(&mesh->sculpt_layer_stack->layers) - 1));
+  }
+}
+
+static int rna_SculptLayer_influence_editable(const PointerRNA *ptr, const char ** /*r_info*/)
+{
+  const Mesh *mesh = reinterpret_cast<const Mesh *>(ptr->owner_id);
+  return mesh->sculpt_layer_stack && ptr->data == mesh->sculpt_layer_stack->layers.first ?
+             PropertyFlag(0) :
+             PROP_EDITABLE;
+}
+
+static void rna_SculptLayer_influence_set(PointerRNA *ptr, float value)
+{
+  Mesh *mesh = reinterpret_cast<Mesh *>(ptr->owner_id);
+  if ((mesh->sculpt_layer_stack && ptr->data == mesh->sculpt_layer_stack->layers.first) ||
+      !bke::sculpt_layers::topology_valid(*mesh) || mesh->runtime->edit_mesh)
+  {
+    return;
+  }
+  auto *layer = static_cast<SculptLayer *>(ptr->data);
+  layer->influence = std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : layer->influence;
+}
+
+static void rna_SculptLayer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  Mesh *mesh = reinterpret_cast<Mesh *>(ptr->owner_id);
+  for (Object &object : bmain->objects) {
+    if (object.data == &mesh->id) {
+      multires_flush_sculpt_updates(&object);
+    }
+  }
+  bke::sculpt_layers::evaluate(*mesh);
+  rna_Mesh_update_geom_and_params(bmain, scene, ptr);
 }
 
 static void rna_Mesh_update_normal_weighting(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -2922,6 +2985,26 @@ static void rna_def_mesh(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Mesh", "Mesh data-block defining geometric surfaces");
   RNA_def_struct_ui_icon(srna, ICON_MESH_DATA);
 
+  prop = RNA_def_property(srna, "sculpt_layers", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_Mesh_sculpt_layers_begin",
+                                    "rna_iterator_listbase_next",
+                                    "rna_iterator_listbase_end",
+                                    "rna_iterator_listbase_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "SculptLayer");
+  RNA_def_property_ui_text(prop, "Sculpt Layers", "Independent additive sculpt deformations");
+
+  prop = RNA_def_property(srna, "active_sculpt_layer_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(
+      prop, "rna_Mesh_sculpt_layer_active_get", "rna_Mesh_sculpt_layer_active_set", nullptr);
+  RNA_def_property_ui_text(prop, "Active Sculpt Layer", "Layer that receives sculpt strokes");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_GEOM | ND_DATA, nullptr);
+
   prop = RNA_def_property(srna, "vertices", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Mesh_vertices_begin",
@@ -3447,6 +3530,24 @@ static void rna_def_mesh(BlenderRNA *brna)
 
 void RNA_def_mesh(BlenderRNA *brna)
 {
+  StructRNA *layer = RNA_def_struct(brna, "SculptLayer", nullptr);
+  RNA_def_struct_sdna(layer, "SculptLayer");
+  RNA_def_struct_ui_text(layer, "Sculpt Layer", "Independent sculpt deformation");
+  PropertyRNA *prop = RNA_def_property(layer, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "name");
+  RNA_def_struct_name_property(layer, prop);
+  RNA_def_property_ui_text(prop, "Name", "Sculpt layer name");
+  RNA_def_property_update(prop, NC_GEOM | ND_DATA, nullptr);
+  prop = RNA_def_property(layer, "influence", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "influence");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_SculptLayer_influence_set", nullptr);
+  RNA_def_property_editable_func(prop, "rna_SculptLayer_influence_editable");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_text(
+      prop, "Influence", "Amount of this sculpt layer added to the static base");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, "rna_SculptLayer_update");
   rna_def_mesh(brna);
   rna_def_mvert(brna);
   rna_def_mvert_group(brna);

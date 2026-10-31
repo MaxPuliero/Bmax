@@ -24,6 +24,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -62,6 +63,8 @@ void enable_ex(Main &bmain, Depsgraph &depsgraph, Object &ob)
 {
   SculptSession &ss = *ob.runtime->sculpt_session;
   Mesh *mesh = id_cast<Mesh *>(ob.data);
+  bke::sculpt_layers::free(mesh->sculpt_layer_stack);
+  mesh->sculpt_layer_stack = nullptr;
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh);
 
   BKE_sculptsession_free_pbvh(ob);

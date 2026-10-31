@@ -14,6 +14,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -160,6 +161,10 @@ void multiresModifier_subdivide_to_level(Object *object,
   if (coarse_mesh->corners_num == 0) {
     /* If there are no loops in the mesh implies there is no CD_MDISPS as well. So can early output
      * from here as there is nothing to subdivide. */
+    return;
+  }
+
+  if (bke::sculpt_layers::subdivide(*object, *mmd, top_level, mode)) {
     return;
   }
 

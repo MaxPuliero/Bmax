@@ -63,6 +63,7 @@
 #include "BKE_paint.hh"
 #include "BKE_paint_types.hh"
 #include "BKE_scene.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_undo_system.hh"
 
@@ -179,6 +180,7 @@ struct SculptAttrRef {
 /* Storage of geometry for the undo node.
  * Is used as a storage for either original or modified geometry. */
 struct NodeGeometry {
+  SculptLayerStack *sculpt_layer_stack = nullptr;
   /* Is used for sanity check, helping with ensuring that two and only two
    * geometry pushes happened in the undo stack. */
   bool is_initialized;
@@ -274,6 +276,11 @@ struct StepData {
   /** Storage of per-node undo data after creation of the undo step is finished. */
   Vector<std::unique_ptr<Node>> nodes;
   std::unique_ptr<PositionUndoStorage> position_step_storage;
+  bke::sculpt_layers::Edit sculpt_layer_edit;
+  bool sculpt_layer_created = false;
+  bool sculpt_layer_applied = true;
+  std::unique_ptr<SculptLayerStack, decltype(&bke::sculpt_layers::free)> created_sculpt_stack{
+      nullptr, bke::sculpt_layers::free};
   size_t undo_size;
 
   /** Whether processing code needs to handle the current data as an undo step. */
@@ -986,6 +993,7 @@ static void store_geometry_data(NodeGeometry *geometry, const Object &object)
   geometry->is_initialized = true;
 
   geometry->attribute_storage = mesh->attribute_storage.wrap();
+  geometry->sculpt_layer_stack = bke::sculpt_layers::copy(mesh->sculpt_layer_stack);
   CustomData_init_from(
       &mesh->vert_data, &geometry->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
   CustomData_init_from(
@@ -1011,6 +1019,8 @@ static void restore_geometry_data(const NodeGeometry *geometry, Mesh *mesh)
   BLI_assert(geometry->is_initialized);
 
   BKE_mesh_clear_geometry(mesh);
+  bke::sculpt_layers::free(mesh->sculpt_layer_stack);
+  mesh->sculpt_layer_stack = bke::sculpt_layers::copy(geometry->sculpt_layer_stack);
 
   mesh->verts_num = geometry->verts_num;
   mesh->edges_num = geometry->edges_num;
@@ -1035,6 +1045,8 @@ static void restore_geometry_data(const NodeGeometry *geometry, Mesh *mesh)
 
 static void geometry_free_data(NodeGeometry *geometry)
 {
+  bke::sculpt_layers::free(geometry->sculpt_layer_stack);
+  geometry->sculpt_layer_stack = nullptr;
   PRF_scope(ProfileCategory::Editor);
   CustomData_free(&geometry->vert_data);
   CustomData_free(&geometry->edge_data);
@@ -1138,6 +1150,31 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
     return;
   }
   SculptSession &ss = *object.runtime->sculpt_session;
+  ss.pivot_pos = step_data.pivot_pos;
+  ss.pivot_rot = step_data.pivot_rot;
+  if (step_data.type == Type::Position && step_data.sculpt_layer_edit.uid) {
+    Mesh &mesh = *id_cast<Mesh *>(object.data);
+    if (step_data.created_sculpt_stack) {
+      bke::sculpt_layers::restore_created_stack(
+          mesh, *step_data.created_sculpt_stack, step_data.sculpt_layer_applied);
+    }
+    if (bke::sculpt_layers::topology_valid(mesh)) {
+      /* Persistent layer undo is independent of the currently displayed Sculpt level.
+       * Rebuilding from it also honors influence changes made after the recorded stroke. */
+      if (ss.subdiv_ccg) {
+        ss.subdiv_ccg->dirty.coords = false;
+      }
+      bke::sculpt_layers::swap_edit(object, step_data.sculpt_layer_edit);
+      bke::sculpt_layers::evaluate(mesh);
+      BKE_sculptsession_free_pbvh(object);
+      DEG_id_tag_update(&mesh.id, ID_RECALC_GEOMETRY);
+      DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+      BKE_scene_graph_evaluated_ensure(depsgraph, CTX_data_main(C));
+      BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
+      step_data.sculpt_layer_applied = !step_data.sculpt_layer_applied;
+      return;
+    }
+  }
   bke::pbvh::Tree &pbvh = bke::object::pbvh_ensure(*depsgraph, object);
 
   /* Restore pivot. */
@@ -1185,6 +1222,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         return;
       }
 
+      if (step_data.created_sculpt_stack) {
+        bke::sculpt_layers::restore_created_stack(*id_cast<Mesh *>(object.data),
+                                                  *step_data.created_sculpt_stack,
+                                                  step_data.sculpt_layer_applied);
+      }
+
       if (use_multires_undo(step_data, ss)) {
         MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
         SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -1201,6 +1244,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
             exec_mode::grain_size(1));
         pbvh.tag_positions_changed(changed_nodes);
         multires_mark_as_modified(depsgraph, &object, MULTIRES_COORDS_MODIFIED);
+        bke::sculpt_layers::swap_edit(object, step_data.sculpt_layer_edit);
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1210,6 +1254,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         const Mesh &mesh = *id_cast<const Mesh *>(object.data);
         Array<bool> modified_verts(mesh.verts_num, false);
         restore_position_mesh(object, *step_data.position_step_storage, modified_verts);
+        bke::sculpt_layers::swap_edit(object, step_data.sculpt_layer_edit);
 
         const IndexMask changed_nodes = IndexMask::from_predicate(
             node_mask,
@@ -1235,6 +1280,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       pbvh.update_bounds(*depsgraph, object);
       bke::pbvh::store_bounds_orig(pbvh);
+      step_data.sculpt_layer_applied = !step_data.sculpt_layer_applied;
       break;
     }
     case Type::HideVert: {
@@ -2120,6 +2166,13 @@ void push_begin(const Scene &scene, Object &ob, const wmOperator *op)
   push_begin_ex(scene, ob, op->type->name);
 }
 
+void tag_sculpt_layer_creation()
+{
+  if (StepData *step = get_step_data()) {
+    step->sculpt_layer_created = true;
+  }
+}
+
 void push_enter_sculpt_mode(const Scene & /*scene*/, Object &ob, const wmOperator *op)
 {
   UndoStack *ustack = ED_undo_stack_get();
@@ -2182,6 +2235,33 @@ void push_end_ex(Object &ob, const bool use_nested_undo)
    * deform modifiers. */
 
   if (step_data->type == Type::Position) {
+    if (id_cast<Mesh *>(ob.data)->sculpt_layer_stack &&
+        !bke::sculpt_layers::native_single(*id_cast<Mesh *>(ob.data)) &&
+        !bke::sculpt_layers::support_error(ob, true))
+    {
+      if (step_data->grids.grids_num) {
+        bke::sculpt_layers::record_multires(ob, step_data->sculpt_layer_edit);
+      }
+      else {
+        for (const std::unique_ptr<Node> &node : step_data->nodes) {
+          bke::sculpt_layers::record_mesh(
+              ob,
+              node->vert_indices.as_span().take_front(node->unique_verts_num),
+              node->position.as_span().take_front(node->unique_verts_num),
+              step_data->sculpt_layer_edit);
+        }
+      }
+    }
+    for (const bke::sculpt_layers::EditChunk &chunk : step_data->sculpt_layer_edit.chunks) {
+      step_data->undo_size += sizeof(chunk) + chunk.indices.as_span().size_in_bytes() +
+                              chunk.samples.as_span().size_in_bytes();
+    }
+    if (step_data->sculpt_layer_created) {
+      step_data->created_sculpt_stack.reset(
+          bke::sculpt_layers::copy(id_cast<Mesh *>(ob.data)->sculpt_layer_stack));
+      step_data->undo_size += bke::sculpt_layers::memory_size(
+          step_data->created_sculpt_stack.get());
+    }
     step_data->position_step_storage = std::make_unique<PositionUndoStorage>(*step_data);
   }
   else {
@@ -2452,6 +2532,11 @@ void geometry_begin_ex(const Scene & /*scene*/, Object &ob, const char *name)
   SculptUndoStep *us = reinterpret_cast<SculptUndoStep *>(
       BKE_undosys_step_push_init_with_type(ustack, C, name, BKE_UNDOSYS_TYPE_SCULPT));
   save_common_data(ob, us);
+  const SculptSession &ss = *ob.runtime->sculpt_session;
+  if (ss.subdiv_ccg) {
+    us->data.grids.grids_num = ss.subdiv_ccg->grids_num;
+    us->data.grids.grid_size = ss.subdiv_ccg->grid_size;
+  }
   geometry_push(ob);
 }
 
@@ -2471,7 +2556,7 @@ static size_t calculate_node_geometry_allocated_size(const NodeGeometry &node_ge
   CustomData_count_memory(node_geometry.edge_data, node_geometry.edges_num, memory_counter);
   node_geometry.attribute_storage.wrap().count_memory(memory_counter);
 
-  return memory.total_bytes;
+  return memory.total_bytes + bke::sculpt_layers::memory_size(node_geometry.sculpt_layer_stack);
 }
 
 static size_t estimate_geometry_step_size(const StepData &step_data)

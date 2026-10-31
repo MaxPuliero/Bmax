@@ -26,6 +26,7 @@
 #include "BKE_ccg.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_material.hh"
 #include "BKE_mesh.hh"
@@ -38,6 +39,7 @@
 #include "BKE_paint_types.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 #include "BKE_subdiv_ccg.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1503,8 +1505,89 @@ static void SCULPT_OT_mask_from_boundary(wmOperatorType *ot)
 
 }  // namespace mask
 
+static bool sculpt_layer_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_MESH || !ELEM(object->mode, OB_MODE_OBJECT, OB_MODE_SCULPT)) {
+    return false;
+  }
+  if (const char *error = bke::sculpt_layers::support_error(*object, false)) {
+    CTX_wm_operator_poll_msg_set(C, error);
+    return false;
+  }
+  return ID_IS_EDITABLE(object->data) && !ID_IS_OVERRIDE_LIBRARY(object->data);
+}
+
+static wmOperatorStatus sculpt_layer_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  const bool adding = STREQ(op->idname, "SCULPT_OT_layer_add");
+  const bool baking = STREQ(op->idname, "SCULPT_OT_layer_bake");
+  if (!adding && !baking && id_cast<Mesh *>(object.data)->sculpt_layer_stack->active_index == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  multires_flush_sculpt_updates(&object);
+  const bool sculpt_mode = object.mode == OB_MODE_SCULPT;
+  if (sculpt_mode) {
+    undo::geometry_begin(*CTX_data_scene(C), object, op);
+  }
+  const bool changed = baking ? bke::sculpt_layers::bake(object) :
+                                (adding ? bke::sculpt_layers::add(object) :
+                                          bke::sculpt_layers::remove(object));
+  if (sculpt_mode) {
+    undo::geometry_end(object);
+  }
+  if (!changed) {
+    return OPERATOR_CANCELLED;
+  }
+  DEG_id_tag_update(static_cast<ID *>(object.data), ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, object.data);
+  return OPERATOR_FINISHED;
+}
+
+static bool sculpt_layer_remove_poll(bContext *C)
+{
+  const Object *object = CTX_data_active_object(C);
+  return object && object->type == OB_MESH && ELEM(object->mode, OB_MODE_OBJECT, OB_MODE_SCULPT) &&
+         ID_IS_EDITABLE(object->data) && !ID_IS_OVERRIDE_LIBRARY(object->data) &&
+         id_cast<Mesh *>(object->data)->sculpt_layer_stack;
+}
+
+static void SCULPT_OT_layer_add(wmOperatorType *ot)
+{
+  ot->name = "Add Sculpt Layer";
+  ot->idname = "SCULPT_OT_layer_add";
+  ot->description = "Add an empty sculpt layer and make it active";
+  ot->exec = sculpt_layer_exec;
+  ot->poll = sculpt_layer_poll;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static void SCULPT_OT_layer_remove(wmOperatorType *ot)
+{
+  ot->name = "Remove Sculpt Layer";
+  ot->idname = "SCULPT_OT_layer_remove";
+  ot->description = "Delete the active sculpt layer and its deformation";
+  ot->exec = sculpt_layer_exec;
+  ot->poll = sculpt_layer_remove_poll;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static void SCULPT_OT_layer_bake(wmOperatorType *ot)
+{
+  ot->name = "Bake All Sculpt Layers";
+  ot->idname = "SCULPT_OT_layer_bake";
+  ot->description = "Merge the visible sculpt into static Layer 1 and remove the other layers";
+  ot->exec = sculpt_layer_exec;
+  ot->poll = sculpt_layer_remove_poll;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 void operatortypes_sculpt()
 {
+  WM_operatortype_append(SCULPT_OT_layer_add);
+  WM_operatortype_append(SCULPT_OT_layer_remove);
+  WM_operatortype_append(SCULPT_OT_layer_bake);
   WM_operatortype_append(SCULPT_OT_brush_stroke);
   WM_operatortype_append(SCULPT_OT_sculptmode_toggle);
   WM_operatortype_append(SCULPT_OT_set_persistent_base);

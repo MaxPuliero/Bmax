@@ -70425,3 +70425,91 @@ msgstr "Consente alla scala interattiva di superare lo zero nella Vista 3D; i va
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Consenti scala negativa (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Layer Sculpt"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Layer Sculpt"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Aggiungi layer Sculpt"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Elimina layer Sculpt"
+
+#. Bmax sculpt layers
+msgid "Layer 1 is created on the first sculpt stroke"
+msgstr "Il Layer 1 viene creato alla prima pennellata Sculpt"
+
+#. Bmax sculpt layers
+msgid "Raise Influence to sculpt on this layer"
+msgstr "Aumenta Influenza per scolpire su questo layer"
+
+#. Bmax sculpt layers
+msgid "Record at the highest Multires level"
+msgstr "Scolpisci al livello Multires massimo"
+
+#. Bmax sculpt layers
+msgid "Add an empty sculpt layer and make it active"
+msgstr "Aggiunge un layer Sculpt vuoto e lo rende attivo"
+
+#. Bmax sculpt layers
+msgid "Delete the active sculpt layer and its deformation"
+msgstr "Elimina il layer Sculpt attivo e la sua deformazione"
+
+#. Bmax sculpt layers
+msgid "Blend between the unsculpted base and this layer's deformation"
+msgstr "Regola la deformazione di questo layer rispetto alla base non scolpita"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Consolida tutti i layer"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Consolida tutti i layer Sculpt"
+
+#. Bmax sculpt layer bake
+msgid "Merge the visible sculpt layer influences into the base and remove all layers"
+msgstr "Unisce nella base il risultato visibile delle influenze dei layer Sculpt e rimuove tutti i layer"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Aggiungi layer Sculpt"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Elimina layer Sculpt"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Consolida tutti i layer"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Consolida tutti i layer Sculpt"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Unisce lo sculpt visibile nel Layer 1 con influenza massima, mantenendo la base originale"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "I layer Sculpt richiedono un modificatore Multires"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Unisce lo sculpt visibile nel Layer 1 statico e rimuove gli altri layer"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Quantità di questo layer Sculpt aggiunta alla base statica"

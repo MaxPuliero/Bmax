@@ -163891,3 +163891,63 @@ msgstr "Permettre une mise à l’échelle interactive au-delà de zéro dans la
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Autoriser une échelle négative (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Calques de sculpture"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Calque de sculpture"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Ajouter un calque de sculpture"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Supprimer le calque de sculpture"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Fusionner tous les calques"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Fusionner tous les calques de sculpture"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Ajouter un calque de sculpture"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Supprimer le calque de sculpture"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Fusionner tous les calques"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Fusionner tous les calques de sculpture"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Fusionne la sculpture visible dans le calque 1 avec une influence maximale, en conservant la base originale"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "Les calques de sculpture nécessitent un modificateur Multirésolution"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Fusionne la sculpture visible dans le calque 1 fixe et supprime les autres calques"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Quantité de ce calque de sculpture ajoutée à la base fixe"

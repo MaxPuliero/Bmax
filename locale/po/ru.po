@@ -163886,3 +163886,63 @@ msgstr "Разрешить интерактивное масштабирован
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Разрешить отрицательный масштаб (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Слои скульптинга"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Слой скульптинга"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Добавить слой скульптинга"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Удалить слой скульптинга"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Объединить все слои"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Объединить все слои скульптинга"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Добавить слой скульптинга"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Удалить слой скульптинга"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Объединить все слои"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Объединить все слои скульптинга"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Объединить видимый скульпт в слое 1 с полным влиянием, сохранив исходную основу"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "Для слоёв скульптинга требуется модификатор Multires"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Объединить видимый скульпт в фиксированном слое 1 и удалить остальные слои"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Влияние этого слоя скульптинга, добавляемое к фиксированной основе"

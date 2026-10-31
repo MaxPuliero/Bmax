@@ -165704,3 +165704,63 @@ msgstr "3Dビューポートでのインタラクティブなスケールをゼ�
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: 負のスケールを許可 (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "スカルプトレイヤー"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "スカルプトレイヤー"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "スカルプトレイヤーを追加"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "スカルプトレイヤーを削除"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "全レイヤーをベイク"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "全スカルプトレイヤーをベイク"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "スカルプトレイヤーを追加"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "スカルプトレイヤーを削除"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "全レイヤーをベイク"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "全スカルプトレイヤーをベイク"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "表示中のスカルプトを影響度1のレイヤー1に統合し、元のベースを保持します"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "スカルプトレイヤーにはマルチレゾリューションモディファイアーが必要です"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "表示中のスカルプトを固定のレイヤー1に統合し、他のレイヤーを削除します"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "固定ベースに加算するスカルプトレイヤーの量"

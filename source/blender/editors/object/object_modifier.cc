@@ -72,6 +72,7 @@
 #include "BKE_pointcloud.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 #include "BKE_softbody.h"
 #include "BKE_volume.hh"
 
@@ -215,6 +216,7 @@ ModifierData *modifier_add(
     else if (type == eModifierType_Multires) {
       /* set totlvl from existing MDISPS layer if object already had it */
       multiresModifier_set_levels_from_disps(reinterpret_cast<MultiresModifierData *>(new_md), ob);
+      bke::sculpt_layers::ensure(*ob);
 
       if (ob->mode & OB_MODE_SCULPT) {
         /* ensure that grid paint mask layer is created */
@@ -352,6 +354,9 @@ static bool object_modifier_remove(
   else if (md->type == eModifierType_Multires) {
     /* Delete MDisps layer if not used by another multires modifier */
     if (object_modifier_safe_to_delete(bmain, ob, md, eModifierType_Multires)) {
+      Mesh *mesh = id_cast<Mesh *>(ob->data);
+      bke::sculpt_layers::free(mesh->sculpt_layer_stack);
+      mesh->sculpt_layer_stack = nullptr;
       multires_customdata_delete(id_cast<Mesh *>(ob->data));
     }
   }

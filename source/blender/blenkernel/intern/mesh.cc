@@ -67,6 +67,7 @@
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
 #include "BKE_paint_bvh.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -113,6 +114,10 @@ static void mesh_copy_data(Main *bmain,
   const Mesh *mesh_src = reinterpret_cast<const Mesh *>(id_src);
 
   mesh_dst->runtime = new bke::MeshRuntime();
+  /* Evaluated meshes need only the composed geometry, not authoring buffers. */
+  mesh_dst->sculpt_layer_stack = (flag & LIB_ID_CREATE_NO_MAIN) ?
+                                     nullptr :
+                                     bke::sculpt_layers::copy(mesh_src->sculpt_layer_stack);
   mesh_dst->runtime->deformed_only = mesh_src->runtime->deformed_only;
   /* Subd runtime.mesh_eval is not copied, will need to be reevaluated. */
   mesh_dst->runtime->wrapper_type = (mesh_src->runtime->wrapper_type == ME_WRAPPER_TYPE_SUBD) ?
@@ -252,6 +257,7 @@ static void mesh_copy_data(Main *bmain,
 static void mesh_free_data(ID *id)
 {
   Mesh *mesh = reinterpret_cast<Mesh *>(id);
+  bke::sculpt_layers::free(mesh->sculpt_layer_stack);
 
   CustomData_free(&mesh->vert_data);
   CustomData_free(&mesh->edge_data);
@@ -392,6 +398,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   BKE_id_blend_write(writer, &mesh->id);
 
   BKE_defbase_blend_write(writer, &mesh->vertex_group_names);
+  bke::sculpt_layers::blend_write(writer, mesh->sculpt_layer_stack);
   writer->write_string(mesh->active_color_attribute);
   writer->write_string(mesh->default_color_attribute);
   writer->write_string(mesh->active_uv_map_attribute);
@@ -451,6 +458,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_array_and_validate_size(reader, &mesh->mselect, &mesh->totselect);
 
   BLO_read_struct_list(reader, bDeformGroup, &mesh->vertex_group_names);
+  bke::sculpt_layers::blend_read(reader, &mesh->sculpt_layer_stack);
 
   CustomData_blend_read(reader, &mesh->vert_data, mesh->verts_num);
   CustomData_blend_read(reader, &mesh->edge_data, mesh->edges_num);

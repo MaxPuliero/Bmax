@@ -42,6 +42,7 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_types.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 /* these 2 are only used by conversion functions */
 #include "BKE_curve.hh"
 /* -- */
@@ -1128,6 +1129,8 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob, bool pr
 
   const bool verts_num_changed = mesh_dst->verts_num != mesh_src->verts_num;
 
+  bke::sculpt_layers::free(mesh_dst->sculpt_layer_stack);
+  mesh_dst->sculpt_layer_stack = nullptr;
   BKE_mesh_clear_geometry_and_metadata(mesh_dst);
 
   mesh_dst->verts_num = mesh_src->verts_num;

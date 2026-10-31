@@ -391,6 +391,53 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
             draw_shape_key_properties(context, layout)
 
 
+class MESH_UL_sculpt_layers(UIList):
+    def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
+        if _index == 0:
+            layout.prop(item, "name", text="", emboss=False, icon='SCULPTMODE_HLT')
+        else:
+            row = layout.split(factor=0.55, align=True)
+            row.prop(item, "name", text="", emboss=False, icon='SCULPTMODE_HLT')
+            row.prop(item, "influence", text="", slider=True)
+
+
+class DATA_PT_sculpt_layers(MeshButtonsPanel, Panel):
+    bl_label = "Sculpt Layers"
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        return (super().poll(context) and obj is not None and obj.type == 'MESH'
+                and any(m.type == 'MULTIRES' for m in obj.modifiers))
+
+    def draw(self, context):
+        mesh = context.mesh
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        obj = context.object
+        layout.enabled = obj is not None and obj.type == 'MESH' and obj.data == mesh
+        row = layout.row()
+        row.template_list("MESH_UL_sculpt_layers", "", mesh, "sculpt_layers",
+                          mesh, "active_sculpt_layer_index", rows=3, sort_lock=True)
+        buttons = row.column(align=True)
+        buttons.operator("sculpt.layer_add", text="", icon='ADD')
+        remove = buttons.column(align=True)
+        remove.enabled = bool(mesh.sculpt_layers) and mesh.active_sculpt_layer_index > 0
+        remove.operator("sculpt.layer_remove", text="", icon='REMOVE')
+        bake = layout.row()
+        bake.enabled = bool(mesh.sculpt_layers)
+        bake.operator("sculpt.layer_bake", text="Bake All Layers", icon='CHECKMARK')
+        if mesh.sculpt_layers:
+            index = min(mesh.active_sculpt_layer_index, len(mesh.sculpt_layers) - 1)
+            layer = mesh.sculpt_layers[index]
+            if layer.influence == 0:
+                layout.label(text="Raise Influence to sculpt on this layer", icon='INFO')
+        else:
+            layout.label(text="Sculpt layers require a Multires modifier", icon='INFO')
+
+
 class DATA_PT_uv_texture(MeshButtonsPanel, Panel):
     bl_label = "UV Maps"
     bl_options = {'DEFAULT_CLOSED'}
@@ -752,6 +799,8 @@ classes = (
     DATA_PT_normal_weighting,
     DATA_PT_vertex_groups,
     DATA_PT_shape_keys,
+    MESH_UL_sculpt_layers,
+    DATA_PT_sculpt_layers,
     DATA_PT_uv_texture,
     DATA_PT_vertex_colors,
     DATA_PT_mesh_attributes,

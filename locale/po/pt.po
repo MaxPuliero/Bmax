@@ -128517,3 +128517,63 @@ msgstr "Permitir que a escala interativa ultrapasse o zero na vista 3D; os valor
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Permitir escala negativa (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Camadas de escultura"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Camada de escultura"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Adicionar camada de escultura"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Remover camada de escultura"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Consolidar todas as camadas"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Consolidar todas as camadas de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Adicionar camada de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Remover camada de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Consolidar todas as camadas"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Consolidar todas as camadas de escultura"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Consolida a escultura visível na camada 1 com influência máxima, mantendo a base original"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "As camadas de escultura requerem um modificador Multiresolução"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Consolida a escultura visível na camada 1 fixa e remove as outras camadas"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Quantidade desta camada de escultura adicionada à base fixa"

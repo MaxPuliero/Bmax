@@ -163886,3 +163886,63 @@ msgstr "Permitir que la escala interactiva pase de cero en la vista 3D; los valo
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Permitir escala negativa (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Capas de escultura"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Capa de escultura"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Añadir capa de escultura"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Eliminar capa de escultura"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Fusionar todas las capas"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Fusionar todas las capas de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Añadir capa de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Eliminar capa de escultura"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Fusionar todas las capas"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Fusionar todas las capas de escultura"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Fusiona el esculpido visible en la capa 1 con influencia máxima, conservando la base original"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "Las capas de esculpido requieren un modificador Multirresolución"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Fusiona el esculpido visible en la capa 1 fija y elimina las demás capas"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Cantidad de esta capa de esculpido añadida a la base fija"

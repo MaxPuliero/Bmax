@@ -163892,3 +163892,63 @@ msgstr "允许在3D视图中交互缩放时越过零；直接输入的数值始�
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: 允许负缩放 (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "雕刻层"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "雕刻层"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "添加雕刻层"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "删除雕刻层"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "烘焙所有层"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "烘焙所有雕刻层"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "添加雕刻层"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "删除雕刻层"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "烘焙所有层"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "烘焙所有雕刻层"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "将可见雕刻合并到影响强度为1的图层1，并保留原始基础网格"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "雕刻图层需要多级精度修改器"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "将可见雕刻合并到固定的图层1并移除其他图层"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "此雕刻图层添加到固定基础网格的强度"

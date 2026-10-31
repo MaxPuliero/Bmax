@@ -64,6 +64,7 @@
 #include "BKE_paint_bvh.hh"
 #include "BKE_paint_types.hh"
 #include "BKE_report.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 #include "BKE_subdiv_ccg.hh"
 
 #include "BLT_translation.hh"
@@ -5810,6 +5811,52 @@ bool SculptPaintStroke::test_start(wmOperator *op, const float mval[2])
   if (over_mesh(*this->depsgraph, this->vc, *sculpt_, this->brush, op, mval)) {
     Object &ob = *this->object;
     Brush *brush = this->brush;
+    bool created_layer_stack = false;
+
+    if (brush && !brush_type_is_paint(brush->sculpt_brush_type) &&
+        brush->sculpt_brush_type != SCULPT_BRUSH_TYPE_MASK &&
+        !bke::sculpt_layers::native_single(*id_cast<Mesh *>(ob.data)))
+    {
+      if (const char *error = bke::sculpt_layers::support_error(ob, true)) {
+        Mesh &mesh = *id_cast<Mesh *>(ob.data);
+        if (mesh.sculpt_layer_stack && !BKE_modifiers_findby_type(&ob, eModifierType_Multires)) {
+          /* Discard authoring from the earlier ordinary-mesh prototype, retaining its shape. */
+          bke::sculpt_layers::free(mesh.sculpt_layer_stack);
+          mesh.sculpt_layer_stack = nullptr;
+          WM_event_add_notifier(this->evil_C, NC_GEOM | ND_DATA, ob.data);
+        }
+        else if (mesh.sculpt_layer_stack) {
+          BKE_report(op->reports, RPT_ERROR, error);
+          return false;
+        }
+      }
+      else {
+        const bool created = !id_cast<Mesh *>(ob.data)->sculpt_layer_stack;
+        created_layer_stack = created;
+        bke::sculpt_layers::ensure(ob);
+        if (!bke::sculpt_layers::active(*id_cast<Mesh *>(ob.data))) {
+          bke::sculpt_layers::add(ob);
+        }
+        /* A cancelled initial stroke can leave an empty authoring stack without an undo owner. */
+        const SculptLayerStack *stack = id_cast<Mesh *>(ob.data)->sculpt_layer_stack;
+        if (!created && stack && !bke::sculpt_layers::native_single(*id_cast<Mesh *>(ob.data)) &&
+            stack->layers.first && stack->layers.first == stack->layers.last)
+        {
+          const SculptLayer &layer = *static_cast<const SculptLayer *>(stack->layers.first);
+          bool has_data = layer.positions != nullptr;
+          for (int i = 0; i < stack->grids_num && !has_data; i++) {
+            has_data = layer.grids[i].data != nullptr;
+          }
+          created_layer_stack = !has_data;
+        }
+        if (bke::sculpt_layers::native_single(*id_cast<Mesh *>(ob.data))) {
+          created_layer_stack = false;
+        }
+        if (created) {
+          WM_event_add_notifier(this->evil_C, NC_GEOM | ND_DATA, ob.data);
+        }
+      }
+    }
 
     /* NOTE: This should be removed when paint mode is available. Paint mode can force based on the
      * canvas it is painting on. (ref. use_sculpt_texture_paint). */
@@ -5834,6 +5881,9 @@ bool SculptPaintStroke::test_start(wmOperator *op, const float mval[2])
     cursor_geometry_info_update(*this->depsgraph, *paint, sculpt_, this->vc, base_, mval, false);
 
     stroke_undo_begin(*this->scene, this->brush, *this->paint_mode_settings_, *this->object, op);
+    if (created_layer_stack) {
+      undo::tag_sculpt_layer_creation();
+    }
 
     return true;
   }

@@ -33,6 +33,7 @@
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
 #include "BKE_scene.hh"
+#include "BKE_sculpt_layers_mesh.hh"
 #include "BKE_subdiv_ccg.hh"
 
 #include "BKE_object.hh"
@@ -551,6 +552,7 @@ void multiresModifier_del_levels(MultiresModifierData *mmd,
   }
 
   multires_set_tot_level(ob, mmd, lvl);
+  bke::sculpt_layers::delete_higher(*mesh, lvl);
 }
 
 void multires_stitch_grids(Object *ob)

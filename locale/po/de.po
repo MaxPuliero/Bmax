@@ -58642,3 +58642,63 @@ msgstr "Interaktive Skalierung im 3D-Ansichtsfenster über Null hinaus erlauben;
 #: source/blender/editors/transform/transform_ops.cc source/blender/editors/transform/transform_mode_resize.cc
 msgid " | %s: Allow Negative Scaling (%s)"
 msgstr " | %s: Negative Skalierung erlauben (%s)"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layers"
+msgstr "Sculpting-Ebenen"
+
+#. Bmax sculpt layers
+msgid "Sculpt Layer"
+msgstr "Sculpting-Ebene"
+
+#. Bmax sculpt layers
+msgid "Add Sculpt Layer"
+msgstr "Sculpting-Ebene hinzufügen"
+
+#. Bmax sculpt layers
+msgid "Remove Sculpt Layer"
+msgstr "Sculpting-Ebene entfernen"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Layers"
+msgstr "Alle Ebenen zusammenführen"
+
+#. Bmax sculpt layer bake
+msgid "Bake All Sculpt Layers"
+msgstr "Alle Sculpting-Ebenen zusammenführen"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Add Sculpt Layer"
+msgstr "Sculpting-Ebene hinzufügen"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Remove Sculpt Layer"
+msgstr "Sculpting-Ebene entfernen"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Layers"
+msgstr "Alle Ebenen zusammenführen"
+
+#. Bmax sculpt layers operator context
+msgctxt "Operator"
+msgid "Bake All Sculpt Layers"
+msgstr "Alle Sculpting-Ebenen zusammenführen"
+
+#. Bmax Multires sculpt layers
+msgid "Merge the visible sculpt into Layer 1 at full influence, keeping the original base"
+msgstr "Fasst die sichtbare Skulptur mit vollem Einfluss in Ebene 1 zusammen und behält die ursprüngliche Basis bei"
+
+#. Bmax Multires sculpt layers
+msgid "Sculpt layers require a Multires modifier"
+msgstr "Skulpturebenen benötigen einen Multires-Modifikator"
+
+#. Bmax static sculpt base
+msgid "Merge the visible sculpt into static Layer 1 and remove the other layers"
+msgstr "Fasst die sichtbare Skulptur in der festen Ebene 1 zusammen und entfernt die anderen Ebenen"
+
+#. Bmax static sculpt base
+msgid "Amount of this sculpt layer added to the static base"
+msgstr "Stärke dieser Skulpturebene zusätzlich zur festen Basis"

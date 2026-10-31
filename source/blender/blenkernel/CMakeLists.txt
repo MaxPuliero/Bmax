@@ -265,6 +265,8 @@ set(SRC
   intern/rigidbody.cc
   intern/scene.cc
   intern/screen.cc
+  intern/sculpt_layers.cc
+  intern/sculpt_layers_mesh.cc
   intern/shader_fx.cc
   intern/shrinkwrap.cc
   intern/softbody.cc
@@ -504,6 +506,8 @@ set(SRC
   BKE_report.hh
   BKE_rigidbody.h
   BKE_scene.hh
+  BKE_sculpt_layers.hh
+  BKE_sculpt_layers_mesh.hh
   BKE_scene_runtime.hh
   BKE_screen.hh
   BKE_shader_fx.hh
