@@ -1,8 +1,176 @@
 # Bmax feature inventory
 
+**November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
+
 This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-08**, including the complete history on `main`, the changed source files relative to the imported snapshot, and the per-feature implementation notes. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
+
+## Selected-item editing without the Alt exception (2026-11-04 local follow-up)
+
+Alt no longer restricts compatible UI property edits or multi-edit command
+invocations to the active item. Numeric fields, toggles, color-popups, modifier
+commands, material/slot commands, Geometry Data and material selectors use the
+same selection behavior with or without Alt. The material selector's independent
+Alt guard was removed as well as the shared UI/operator guards.
+
+Explicit use_selected_objects arguments and direct Python execution retain their
+existing semantics; this removes a UI modifier-key exception rather than changing
+operator APIs. Shared-data rules, eligibility checks, cancellation and the separate
+whole-array clipboard paste path remain. Other Blender Alt shortcuts are unchanged.
+The helper tooltip now reads Affect selected editable objects, with updated
+translations verified in all nine installed Bmax catalogs. The October 28 test
+record below describes the original active-only exception before this follow-up.
+
+The implementation is included in the November 4 source update and rebuilt. Six focused OpenGL UI/data
+cases cover numeric stepping, a modifier toggle, material unlinking, modifier Add,
+Geometry Data Add, explicit active-only arguments and direct Python defaults, with
+an unselected object retained as a control. Native simulated events use separate
+hover/activation steps; early fixture attempts did not enter numeric text editing
+reliably. Full typed-entry/color-popup and Vulkan regressions were not repeated;
+the shared selection guards were removed without changing GPU code or value math.
+See the [build record](BUILD_WINDOWS.md#remove-the-alt-active-only-exception-2026-11-04).
+
+## Continuous workspace viewport (2026-11-04 local implementation)
+
+Native workspace switching transfers navigation and visibility from the source
+screen's last focused 3D window region to the equivalent last-used viewport in
+the destination screen. Without recorded focus, the largest active 3D area is the
+fallback. Moving the pointer to the workspace tabs or another editor does not
+replace the remembered viewport. Focus records use screen session IDs, validate
+area/region membership before use and prune stale screens; nothing is added to
+DNA or saved preference data.
+
+Position, quaternion, distance, projection, lens, near/far clipping, camera,
+camera-frame pan/zoom, orbit-center references and return-from-camera navigation
+are transferred explicitly. Drawing resources and timers are never shallow-copied.
+Pending smooth views are completed without moving or keying a locked camera.
+Shading (including X-Ray/material lighting), overlays and viewport layout remain
+independent. Secondary viewport navigation is retained and transform-locked Quad
+View regions are respected.
+
+Local View uses independent native bit slots and owned navigation backups in
+each destination; leaving isolation restores the carried pre-isolation view.
+Local Collections use their own slots and synchronize visibility, while object-type
+visibility/selectability filters follow the source. Hide remains view-layer state;
+collection exclusions and scene organization are not rewritten. Native limits of
+16 isolation slots remain, with a warning when a transfer cannot allocate a slot.
+The change is restricted to a shared scene; scene pinning to another scene and
+layouts without 3D viewports retain their existing behavior.
+
+Validation: 115 checks on each actual OpenGL/Vulkan backend cover two-way
+workspace navigation, pre-isolation restore, Hide, local collection/type filters,
+independent shading/overlays, local camera view/offset/zoom, different pinned
+scenes and the last smaller viewport in a split layout. Thirteen further checks
+per backend verify locked Quad View axes and Local View entry/exit. Ten checks
+after file reload confirm saved isolation membership and independence: exiting
+one viewport does not clear the other. Captures were visually inspected. Camera
+expectations were sampled after Blender's normal redraw update, and fixture
+operators use their native object namespace.
+
+The standard runtime and the separate official_save_preview runtime are updated.
+Source is included in the November 4 source update on main. See the [build record](BUILD_WINDOWS.md#continuous-workspace-viewport-2026-11-04)
+for runtime identity and validation limits.
+
+## Save as Official (2026-11-04 local implementation)
+
+File > Save as Official writes a separate compatible project through an isolated
+background Bmax process. Its options convert Bmax base-mesh normal weighting into
+standard custom normals, flatten the visible Sculpt Layers into native Multires
+displacement without applying subdivision levels, and save evaluated Multires
+color meshes in a separate folder. Existing custom normals are retained. Shared
+meshes remain shared in the main copy. Linked data is localized on the disposable
+copy; the source libraries are not modified.
+
+The optional color file opens with its own active scene and contains static
+meshes evaluated at the current frame, with Highest/Render/Viewport Multires level,
+ordinary color attributes and materials. Hidden objects and objects present only
+in instanced collections are included. It is a geometry/color preservation copy,
+not an editable replacement for Bmax Multires color grids or sculpt layers.
+Existing color backups are never overwritten; names receive numeric suffixes.
+
+Instances Random in shader nodes or viewport shading produces a conspicuous
+warning because official Blender uses different random values. No automatic
+material conversion is attempted. Turning off conversions or color preservation
+shows relevant warnings. Pack External Resources uses native supported resource
+packing, not a guarantee of portability for external simulation caches or add-ons.
+
+The live project is snapshotted through a hidden copy-only native save option:
+no normal save callbacks, modified-image autosave, history changes or source
+resource packing. Dirty single-file/generated image pixels travel separately and
+are packed in the worker. Modified tiled, animated or multiview images are refused
+with an explanatory message. The open filename, dirty state and editing mode are
+preserved. Cancellation and failed staging leave existing destinations intact;
+a successful main copy is committed only after conversion and optional color-file
+creation. Overwriting the current source path is refused.
+
+Validation in official Blender 5.2.3 confirmed exact evaluated sculpt coordinates,
+retained Multires levels, both painted Float/Corner and Byte/Point attributes
+materialized as Float/Corner with exact RGBA, materials and shared mesh identity.
+Baked custom normals differed by at most 0.000053 from their source vectors due
+to native normal encoding. Dirty PNG and float RGBA EXR pixels survived exactly.
+Source file hashes, images, source packing state, unsaved state and save callbacks
+were checked. Edge cases cover hidden/collection-instanced objects, render level,
+existing custom normals, Unicode/relative folders, packing, existing output on
+IO failure, cancellation, and invalid sculpt topology rejection. A linked collection
+localized without unwanted object links, while normal Save As kept its handlers.
+File-browser saves passed on OpenGL and Vulkan and returned to the intact source
+in Sculpt Mode; the warning panel was visually inspected.
+
+Implementation is included in the November 4 source update on main. No DNA layout changes were needed.
+The initial runtime was installed side by side because the standard executable
+was open. Both `D:\blender_build\octahedral_radius\bin\blender.exe` and
+`D:\blender_build\official_save_preview\bin\blender.exe` now include this feature;
+see the newer workspace-continuity build record. Desktop and public packages are unchanged. See the
+[build record](BUILD_WINDOWS.md#save-as-official-2026-11-04).
+
+## Native Quick Favorites manager (2026-11-04 local implementation)
+
+Preferences > Interface > Quick Favorites provides editor/context selectors, native
+source lists, Up/Down and Remove controls. Q > Manage Quick Favorites opens that
+panel with the originating editor and native context selected, including node tree
+contexts. Viewport favorites inherited from Top Bar and Properties are separate
+source groups; moves are confined to one native list. Node editors select the
+shared favorites' mode independently of their tree type. Only existing saved
+contexts and the selected/default context are offered; viewing an empty context
+creates no preference list. Additions still use native right-click Add to Quick
+Favorites.
+
+Management never executes a favorite and does not depend on its operator poll.
+Unavailable operator/menu entries can be reordered or removed. Operators, menus,
+properties, custom labels and separators retain native storage. Moving preserves
+operator IDProperties, invocation context, enum property and property path/index;
+removing uses Blender's existing ownership/free functions. Updates mark preferences
+dirty and notify windows. Editor/context and list selections are transient
+WindowManager state, not a second favorites store. Native CTX_data_mode_string keys
+(such as objectmode, mesh_edit and armature_edit) are retained rather than replaced
+with Python's differently named modes. No DNA fields, layouts, or preference-file
+format changes were introduced.
+
+Validation: 77 native/background assertions cover all four item types, valid and
+invalid moves/removals, foreign-list protection, empty lists, multiple editors,
+shared groups, missing entries, dirty state and save/reload. A semantic comparison
+of serialized lists confirms exactly the expected edits and preserves all command
+settings. Official Blender 5.2.3 read and re-saved the isolated edited preferences
+with identical native list data, including order and entry metadata. This validates
+that version, not arbitrary preference migrations; unavailable Bmax/add-on commands
+still cannot execute in official Blender.
+
+Five GUI checks on each actual OpenGL/Vulkan backend verified Q-to-preferences
+routing, selected mode, source groups and panel rendering. Seven additional OpenGL
+checks cover actual Shader/Geometry Q routing and Japanese/Italian panel displays.
+Captures were visually inspected. Eleven control/tooltip messages have installed
+translations across the nine Bmax locales (99 lookups). The first removal harness
+incorrectly read a separate, already-deleted RNA wrapper; the corrected harness
+follows Blender's native collection-removal lifetime rules. Add-ons were cleared
+only in the temporary fixture to isolate validation from user extensions.
+
+Release INSTALL completed and the runtime is updated. Source is included in the November 4 source update,
+based on ceae7c71f6c4. Original preferences retained their prior modification time;
+the existing Desktop session and public binary package were preserved. All test
+scripts, fixtures, logs, captures and incidental source-reader bytecode were
+external or removed afterward. Build caches and runtime dependencies remain.
+See the [build record](BUILD_WINDOWS.md#quick-favorites-manager-2026-11-04).
 
 ## Bone axes follow name visibility by mode (2026-11-04)
 
@@ -68,11 +236,11 @@ Release INSTALL succeeded using parallelism 2 and CL_MPCount=2. The installed ex
 
 ## Default multi-selection property editing (2026-10-28)
 
-Compatible UI fields edit selected items by default; holding Alt restricts editing to the active item. Typed numbers assign the entered value; numeric dragging retains Blender's existing per-item delta algorithm. Matching and editability checks remain the existing Copy to Selected rules, including modifier names/types and compatible property paths. Numeric clipboard paste assigns the same value, while Ctrl+Alt+V retains its separate whole-array handling. Whole float color/vector buttons now propagate all components, with per-target originals captured before opening a color popup so Esc restores distinct target colors.
+Compatible UI fields edit selected items by default; Alt no longer restricts these edits to the active item (local follow-up, November 4). Typed numbers assign the entered value; numeric dragging retains Blender's existing per-item delta algorithm. Matching and editability checks remain the existing Copy to Selected rules, including modifier names/types and compatible property paths. Numeric clipboard paste assigns the same value, while Ctrl+Alt+V retains its separate whole-array handling. Whole float color/vector buttons now propagate all components, with per-target originals captured before opening a color popup so Esc restores distinct target colors.
 
-Modifier Add (including Geometry Nodes assets), Remove, Apply, Duplicate and supported stack movement invocations use the selection by default and Alt for active-only. Existing explicit `use_selected_objects` arguments are respected; direct Python execution retains the previous active-only default. Operators without that existing option are not globally changed.
+Modifier Add (including Geometry Nodes assets), Remove, Apply, Duplicate and supported stack movement invocations use the selection by default, including when Alt is held. Existing explicit `use_selected_objects` arguments are respected; direct Python execution retains the previous active-only default. Operators without that existing option are not globally changed.
 
-Material New creates/copies one material and assigns that same ID to the corresponding source slot on selected editable local objects. Choosing an existing material or unlinking through an ID selector also propagates. Assignment creates missing slots as required and activates the destination slot; unlinking skips absent slots. Other slots remain. Slot Add/Remove process shared object data once. Material property fields resolve to the active material of each selected object, with unique editable material IDs, covering direct and nested Viewport Display, Line Art and Settings properties. A pinned unrelated material is not propagated. Shared mesh/material IDs remain shared, so Alt does not make them single-user. Linked/non-editable or incompatible data is skipped. Node-tree editing, slot face assignment and arbitrary ID selectors are outside this extension.
+Material New creates/copies one material and assigns that same ID to the corresponding source slot on selected editable local objects. Choosing an existing material or unlinking through an ID selector also propagates. Assignment creates missing slots as required and activates the destination slot; unlinking skips absent slots. Other slots remain. Slot Add/Remove process shared object data once. Material property fields resolve to the active material of each selected object, with unique editable material IDs, covering direct and nested Viewport Display, Line Art and Settings properties. A pinned unrelated material is not propagated. Shared mesh/material IDs remain shared. Linked/non-editable or incompatible data is skipped. Node-tree editing, slot face assignment and arbitrary ID selectors are outside this extension.
 
 Geometry Data has Add/Clear pairs for Sculpt Mask (`.sculpt_mask`, zero initialized), Sculpt Face Sets (`.sculpt_face_set`, initialized to 1), Skin Data and Custom Normals. Existing values are preserved on Add; missing layers are skipped on Clear. Selected local editable meshes are deduplicated by data ID. Object and mesh Edit Mode are supported. Sculpt Mask retains its existing Sculpt Mode restriction; the pre-existing Sculpt Mode availability of Face Sets, Skin and Custom Normals is preserved. Mask clearing retains the existing grid-mask removal. There is no Multires color storage, brush, geometry evaluation or shared DNA layout change.
 

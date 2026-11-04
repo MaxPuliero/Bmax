@@ -1,6 +1,165 @@
 # Building Bmax on Windows
 
+**November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
+
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
+
+## Remove the Alt active-only exception (2026-11-04)
+
+The Release blender and locales targets and CMake installation completed with
+parallelism 2 and CL_MPCount=2. Changes are limited to property-selection guards,
+the shared multi-edit invocation helper, the material selector and nine tooltip
+translations. No DNA or shared layout changed. Existing explicit API arguments,
+Python execution defaults and array clipboard handling were retained.
+
+The standard executable at `D:\blender_build\octahedral_radius\bin\blender.exe`
+is 98,063,360 bytes, timestamp 2026-11-04 14:05:57 JST, SHA-256
+`75BD0444933C27C1A31E6F9B7E6C3EA1CD21DB343943F20EE54E079E9176D5B1`.
+A full CMake install also updated `D:\blender_build\official_save_preview\bin`,
+including the executable, matching symbols and locale catalogs. Both runtimes
+include all current local changes. Source remains local/uncommitted on main;
+Desktop and public packages are unchanged.
+
+Six focused OpenGL cases cover Alt numeric stepping and modifier toggles,
+material unlink propagation, multi-object modifier/Geometry Data invocations and
+preservation of explicit active-only/Python execution behavior. Unselected data
+served as a control. Nine installed MO lookups contain the shortened translated
+tooltip and no longer contain the old Alt instruction. Changed C++ formatting,
+diff whitespace and matching executable hashes were checked. See the [inventory](FEATURES.md#selected-item-editing-without-the-alt-exception-2026-11-04-local-follow-up)
+for validation limits. Early harness attempts had unsupported double-click values
+or lacked separate hover/activation events; the final sequence tests real numeric
+stepping instead of claiming a successful typed-entry regression.
+
+Temporary scripts, isolated settings, captures, scenes, recovery files and logs
+were external and removed after verification. Required runtimes, build caches,
+dependencies and pre-existing user data were preserved. No commit or push was made.
+
+## Continuous workspace viewport (2026-11-04)
+
+The Release blender target and CMake installation completed from D:\blender_prj
+with parallelism 2 and CL_MPCount=2. The native change records last-focused 3D
+window regions at screen focus updates and carries navigation/visibility during
+workspace switches. Isolation uses distinct native slots and separately owned
+restore values; drawing resources, shading, overlays, and locked panel axes are
+preserved. No DNA or shared structure layout changed, so no forced Rebuild was
+required. Public editor declarations caused a broad dependency rebuild.
+
+The user had closed the previously occupied standard runtime before installation;
+no user process was closed by the agent. The installed executable is
+`D:\blender_build\octahedral_radius\bin\blender.exe`, 98,063,360 bytes,
+timestamp 2026-11-04 13:53:21 JST, SHA-256
+`6F2F6D38B2C17CA89DB9F7E3084BC1218B6B72DB7DAF32F84950611E9633F25E`.
+It is byte-identical to bin/Release/blender.exe and the updated separate
+`D:\blender_build\official_save_preview\bin\blender.exe`. Both runtimes now
+include the local Quick Favorites manager, Save as Official and workspace
+continuity. Metadata reports base ceae7c71f6c4, built at 04:53:01 UTC, while
+source remains local/uncommitted on main. Desktop/public packages were not updated.
+The earlier records below describe previous executable states.
+
+115 interactive assertions passed on each actual backend, OpenGL and Vulkan;
+13 further assertions per backend cover Quad View isolation/restore. Ten native
+reload checks verify saved membership and independent isolation after reopening.
+Coverage includes bidirectional navigation, ordinary Hide, Local Collections,
+object-type visibility, separate shading/overlays, local camera frame pan/zoom,
+different pinned scenes and tracking of the last smaller viewport in a split
+layout. Screenshots were visually inspected. The camera is not moved or keyed by
+this transfer. No performance benchmark or general rig/render regression was
+needed for this navigation-only change; the native 16-slot isolation limits remain.
+
+Initial compilation found a misspelled lock constant and missing string include;
+they were corrected before successful linking. Initial fixture failures used the
+wrong namespace for Hide Collection, sampled camera navigation before redraw and
+used an RNA collection containment test with an object instead of a name. The
+corrected harnesses passed. These failures did not involve user scene data.
+
+Changed C++ formatting, diff whitespace, installed runtime hashes and source/startup
+script agreement passed. Verification used only isolated temporary settings, native
+simulated events, scripts and scenes outside the repository. Temporary artifacts
+were removed afterward. Build caches, dependencies, both ready runtimes and
+pre-existing user data were retained. No source commit or push was performed.
+
+## Save as Official (2026-11-04)
+
+The Release native build completed with parallelism 2 and CL_MPCount=2. Mesh RNA
+adds preparation of disposable copies and detection of Bmax color grids; a hidden
+copy-only save option writes the source snapshot without normal save side effects.
+No DNA or shared layout changes were introduced. The initial INSTALL reached the
+executable copy while the user had the standard runtime open, so that copy failed.
+The user process was preserved. A complete side-by-side installation succeeded:
+
+```powershell
+cmake --install D:\blender_build\octahedral_radius --config Release --prefix D:\blender_build\official_save_preview\bin
+```
+
+The ready runtime is `D:\blender_build\official_save_preview\bin\blender.exe`,
+98,058,240 bytes, timestamp 2026-11-04 12:38:14 JST, SHA-256
+`3692B1F3AA9C0DB78D05BD2D728EED76DDF6422EF50F1D549B3865BCD6E0205F`.
+It matches bin/Release/blender.exe and reports base ceae7c71f6c4. Later Python
+refinements were copied into this runtime. The standard executable at
+`D:\blender_build\octahedral_radius\bin\blender.exe` remains the preceding
+Quick Favorites build while in use. Startup scripts guard the new native APIs,
+so that executable safely hides the unsupported Save as Official command.
+The CMake installation prefix/cache was not changed. Desktop and public packages
+were not replaced. Source is local/uncommitted.
+
+Background conversion checks passed, including 13 official Blender 5.2.3 output
+checks and 16 edge cases. Real sculpt strokes created a two-layer stack; real
+paint strokes covered Float/Corner and Byte/Point attributes. Output geometry and
+both evaluated color buffers matched exactly. Standard custom-normal encoding
+introduced at most 0.000053 component error. Dirty byte images and float RGBA
+images retained their pixels without altering source pixels or files, even with
+Always Save Modified Images and automatic packing enabled on the source. Linked
+collections localized correctly without unwanted extra objects, and normal Save
+As still executed its save handlers. See the [inventory](FEATURES.md#save-as-official-2026-11-04-local-implementation)
+for scope and limits.
+
+Interactive File-menu/file-browser saves passed on actual OpenGL and Vulkan,
+including the warning panel, asynchronous completion, and return to an unchanged
+source in Sculpt Mode. Captures were visually inspected. Early harness issues
+were corrected: opening a file invalidated a nonpersistent timer; evaluating and
+clearing a borrowed sculpt mesh during viewport drawing was removed from fixture
+creation. A partial color-library file required a second isolated save to give it
+an active scene before opening in official Blender. Float EXR alpha metadata was
+corrected after the pixel round-trip check detected double premultiplication.
+
+Syntax, changed C++ formatting, runtime/source script agreement and diff whitespace
+checks passed. All verification scripts, scenes, logs, captures, isolated settings,
+recovery files and diagnostic crash files were external and removed after checking.
+Build caches, dependencies, installed runtimes and the user's session were retained.
+
+## Quick Favorites manager (2026-11-04)
+
+Release INSTALL completed from D:\blender_prj with parallelism 2 and CL_MPCount=2.
+The new RNA API exposes the existing bUserMenu/bUserMenuItem lists with read-only
+metadata and native move/remove methods. The Python preferences panel and operators
+use these lists directly; Q supplies its native editor/context to the manager.
+No DNA or shared layout changes were made, so no forced full Rebuild was required.
+The RNA additions regenerated dependencies and caused a broad incremental build.
+Initial RNA generation rejected the reserved Python name items; the public API
+uses entries while its SDNA storage remains the original items list. Locale targets
+were rebuilt and installed after translation refinements.
+
+The installed D:\blender_build\octahedral_radius\bin\blender.exe is timestamped
+2026-11-04 11:44:51 JST, 98,054,144 bytes, SHA-256
+`6430AFA168DD7B97B47B93295E48CDCBC60471AF7FBE3A397FE55206281EDBFF`,
+matching bin/Release/blender.exe. It reports base hash ceae7c71f6c4; this feature is
+local and uncommitted. The installed startup scripts match source, and all nine
+MO catalogs contain the eleven new control/tooltip translations.
+
+77 native assertions passed on the final runtime. Five GUI checks per OpenGL/Vulkan
+backend plus seven OpenGL node-editor/language checks passed, with real popup and
+preferences captures inspected. An isolated native preference-file comparison
+preserved exact operator properties, enum invocation settings, labels, property
+paths/indices and list grouping apart from the requested moves/removals. The edited
+file survived a read/save round trip through official Blender 5.2.3 with identical
+favorites metadata. Source and installed catalog checks passed. See the [inventory](FEATURES.md#native-quick-favorites-manager-2026-11-04-local-implementation) for scope and harness notes.
+
+Verification used copies of user preferences with add-ons disabled in the copies,
+isolated config/script/extension directories, factory startup and native simulated
+events. Original preferences and the user's Desktop session were preserved.
+Temporary scripts, preferences, captures, logs, recovery files and incidental reader
+bytecode were removed; required build caches and installed runtime files remain.
+Source has not been committed/pushed; Desktop and Gumroad packages are separate.
 
 ## Hide bone axes in Object Mode (2026-11-04)
 

@@ -1,5 +1,7 @@
 # Bmax - Blender 5.2.3 LTS
 
+**November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
+
 Bmax is a custom Blender **5.2.3 LTS** build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, Multires color painting, and layered Multires sculpting. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
 
 ## Download for Windows
@@ -19,6 +21,47 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 ## Features
 
 See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 4, 2026, their source commits, and removed items.
+
+### Continuous viewport across workspaces
+
+Switching workspaces carries the last focused 3D Viewport's position, rotation,
+zoom, perspective/camera view and visibility into the destination's last focused
+viewport. Local View isolation, Local Collections and object-type visibility
+filters follow the view. Ordinary Hide state continues to use the active view
+layer. If a workspace has not been used yet, its largest 3D Viewport is chosen.
+
+Shading and overlays remain specific to each viewport: Layout can stay Solid
+while Shading stays Material Preview. Other viewports keep their own navigation;
+locked Quad View panels retain their axes. Workspaces pinned to a different scene
+and workspaces without a 3D Viewport retain their existing behavior.
+
+The implementation is included in the November 4 source update, rebuilt and verified on OpenGL/Vulkan. The standard runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` is updated, including Quick Favorites and Save as Official. See the [build record](doc/bmax/BUILD_WINDOWS.md#continuous-workspace-viewport-2026-11-04).
+
+### Save as Official
+
+<img src="doc/bmax/media/save_as_official_menu.png" alt="File menu with Save as Official and its compatible-copy tooltip" width="743">
+
+**File > Save as Official…** saves a separate `.blend` for official Blender. The open Bmax project keeps its filename, unsaved state and editable data. The default options bake Bmax mesh-normal weighting into standard custom normals and merge the visible Sculpt Layers into native Multires displacement, retaining subdivision levels.
+
+**Separate Multires Color Copy** optionally saves static, evaluated high-resolution colored meshes with materials in a separate folder. Choose Highest Available, Render or Viewport level; this backup contains ordinary color attributes rather than editable Bmax color grids. Existing color backup files receive a numbered filename. Supported external resources can be packed into the copies.
+
+<img src="doc/bmax/media/save_as_official_options.png" alt="Save as Official options for normals, Sculpt Layers, a separate Multires color copy and resource packing" width="349">
+
+A prominent warning appears for **Instances Random**: official Blender uses its standard Random values, so instance colors can change. Materials are not automatically converted. Disabled conversion options also show compatibility warnings. Dirty ordinary images are included without saving their source files; modified tiled, animated or multiview images must be saved first.
+
+This feature is included in the November 4 source update. It was verified against official Blender 5.2.3. The standard runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` and the separate runtime at `D:\blender_build\official_save_preview\bin\blender.exe` now both include this feature. Desktop copies and the public download were not updated. See the [build record](doc/bmax/BUILD_WINDOWS.md#save-as-official-2026-11-04).
+
+### Quick Favorites manager
+
+<img src="doc/bmax/media/quick_favorites_menu.png" alt="Q menu with Manage Quick Favorites" width="285">
+
+**Preferences > Interface > Quick Favorites** lets you reorder entries with **Up/Down** and remove them with **−**. Choose an **Editor** and **Context** to manage its existing Q list without switching your scene's mode. The viewport also shows shared **Top Bar** and **Properties** favorites as separate source groups; ordering stays within each native source list. Node editors keep Shader/Geometry/Compositor contexts separate and offer a mode selector for shared favorites.
+
+<img src="doc/bmax/media/quick_favorites_preferences.png" alt="Quick Favorites preferences with editor and context selectors and separate 3D Viewport and Properties lists" width="642">
+
+Choose **Manage Quick Favorites…** at the bottom of **Q** to open the panel on the current editor/context. Missing operators and menus remain visible and removable. Add favorites through the usual right-click menu, then use normal preference saving or Auto-Save Preferences.
+
+The manager edits Blender's native Quick Favorites data and preserves command settings. A preference-file read/save round trip through **official Blender 5.2.3** preserved the native lists, order and full entry metadata; the manager UI is Bmax-specific, and Bmax/add-on-only commands still require their defining software. The controls are localized in all nine Bmax languages. This feature is currently included in the November 4 source update, rebuilt and verified; see the [build record](doc/bmax/BUILD_WINDOWS.md#quick-favorites-manager-2026-11-04). Desktop and public binary packages were not replaced.
 
 ### Portable icon and bone-name fixes (November 4, 2026)
 
@@ -51,15 +94,17 @@ The implementation is included in source commit [`1dcd95fe7eb0`](https://github.
 
 ### Edit selected items by default
 
-With multiple items selected, editing a compatible property affects the selection automatically. Hold **Alt** to edit only the active item. Typing or pasting a number assigns the same value; dragging retains Blender's existing per-item delta behavior.
+With multiple items selected, editing a compatible property affects the selection automatically. Alt no longer restricts these edits to the active item. Typing or pasting a number assigns the same value; dragging retains Blender's existing per-item delta behavior.
 
 - **Modifiers:** compatible parameters and commands such as Add, Remove, Apply, Duplicate and supported stack movement use the selection by default. Adding a modifier asset follows the same rule. Parameter editing requires existing modifiers with matching names and compatible types.
 - **Materials:** New creates one shared material for the selected editable objects. Choosing an existing material, unlinking, and adding/removing slots also affect the selection. Assignment uses the source slot index and activates that slot on destination objects, preserving other slots. Property editing targets each object's active material, including **Viewport Display**, **Line Art**, **Settings**, and colors. Color-picker cancellation and undo/redo preserve distinct original values.
 - **Mesh Data > Geometry Data:** Add and Clear are available for **Sculpt Mask**, **Sculpt Face Sets**, **Skin Data**, and **Custom Normals**. Add preserves existing data; Clear skips missing data. Object and mesh Edit Mode are supported. Sculpt Mask keeps its existing restriction outside Sculpt Mode; the other commands retain their previous Sculpt Mode availability.
 
-Shared meshes and materials are processed once and remain shared, including when using Alt. Non-editable or incompatible targets are skipped. Shader node graphs and material face-assignment operations are outside this feature; see the [inventory and validation scope](doc/bmax/FEATURES.md#default-multi-selection-property-editing-2026-10-28).
+Shared meshes and materials are processed once and remain shared, without an Alt exception. Non-editable or incompatible targets are skipped. Shader node graphs and material face-assignment operations are outside this feature; see the [inventory and validation scope](doc/bmax/FEATURES.md#default-multi-selection-property-editing-2026-10-28).
 
 The implementation is included in source commit [`d46c5d5ecdbe`](https://github.com/MaxPuliero/Bmax/commit/d46c5d5ecdbeb3984b5f811c486c3318c8ea100e) on `main`. The local Windows runtime is rebuilt and verified, and the user confirmed the feature. Desktop copies and the public Windows download have not been updated.
+
+The removal of the Alt active-only exception is a published November 4 follow-up, rebuilt in both local runtimes. See the [build record](doc/bmax/BUILD_WINDOWS.md#remove-the-alt-active-only-exception-2026-11-04).
 
 ### Bmax interface languages
 

@@ -53,3 +53,22 @@ The visible toggle is now named Select Through and its tooltip includes vertices
 Source commit [`1dcd95fe7eb0`](https://github.com/MaxPuliero/Bmax/commit/1dcd95fe7eb06988cb127f1de2d49f198f5c9fcb), included in `main`, adds Allow Negative Scaling, its tooltip and its formatted On/Off header in all nine Bmax locales (27 additional translations). Existing On/Off translations are reused. The earlier audit counts describe the previous published localization revision; this extension is tracked separately in the feature inventory.
 
 All 27 additional messages passed installed-MO lookup and printf-placeholder checks after the full Release INSTALL. The installed runtime and source branch are recorded in the [Scale inventory entry](FEATURES.md#interactive-scale-zero-clamp-2026-10-30).
+
+## Quick Favorites manager (2026-11-04 local update)
+
+The manager adds eleven control/tooltip messages across the nine existing Bmax
+catalogs (99 installed catalog lookups), including the missing-entry indicator.
+New operator labels/tooltips use the default translation context explicitly.
+Japanese, Chinese, German and Russian wording follows the existing Quick Favorites
+menu terminology. Japanese/Italian panel displays were checked in OpenGL. Native
+command/property labels retain their normal Blender/add-on translations; when a
+property owner is unavailable, the manager uses a readable identifier fallback.
+This source update is local/uncommitted; catalogs are built and installed locally.
+
+## Selected-object tooltip follow-up (2026-11-04)
+
+The selected-object editing tooltip now reads Affect selected editable objects.
+Its nine PO/MO translations no longer instruct users to hold Alt for active-only
+editing, matching the removal of that exception. Nine installed catalog lookups
+passed and the old message key was absent. Other localization coverage records
+above describe their dated builds.
