@@ -30,6 +30,7 @@
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_mesh_tangent.hh"
 #  include "BKE_report.hh"
+#  include "BKE_sculpt_layers_mesh.hh"
 
 #  include "ED_mesh.hh"
 
@@ -38,6 +39,32 @@
 #  include "WM_api.hh"
 
 namespace blender {
+
+/* Call on an isolated save copy, never as an implicit scene edit. */
+static bool rna_Mesh_prepare_official(Mesh *mesh,
+                                      ReportList *reports,
+                                      bool bake_sculpt_layers,
+                                      bool discard_multires_color)
+{
+  if (mesh->runtime->edit_mesh) {
+    BKE_report(reports, RPT_ERROR, "Leave Edit Mode before preparing an official Blender copy");
+    return false;
+  }
+  if (bake_sculpt_layers && mesh->sculpt_layer_stack) {
+    if (!bke::sculpt_layers::native_single(*mesh) && !bke::sculpt_layers::topology_valid(*mesh)) {
+      BKE_report(reports, RPT_ERROR, "Sculpt layer topology is invalid; conversion was not saved");
+      return false;
+    }
+    bke::sculpt_layers::evaluate(*mesh);
+    bke::sculpt_layers::free(mesh->sculpt_layer_stack);
+    mesh->sculpt_layer_stack = nullptr;
+  }
+  if (discard_multires_color) {
+    CustomData_free_layers(&mesh->corner_data, CD_GRID_PAINT_COLOR);
+  }
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+  return true;
+}
 
 static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {
@@ -335,6 +362,23 @@ void RNA_api_mesh(StructRNA *srna)
   parm = RNA_def_int(
       func, "groups", 0, 0, INT_MAX, "groups", "Total number of groups", 0, INT_MAX);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_OUTPUT);
+
+  func = RNA_def_function(srna, "prepare_official", "rna_Mesh_prepare_official");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(
+      func, "Materialize sculpt layers and remove Bmax color grids on a disposable copy");
+  RNA_def_boolean(func,
+                  "bake_sculpt_layers",
+                  true,
+                  "Bake Sculpt Layers",
+                  "Keep the composed native Multires geometry and remove layer authoring data");
+  RNA_def_boolean(func,
+                  "discard_multires_color",
+                  true,
+                  "Discard Multires Color Grids",
+                  "Remove Bmax grids after exporting a compatible color mesh copy");
+  parm = RNA_def_boolean(func, "success", false, "Success", "The mesh is ready");
+  RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "normals_split_custom_set", "rna_Mesh_normals_split_custom_set");
   RNA_def_function_ui_description(func,

@@ -165092,8 +165092,8 @@ msgstr "既存のデータを置き換えずにスカルプトマスクデータ
 
 #. Bmax interface localization
 #: source/blender/editors/object/object_edit.cc:135
-msgid "Affect selected editable objects; hold Alt for the active object only"
-msgstr "選択中の編集可能なオブジェクトに適用します。Altを押すとアクティブオブジェクトのみに適用します"
+msgid "Affect selected editable objects"
+msgstr "選択中の編集可能なオブジェクトに適用します"
 
 #. Bmax interface localization
 #: source/blender/editors/mesh/editmesh_tools.cc:5412
@@ -165764,3 +165764,47 @@ msgstr "表示中のスカルプトを固定のレイヤー1に統合し、他�
 #. Bmax static sculpt base
 msgid "Amount of this sculpt layer added to the static base"
 msgstr "固定ベースに加算するスカルプトレイヤーの量"
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites..."
+msgstr "お気に入りツールを管理..."
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites"
+msgstr "お気に入りツールを管理"
+
+#. Bmax Quick Favorites manager
+msgid "Reorder or remove favorites for this editor and context"
+msgstr "このエディターとコンテキストのお気に入りの並べ替えや削除を行います"
+
+#. Bmax Quick Favorites manager
+msgid "Shared Favorites Mode"
+msgstr "共有お気に入りのモード"
+
+#. Bmax Quick Favorites manager
+msgid "No Quick Favorites in this context"
+msgstr "このコンテキストにお気に入りツールはありません"
+
+#. Bmax Quick Favorites manager
+msgid "Right-click a command to add it to Quick Favorites"
+msgstr "コマンドを右クリックするとお気に入りツールに追加できます"
+
+#. Bmax Quick Favorites manager
+msgid "Move Quick Favorite"
+msgstr "お気に入りツールを移動"
+
+#. Bmax Quick Favorites manager
+msgid "Change the order of favorites in this list"
+msgstr "このリストのお気に入りの順序を変更します"
+
+#. Bmax Quick Favorites manager
+msgid "Remove Quick Favorite"
+msgstr "お気に入りツールを削除"
+
+#. Bmax Quick Favorites manager
+msgid "Remove this entry from Quick Favorites"
+msgstr "この項目をお気に入りツールから削除します"
+
+#. Bmax Quick Favorites missing entry
+msgid "Missing"
+msgstr "見つかりません"

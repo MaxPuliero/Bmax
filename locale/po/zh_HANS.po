@@ -163270,8 +163270,8 @@ msgstr "添加雕刻遮罩数据，不替换现有数据"
 
 #. Bmax interface localization
 #: source/blender/editors/object/object_edit.cc:135
-msgid "Affect selected editable objects; hold Alt for the active object only"
-msgstr "影响选中的可编辑物体；按住 Alt 则仅影响活动物体"
+msgid "Affect selected editable objects"
+msgstr "影响选中的可编辑物体"
 
 #. Bmax interface localization
 #: source/blender/editors/mesh/editmesh_tools.cc:5412
@@ -163952,3 +163952,47 @@ msgstr "将可见雕刻合并到固定的图层1并移除其他图层"
 #. Bmax static sculpt base
 msgid "Amount of this sculpt layer added to the static base"
 msgstr "此雕刻图层添加到固定基础网格的强度"
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites..."
+msgstr "管理快速收藏夹..."
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites"
+msgstr "管理快速收藏夹"
+
+#. Bmax Quick Favorites manager
+msgid "Reorder or remove favorites for this editor and context"
+msgstr "重新排序或移除此编辑器和上下文的收藏"
+
+#. Bmax Quick Favorites manager
+msgid "Shared Favorites Mode"
+msgstr "共享收藏模式"
+
+#. Bmax Quick Favorites manager
+msgid "No Quick Favorites in this context"
+msgstr "此上下文中没有快速收藏夹"
+
+#. Bmax Quick Favorites manager
+msgid "Right-click a command to add it to Quick Favorites"
+msgstr "右键单击命令以将其添加到快速收藏夹"
+
+#. Bmax Quick Favorites manager
+msgid "Move Quick Favorite"
+msgstr "移动快速收藏夹"
+
+#. Bmax Quick Favorites manager
+msgid "Change the order of favorites in this list"
+msgstr "更改此列表中收藏的顺序"
+
+#. Bmax Quick Favorites manager
+msgid "Remove Quick Favorite"
+msgstr "移除快速收藏夹"
+
+#. Bmax Quick Favorites manager
+msgid "Remove this entry from Quick Favorites"
+msgstr "从快速收藏夹中移除此条目"
+
+#. Bmax Quick Favorites missing entry
+msgid "Missing"
+msgstr "缺失"

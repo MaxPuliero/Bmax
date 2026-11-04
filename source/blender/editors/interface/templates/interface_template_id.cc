@@ -85,8 +85,7 @@ static void template_material_assign_selected(bContext *C, TemplateID &template_
   }
   if (!template_ui.ptr.owner_id || GS(template_ui.ptr.owner_id->name) != ID_OB ||
       !RNA_struct_is_a(RNA_property_pointer_type(&template_ui.ptr, template_ui.prop),
-                       RNA_Material) ||
-      (CTX_wm_window(C)->runtime->eventstate->modifier & KM_ALT))
+                       RNA_Material))
   {
     return;
   }

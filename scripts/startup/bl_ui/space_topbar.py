@@ -174,6 +174,8 @@ class TOPBAR_MT_file(Menu):
 
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save As...").show_save_modified_images_dialog = True
+        if hasattr(bpy.types, "WM_OT_save_as_official"):
+            layout.operator("wm.save_as_official", text="Save as Official...")
         layout.operator_context = 'INVOKE_AREA'
         save_copy = layout.operator("wm.save_as_mainfile", text="Save Copy...")
         save_copy.copy = True

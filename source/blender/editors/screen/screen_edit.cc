@@ -1105,6 +1105,12 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
     screen->active_region = nullptr;
   }
 
+  if (C && area && area->spacetype == SPACE_VIEW3D && screen->active_region &&
+      screen->active_region->regiontype == RGN_TYPE_WINDOW)
+  {
+    workspace_view3d_active_region_set(*CTX_data_main(C), *screen, *area, *screen->active_region);
+  }
+
   if (region_prev != screen->active_region || !screen->active_region) {
     WM_window_status_area_tag_redraw(win);
   }

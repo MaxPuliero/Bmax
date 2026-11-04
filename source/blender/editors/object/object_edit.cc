@@ -132,19 +132,18 @@ Vector<Object *> multi_edit_objects(const bContext &C, const wmOperator &op)
 
 void multi_edit_operator_properties(wmOperatorType *ot)
 {
-  PropertyRNA *prop = RNA_def_boolean(
-      ot->srna,
-      "use_selected_objects",
-      false,
-      "Selected Objects",
-      "Affect selected editable objects; hold Alt for the active object only");
+  PropertyRNA *prop = RNA_def_boolean(ot->srna,
+                                      "use_selected_objects",
+                                      false,
+                                      "Selected Objects",
+                                      "Affect selected editable objects");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 }
 
-void multi_edit_operator_set_from_event(wmOperator *op, const wmEvent *event)
+void multi_edit_operator_set_from_event(wmOperator *op, const wmEvent * /*event*/)
 {
   if (!RNA_struct_property_is_set(op->ptr, "use_selected_objects")) {
-    RNA_boolean_set(op->ptr, "use_selected_objects", (event->modifier & KM_ALT) == 0);
+    RNA_boolean_set(op->ptr, "use_selected_objects", true);
   }
 }
 

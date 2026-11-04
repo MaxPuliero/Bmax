@@ -13,7 +13,9 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_path_utils.hh"
+#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -36,6 +38,7 @@
 #include "ED_datafiles.h"
 #include "ED_object.hh"
 #include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -179,6 +182,63 @@ static WorkSpaceLayout *workspace_change_get_new_layout(Main *bmain,
       bmain, workspace_new, layout_new, layout_old, win);
 }
 
+struct WorkspaceViewport {
+  ScrArea *area = nullptr;
+  ARegion *region = nullptr;
+};
+
+/* Session IDs and membership checks avoid dereferencing deleted areas/regions.
+ * Prune on the first focus event for a screen, including after loading a file. */
+static Map<uint, WorkspaceViewport> workspace_viewports;
+
+void workspace_view3d_active_region_set(const Main &bmain,
+                                        const bScreen &screen,
+                                        ScrArea &area,
+                                        ARegion &region)
+{
+  if (!workspace_viewports.contains(screen.id.session_uid)) {
+    Set<uint> screens;
+    for (const bScreen &item : bmain.screens) {
+      screens.add(item.id.session_uid);
+    }
+    workspace_viewports.remove_if([&](const auto &item) { return !screens.contains(item.key); });
+  }
+  workspace_viewports.add_overwrite(screen.id.session_uid, {&area, &region});
+}
+
+static WorkspaceViewport workspace_viewport_find(const bScreen &screen)
+{
+  const WorkspaceViewport previous = workspace_viewports.lookup_default(screen.id.session_uid, {});
+  WorkspaceViewport result;
+  int largest = -1;
+  for (ScrArea &area : screen.areabase) {
+    if (area.spacetype != SPACE_VIEW3D) {
+      continue;
+    }
+    ARegion *region = BKE_area_find_region_active_win(&area);
+    if (&area == previous.area) {
+      for (ARegion &candidate : area.regionbase) {
+        if (&candidate == previous.region && candidate.regiontype == RGN_TYPE_WINDOW) {
+          region = &candidate;
+          break;
+        }
+      }
+    }
+    if (!region || !region->regiondata) {
+      continue;
+    }
+    if (&area == previous.area) {
+      return {&area, region};
+    }
+    const int size = area.winx * area.winy;
+    if (size > largest) {
+      result = {&area, region};
+      largest = size;
+    }
+  }
+  return result;
+}
+
 bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager *wm, wmWindow *win)
 {
   Main *bmain = CTX_data_main(C);
@@ -193,6 +253,10 @@ bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager 
      * but nothing changed */
     return false;
   }
+
+  const WorkspaceViewport source_view = workspace_viewport_find(*screen_old);
+  Scene *source_scene = WM_window_get_active_scene(win);
+  ViewLayer *source_layer = WM_window_get_active_view_layer(win);
 
   workspace_exit(workspace_old, win);
 
@@ -209,6 +273,21 @@ bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager 
    * actual screen change and updates context (including CTX_wm_workspace) */
   screen_change_update(C, win, screen_new);
   workspace_change_update(workspace_new, workspace_old, C, wm);
+
+  if (source_view.area && source_scene == WM_window_get_active_scene(win)) {
+    const WorkspaceViewport target_view = workspace_viewport_find(*screen_new);
+    if (target_view.area) {
+      ED_view3d_workspace_sync(C,
+                               win,
+                               source_view.area,
+                               source_view.region,
+                               source_layer,
+                               target_view.area,
+                               target_view.region);
+      workspace_view3d_active_region_set(
+          *bmain, *screen_new, *target_view.area, *target_view.region);
+    }
+  }
 
   BLI_assert(CTX_wm_workspace(C) == workspace_new);
 

@@ -69781,8 +69781,8 @@ msgstr "Aggiunge dati maschera per la scultura senza sostituire i dati esistenti
 
 #. Bmax interface localization
 #: source/blender/editors/object/object_edit.cc:135
-msgid "Affect selected editable objects; hold Alt for the active object only"
-msgstr "Agisce sugli oggetti selezionati modificabili; tenere premuto Alt per agire solo sull’oggetto attivo"
+msgid "Affect selected editable objects"
+msgstr "Agisce sugli oggetti selezionati modificabili"
 
 #. Bmax interface localization
 #: source/blender/editors/mesh/editmesh_tools.cc:5412
@@ -70513,3 +70513,47 @@ msgstr "Unisce lo sculpt visibile nel Layer 1 statico e rimuove gli altri layer"
 #. Bmax static sculpt base
 msgid "Amount of this sculpt layer added to the static base"
 msgstr "Quantità di questo layer Sculpt aggiunta alla base statica"
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites..."
+msgstr "Gestisci preferiti rapidi..."
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites"
+msgstr "Gestisci preferiti rapidi"
+
+#. Bmax Quick Favorites manager
+msgid "Reorder or remove favorites for this editor and context"
+msgstr "Riordina o rimuove i preferiti di questo editor e contesto"
+
+#. Bmax Quick Favorites manager
+msgid "Shared Favorites Mode"
+msgstr "Modalità dei preferiti condivisi"
+
+#. Bmax Quick Favorites manager
+msgid "No Quick Favorites in this context"
+msgstr "Nessun preferito rapido in questo contesto"
+
+#. Bmax Quick Favorites manager
+msgid "Right-click a command to add it to Quick Favorites"
+msgstr "Fai clic destro su un comando per aggiungerlo ai preferiti rapidi"
+
+#. Bmax Quick Favorites manager
+msgid "Move Quick Favorite"
+msgstr "Sposta preferito rapido"
+
+#. Bmax Quick Favorites manager
+msgid "Change the order of favorites in this list"
+msgstr "Cambia l’ordine dei preferiti in questo elenco"
+
+#. Bmax Quick Favorites manager
+msgid "Remove Quick Favorite"
+msgstr "Rimuovi preferito rapido"
+
+#. Bmax Quick Favorites manager
+msgid "Remove this entry from Quick Favorites"
+msgstr "Rimuove questa voce dai preferiti rapidi"
+
+#. Bmax Quick Favorites missing entry
+msgid "Missing"
+msgstr "Mancante"

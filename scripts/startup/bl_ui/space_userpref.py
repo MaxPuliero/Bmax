@@ -219,6 +219,69 @@ class InterfacePanel:
     bl_context = "interface"
 
 
+class USERPREF_UL_quick_favorites(UIList):
+    def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname):
+        icons = {'OPERATOR': 'PLAY', 'MENU': 'COLLAPSEMENU',
+                 'PROPERTY': 'PREFERENCES', 'SEPARATOR': 'REMOVE'}
+        label = item.name
+        if item.type == 'PROPERTY' and label == item.identifier:
+            owner_path, _, property_id = item.identifier.rpartition('.')
+            label = property_id.replace('_', ' ').capitalize()
+            try:
+                owner = context.path_resolve(owner_path)
+                prop = owner.bl_rna.properties.get(property_id)
+                if prop is not None:
+                    label = prop.name
+            except (AttributeError, ValueError):
+                pass
+        layout.label(text=label, icon='ERROR' if item.is_missing else icons[item.type])
+        if item.is_missing:
+            layout.label(text="Missing")
+
+
+class USERPREF_PT_interface_quick_favorites(InterfacePanel, Panel):
+    bl_label = "Quick Favorites"
+
+    def draw(self, context):
+        from bl_operators.quick_favorites import _EDITOR_ITEMS, find_menu, menu_groups
+
+        layout = self.layout
+        state = context.window_manager.quick_favorites
+        layout.use_property_split = True
+        layout.prop(state, "editor")
+        layout.prop(state, "menu_context")
+        if state.editor == 'NODE_EDITOR':
+            layout.prop(state, "shared_context")
+        editor_names = {item[0]: item[1] for item in _EDITOR_ITEMS}
+        for editor, key, active_property in menu_groups(context):
+            menu = find_menu(context, editor, key)
+            if menu is None and editor != state.editor:
+                continue
+            box = layout.box()
+            box.label(text=editor_names.get(editor, editor))
+            if menu is None or not menu.entries:
+                box.label(text="No Quick Favorites in this context")
+                continue
+            index = max(0, min(getattr(state, active_property), len(menu.entries) - 1))
+            row = box.row()
+            row.template_list("USERPREF_UL_quick_favorites", editor, menu, "entries",
+                              state, active_property, rows=3, maxrows=7)
+            buttons = row.column(align=True)
+            for direction, icon, enabled in (
+                    ('UP', 'TRIA_UP', index > 0),
+                    ('DOWN', 'TRIA_DOWN', index + 1 < len(menu.entries))):
+                sub = buttons.column(align=True)
+                sub.enabled = enabled
+                op = sub.operator("preferences.quick_favorite_move", text="", icon=icon)
+                op.editor, op.menu_context, op.index = editor, key, index
+                op.active_property, op.direction = active_property, direction
+            buttons.separator()
+            op = buttons.operator("preferences.quick_favorite_remove", text="", icon='REMOVE')
+            op.editor, op.menu_context, op.index = editor, key, index
+            op.active_property = active_property
+        layout.label(text="Right-click a command to add it to Quick Favorites", icon='INFO')
+
+
 class USERPREF_PT_interface_display(InterfacePanel, CenterAlignMixIn, Panel):
     bl_label = "Display"
 
@@ -3089,6 +3152,8 @@ classes = (
     USERPREF_MT_view,
     USERPREF_MT_save_load,
 
+    USERPREF_UL_quick_favorites,
+    USERPREF_PT_interface_quick_favorites,
     USERPREF_PT_interface_display,
     USERPREF_PT_interface_editors,
     USERPREF_PT_interface_temporary_windows,

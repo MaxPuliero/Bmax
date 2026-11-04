@@ -29,6 +29,29 @@
 - Preservare profondità, occlusione, clipping, In Front, X-Ray e picking GPU per corpi e contorni; gli assi delle ossa fanno eccezione per la sola occlusione visiva. Non cambiare la matematica di valutazione delle ossa per correggere la visualizzazione.
 - Per modifiche ai contorni, verificare l'ordine inverso di creazione, la selezione multipla con oggetto attivo e le coppie di tipi diversi coinvolti. Verificare OpenGL/Vulkan, l'occlusione e il picking quando disponibili, usando solo artefatti temporanei.
 
+## Editing multiplo
+
+- Le proprietà compatibili e le invocazioni UI dei comandi su modificatori, materiali e Geometry Data agiscono sulla selezione anche con Alt premuto. Non reintrodurre Alt come eccezione per il solo attivo. Preservare gli argomenti espliciti use_selected_objects e il comportamento dell'esecuzione Python diretta, i dati condivisi, annullamento e clipboard di array.
+
+## Continuità viewport tra workspace
+
+- Il cambio workspace trasferisce navigazione e visibilità dall'ultima viewport 3D usata alla corrispondente ultima viewport di destinazione, con fallback alla più grande. Preservare shading, overlay, altre viewport e orientamenti bloccati in Quad View; non copiare risorse di disegno o timer tra regioni.
+- Local View e Local Collections devono avere slot nativi indipendenti e backup con proprietà separate. Il ritorno da Local View conserva la vista precedente all'isolamento. Rispettare i limiti nativi e segnalare l'esaurimento degli slot.
+- Non sincronizzare tra scene diverse fissate ai workspace. Il tracking del focus è solo runtime con verifica dell'appartenenza di area/regione e identificatori di sessione; non aggiungere proprietà salvate per ricordare l'ultima viewport.
+
+## Quick Favorites
+
+- Il gestore in Preferences > Interface modifica direttamente U.user_menus: preservare le liste native bUserMenu/bUserMenuItem e il formato delle preferenze, senza un secondo archivio Bmax o nuovi campi DNA. Riordino e rimozione devono conservare parametri degli operatori, contesto di invocazione, enum, nomi personalizzati, percorsi e indici delle proprietà; usare le funzioni native per liberare le voci.
+- Separare le liste per editor e chiavi native CTX_data_mode_string (objectmode, mesh_edit, armature_edit, ecc.); per i nodi usare il tree_idname. Non usare i nomi differenti di bpy.context.mode come chiavi salvate. Mantenere i gruppi ereditati da Top Bar e Properties e riordinare entro la rispettiva lista. Le selezioni del pannello sono stato temporaneo WindowManager, non preferenze aggiuntive.
+- Le voci mancanti devono restare gestibili senza eseguire comandi o richiedere il loro contesto di esecuzione. Segnalare le modifiche con il normale dirty state delle preferenze. Verificare riordino/rimozione, salvataggio/ricaricamento e compatibilità con Blender ufficiale della stessa versione tramite sole copie temporanee delle preferenze.
+
+## Save as Official
+
+- File > Save as Official deve convertire solo una copia in un processo isolato. Preservare nome, dirty state, modalità, layer, immagini e risorse del progetto aperto. Il percorso nativo bmax_snapshot è nascosto e valido solo per Save As Copy; non cambiare il normale salvataggio di Blender.
+- Convertire il weighting delle normali in custom normals standard; bake dei layer nella geometria Multires mantenendo i livelli. Il backup colore separato contiene mesh statiche valutate e normali attributi colore, non griglie Bmax editabili. Non sovrascrivere backup colore esistenti.
+- Instances Random richiede un warning chiaro sulle differenze in Blender ufficiale, senza conversione automatica dei materiali. Non promettere compatibilità di add-on, cache esterne o funzionalità Bmax non convertite.
+- Verificare la lettura in Blender ufficiale della stessa versione, il risultato geometrico/colore e che il progetto originale resti invariato. Se il runtime standard è occupato, mantenere la sessione dell'utente e installare un runtime completo separato; documentare i percorsi distinti.
+
 ## Colore Multires in Sculpt Mode
 
 - Leggere `doc/bmax/multires_color.md` prima di intervenire sul colore Multires. La feature comprende Paint, Blur e Smear dentro Sculpt Mode; il Vertex Paint classico resta separato. Color Filter, Mask by Color e Dynamic Topology non sono supportati da questo percorso.

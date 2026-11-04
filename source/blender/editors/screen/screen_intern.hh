@@ -269,6 +269,12 @@ void screen_stop_playback(Main *bmain, wmWindowManager *wm, wmWindow *win, bScre
 void SCREEN_OT_screenshot(wmOperatorType *ot);
 void SCREEN_OT_screenshot_area(wmOperatorType *ot);
 
+/* Last focused 3D window region, kept outside saved screen data. */
+void workspace_view3d_active_region_set(const Main &bmain,
+                                        const bScreen &screen,
+                                        ScrArea &area,
+                                        ARegion &region);
+
 /* `workspace_layout_edit.cc` */
 
 bool workspace_layout_set_poll(const WorkSpaceLayout *layout);

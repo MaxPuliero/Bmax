@@ -4011,6 +4011,31 @@ static wmOperatorStatus wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "incremental");
   const bool is_incremental = prop ? RNA_property_boolean_get(op->ptr, prop) : false;
 
+  /* Internal compatibility snapshot: flush editor data, but never save images,
+   * invoke user save handlers, pack live resources, alter history or saved state. */
+  if (is_save_as && RNA_boolean_get(op->ptr, "bmax_snapshot")) {
+    if (!use_save_as_copy) {
+      BKE_report(op->reports, RPT_ERROR, "Internal snapshots require Save Copy");
+      return OPERATOR_CANCELLED;
+    }
+    RNA_string_get(op->ptr, "filepath", filepath);
+    if (!wm_file_write_check_with_report_on_failure(bmain, filepath, op->reports)) {
+      return OPERATOR_CANCELLED;
+    }
+    ED_editors_flush_edits(bmain);
+    BKE_lib_override_library_main_operations_create(bmain, true, nullptr);
+    BlendFileWriteParams params{};
+    params.use_save_as_copy = true;
+    params.use_save_versions = false;
+    params.remap_mode = RNA_boolean_get(op->ptr, "relative_remap") ?
+                            BLO_WRITE_PATH_REMAP_RELATIVE :
+                            BLO_WRITE_PATH_REMAP_NONE;
+    int flags = G.fileflags;
+    SET_FLAG_FROM_TEST(flags, RNA_boolean_get(op->ptr, "compress"), G_FILE_COMPRESS);
+    return BLO_write_file(bmain, filepath, flags, &params, op->reports) ? OPERATOR_FINISHED :
+                                                                          OPERATOR_CANCELLED;
+  }
+
   if (U.save_modified_images == USER_SAVE_MODIFIED_IMAGES_ALWAYS &&
       ED_image_save_all_modified_info(bmain, nullptr) > 0)
   {
@@ -4207,6 +4232,13 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
                   true,
                   "Remap Relative",
                   "Remap relative paths when saving to a different directory");
+  prop = RNA_def_boolean(ot->srna,
+                         "bmax_snapshot",
+                         false,
+                         "Internal Snapshot",
+                         "Save an isolated working snapshot without normal save side effects");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
   prop = RNA_def_boolean(
       ot->srna,
       "copy",

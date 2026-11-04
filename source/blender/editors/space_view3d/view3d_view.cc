@@ -14,6 +14,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
+#include "BLI_string.h"
 
 #include "BKE_action.hh"
 #include "BKE_context.hh"
@@ -1363,6 +1364,156 @@ bool ED_view3d_local_collections_set(const Main *bmain, View3D *v3d)
   }
 
   return true;
+}
+
+/* Only navigation values: never copy drawing resources, timers, quad-view locks,
+ * shading, overlays or owned pointers from another region. */
+static void workspace_view_copy(RegionView3D &target, const RegionView3D &source)
+{
+  copy_v3_v3(target.ofs, source.ofs);
+  copy_qt_qt(target.viewquat, source.viewquat);
+  target.dist = source.dist;
+  target.persp = source.persp;
+  target.view = source.view;
+  target.view_axis_roll = source.view_axis_roll;
+  target.camzoom = source.camzoom;
+  target.camdx = source.camdx;
+  target.camdy = source.camdy;
+  copy_v2_v2(target.ofs_lock, source.ofs_lock);
+  copy_qt_qt(target.lviewquat, source.lviewquat);
+  target.lpersp = source.lpersp;
+  target.lview = source.lview;
+  target.lview_axis_roll = source.lview_axis_roll;
+}
+
+static void workspace_collections_copy(ListBaseT<LayerCollection> &collections,
+                                       const ushort source_bit,
+                                       const ushort target_bit)
+{
+  for (LayerCollection &collection : collections) {
+    SET_FLAG_FROM_TEST(collection.local_collections_bits,
+                       collection.local_collections_bits & source_bit,
+                       target_bit);
+    workspace_collections_copy(collection.layer_collections, source_bit, target_bit);
+  }
+}
+
+void ED_view3d_workspace_sync(bContext *C,
+                              wmWindow *win,
+                              ScrArea *source_area,
+                              ARegion *source_region,
+                              ViewLayer *source_layer,
+                              ScrArea *target_area,
+                              ARegion *target_region)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = WM_window_get_active_scene(win);
+  ViewLayer *target_layer = WM_window_get_active_view_layer(win);
+  View3D *source = static_cast<View3D *>(source_area->spacedata.first);
+  View3D *target = static_cast<View3D *>(target_area->spacedata.first);
+  auto *source_view = static_cast<RegionView3D *>(source_region->regiondata);
+  auto *target_view = static_cast<RegionView3D *>(target_region->regiondata);
+  const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  /* Complete old animations without moving a locked scene camera. */
+  ED_view3d_smooth_view_force_finish_no_camera_lock(
+      depsgraph, CTX_wm_manager(C), win, scene, source, source_region);
+  for (ARegion &region : target_area->regionbase) {
+    if (region.regiontype == RGN_TYPE_WINDOW) {
+      ED_view3d_smooth_view_force_finish_no_camera_lock(
+          depsgraph, CTX_wm_manager(C), win, scene, target, &region);
+    }
+  }
+
+  ushort local_bit = 0;
+  if (source->localvd) {
+    local_bit = target->localvd ? target->local_view_uid : free_localview_bit(bmain);
+    if (!local_bit) {
+      WM_global_report(RPT_WARNING, "Cannot carry isolation: all 16 Local View slots are in use");
+      return;
+    }
+  }
+  const bool target_local_collections = target->flag & V3D_LOCAL_COLLECTIONS;
+  if (source->flag & V3D_LOCAL_COLLECTIONS) {
+    target->flag |= V3D_LOCAL_COLLECTIONS;
+    if (!ED_view3d_local_collections_set(bmain, target)) {
+      SET_FLAG_FROM_TEST(target->flag, target_local_collections, V3D_LOCAL_COLLECTIONS);
+      WM_global_report(RPT_WARNING,
+                       "Cannot carry visibility: all 16 Local Collection slots are in use");
+      return;
+    }
+  }
+  else {
+    target->flag &= ~V3D_LOCAL_COLLECTIONS;
+  }
+
+  BKE_view_layer_synced_ensure(*bmain, scene, source_layer);
+  BKE_view_layer_synced_ensure(*bmain, scene, target_layer);
+  const ushort previous_bit = target->local_view_uid;
+  for (Base &base : *BKE_view_layer_object_bases_get(target_layer)) {
+    const Base *source_base = BKE_view_layer_base_find(source_layer, base.object);
+    base.local_view_bits &= ~previous_bit;
+    SET_FLAG_FROM_TEST(base.local_view_bits,
+                       source_base && (source_base->local_view_bits & source->local_view_uid),
+                       local_bit);
+    if (source_base && source_layer != target_layer) {
+      SET_FLAG_FROM_TEST(base.flag, source_base->flag & BASE_HIDDEN, BASE_HIDDEN);
+    }
+  }
+  MEM_delete(target->localvd);
+  target->localvd = nullptr;
+  target->local_view_uid = local_bit;
+  ED_view3d_local_stats_free(target);
+  if (source->localvd) {
+    target->localvd = MEM_new<View3D>(__func__);
+    target->localvd->camera = source->localvd->camera;
+  }
+  for (ARegion &region : target_area->regionbase) {
+    if (region.regiontype != RGN_TYPE_WINDOW) {
+      continue;
+    }
+    auto *view = static_cast<RegionView3D *>(region.regiondata);
+    RegionView3D previous;
+    workspace_view_copy(previous, view->localvd ? *view->localvd : *view);
+    MEM_delete(view->localvd);
+    view->localvd = nullptr;
+    if (source->localvd) {
+      view->localvd = MEM_new<RegionView3D>(__func__);
+      const RegionView3D &restore = (view == target_view &&
+                                     !(RV3D_LOCK_FLAGS(view) & RV3D_LOCK_ANY_TRANSFORM)) ?
+                                        (source_view->localvd ? *source_view->localvd :
+                                                                *source_view) :
+                                        previous;
+      workspace_view_copy(*view->localvd, restore);
+    }
+    else if (view != target_view) {
+      workspace_view_copy(*view, previous);
+    }
+  }
+  /* Respect locked orthographic panels in Quad View. */
+  if (!(RV3D_LOCK_FLAGS(target_view) & RV3D_LOCK_ANY_TRANSFORM)) {
+    workspace_view_copy(*target_view, *source_view);
+  }
+  target->camera = source->camera;
+  target->scenelock = source->scenelock;
+  target->lens = source->lens;
+  target->clip_start = source->clip_start;
+  target->clip_end = source->clip_end;
+  target->ob_center = source->ob_center;
+  STRNCPY(target->ob_center_bone, source->ob_center_bone);
+  target->ob_center_cursor = source->ob_center_cursor;
+  target->object_type_exclude_viewport = source->object_type_exclude_viewport;
+  target->object_type_exclude_select = source->object_type_exclude_select;
+  if (target->flag & V3D_LOCAL_COLLECTIONS) {
+    /* A window keeps the same view layer when switching workspaces. */
+    workspace_collections_copy(target_layer->layer_collections,
+                               source->local_collections_uid,
+                               target->local_collections_uid);
+    BKE_layer_collection_local_sync(*bmain, scene, target_layer, target);
+  }
+  BKE_view_layer_need_resync_tag(target_layer);
+  DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+  ED_area_tag_redraw(target_area);
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_VISIBLE, scene);
 }
 
 void ED_view3d_local_collections_reset(const bContext *C, const bool reset_all)

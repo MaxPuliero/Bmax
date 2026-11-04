@@ -308,14 +308,6 @@ static void selectcontext_apply(bContext *C,
                                 const double value_orig,
                                 bool cancel = false);
 
-/**
- * Edit compatible selected items by default; holding Alt restricts editing to the active item.
- * Array pasting is filtered separately in #apply_but(), see #108096. Mouse wheel events are not
- * part of `win->runtime->eventstate` with modifiers held down, so test the modifier state here
- * rather than restricting this to particular event types.
- */
-#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) == 0)
-
 /** just show a tinted color so users know its activated */
 #  define BUT_IS_SELECT_CONTEXT BUT_NODE_ACTIVE
 
@@ -2391,16 +2383,14 @@ static void apply_but(
     {
       wmWindow *win = CTX_wm_window(C);
       const wmEvent *event = win->runtime->eventstate;
-      /* May have been enabled before activating, don't do for array pasting. */
-      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
-        /* See comment for #IS_ALLSELECT_EVENT why this needs to be filtered here. */
-        const bool is_array_paste = (event->val == KM_PRESS) && (event->modifier & KM_ALT) &&
-                                    (event->modifier & (KM_CTRL | KM_OSKEY)) &&
-                                    (event->modifier & KM_SHIFT) == 0 && (event->type == EVT_VKEY);
-        if (!is_array_paste) {
-          selectcontext_begin(C, but, &data->select_others);
-          data->select_others.is_enabled = true;
-        }
+      /* Edit compatible selected items regardless of Alt. Whole-array clipboard
+       * paste retains its separate handling, see #108096. */
+      const bool is_array_paste = (event->val == KM_PRESS) && (event->modifier & KM_ALT) &&
+                                  (event->modifier & (KM_CTRL | KM_OSKEY)) &&
+                                  (event->modifier & KM_SHIFT) == 0 && (event->type == EVT_VKEY);
+      if (!is_array_paste) {
+        selectcontext_begin(C, but, &data->select_others);
+        data->select_others.is_enabled = true;
       }
     }
     if (data->select_others.elems.is_empty()) {
@@ -3835,10 +3825,8 @@ static void textedit_begin(bContext *C, Button *but, HandleButtonData *data)
 
 #ifdef USE_ALLSELECT
   if (is_num_but) {
-    if (IS_ALLSELECT_EVENT(win->runtime->eventstate)) {
-      data->select_others.is_enabled = true;
-      data->select_others.is_copy = true;
-    }
+    data->select_others.is_enabled = true;
+    data->select_others.is_copy = true;
   }
 #endif
 
@@ -4937,12 +4925,10 @@ static void block_open_begin(bContext *C, Button *but, HandleButtonData *data)
 
 #ifdef USE_ALLSELECT
   {
-    if (IS_ALLSELECT_EVENT(data->window->runtime->eventstate)) {
-      data->select_others.is_enabled = true;
-      if (but->type == ButtonType::Color) {
-        /* Snapshot before popup controls modify the selected colors. */
-        selectcontext_begin(C, but, &data->select_others);
-      }
+    data->select_others.is_enabled = true;
+    if (but->type == ButtonType::Color) {
+      /* Snapshot before popup controls modify the selected colors. */
+      selectcontext_begin(C, but, &data->select_others);
     }
   }
 #endif

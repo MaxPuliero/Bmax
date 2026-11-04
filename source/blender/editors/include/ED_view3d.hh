@@ -1449,6 +1449,15 @@ bool ED_localview_exit_if_empty(const Depsgraph *depsgraph,
  * See if current UUID is valid, otherwise set a valid UUID to v3d,
  * Try to keep the same UUID previously used to allow users to quickly toggle back and forth.
  */
+/** Carry navigation and visibility between workspace viewports; retain target shading. */
+void ED_view3d_workspace_sync(bContext *C,
+                              wmWindow *win,
+                              ScrArea *source_area,
+                              ARegion *source_region,
+                              ViewLayer *source_layer,
+                              ScrArea *target_area,
+                              ARegion *target_region);
+
 bool ED_view3d_local_collections_set(const Main *bmain, View3D *v3d);
 void ED_view3d_local_collections_reset(const bContext *C, bool reset_all);
 

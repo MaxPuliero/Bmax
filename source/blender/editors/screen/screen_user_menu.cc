@@ -36,6 +36,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_path.hh"
 #include "RNA_prototypes.hh"
 
@@ -384,6 +385,18 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
   if (is_empty) {
     menu->layout->label(RPT_("No menu items found"), ICON_NONE);
     menu->layout->label(RPT_("Right click on buttons to add them to this menu"), ICON_NONE);
+  }
+  menu->layout->separator();
+  PointerRNA manage = menu->layout->op("PREFERENCES_OT_quick_favorites_show",
+                                       IFACE_("Manage Quick Favorites..."),
+                                       ICON_PREFERENCES);
+  if (SpaceLink *sl = CTX_wm_space_data(C)) {
+    const char *editor;
+    if (RNA_enum_identifier(rna_enum_space_type_items, sl->spacetype, &editor)) {
+      RNA_string_set(&manage, "editor", editor);
+    }
+    RNA_string_set(&manage, "menu_context", screen_menu_context_string(C, sl));
+    RNA_string_set(&manage, "mode", CTX_data_mode_string(C));
   }
 }
 

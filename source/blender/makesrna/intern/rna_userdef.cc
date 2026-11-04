@@ -249,6 +249,8 @@ static const EnumPropertyItem rna_enum_preferences_extension_repo_source_type_it
 #  include "BKE_addon.h"
 #  include "BKE_appdir.hh"
 #  include "BKE_blender.hh"
+#  include "BKE_blender_user_menu.hh"
+#  include "BKE_report.hh"
 #  include "BKE_blender_version.h"
 #  include "BKE_callbacks.hh"
 #  include "BKE_global.hh"
@@ -271,6 +273,8 @@ static const EnumPropertyItem rna_enum_preferences_extension_repo_source_type_it
 #  include "BLF_api.hh"
 
 #  include "BLI_path_utils.hh"
+#  include "BLI_listbase.h"
+#  include "BLI_string.h"
 
 #  include "MEM_CacheLimiterC-Api.h"
 #  include "MEM_guardedalloc.h"
@@ -322,6 +326,111 @@ static void rna_userdef_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *
 {
   WM_main_add_notifier(NC_WINDOW, nullptr);
   USERDEF_TAG_DIRTY;
+}
+
+/* Edit the existing native preference lists; no additional persistent storage. */
+static std::string rna_user_menu_item_identifier(const bUserMenuItem &item)
+{
+  switch (item.type) {
+    case USER_MENU_TYPE_OPERATOR:
+      return reinterpret_cast<const bUserMenuItem_Op &>(item).op_idname;
+    case USER_MENU_TYPE_MENU:
+      return reinterpret_cast<const bUserMenuItem_Menu &>(item).mt_idname;
+    case USER_MENU_TYPE_PROP: {
+      const auto &property = reinterpret_cast<const bUserMenuItem_Prop &>(item);
+      return std::string(property.context_data_path) + "." + property.prop_id;
+    }
+    case USER_MENU_TYPE_SEP:
+      return "";
+  }
+  return "";
+}
+
+static std::string rna_user_menu_item_name(const bUserMenuItem &item)
+{
+  if (item.ui_name[0]) {
+    return item.ui_name;
+  }
+  if (item.type == USER_MENU_TYPE_OPERATOR) {
+    const auto &op = reinterpret_cast<const bUserMenuItem_Op &>(item);
+    if (wmOperatorType *ot = WM_operatortype_find(op.op_idname, true)) {
+      return ot->name;
+    }
+  }
+  else if (item.type == USER_MENU_TYPE_MENU) {
+    const auto &menu = reinterpret_cast<const bUserMenuItem_Menu &>(item);
+    if (MenuType *mt = WM_menutype_find(menu.mt_idname, true)) {
+      return mt->label;
+    }
+  }
+  else if (item.type == USER_MENU_TYPE_SEP) {
+    return "Separator";
+  }
+  return rna_user_menu_item_identifier(item);
+}
+
+static void rna_user_menu_item_name_get(PointerRNA *ptr, char *value)
+{
+  const std::string name = rna_user_menu_item_name(*ptr->data_as<bUserMenuItem>());
+  memcpy(value, name.c_str(), name.size() + 1);
+}
+
+static int rna_user_menu_item_name_length(PointerRNA *ptr)
+{
+  return int(rna_user_menu_item_name(*ptr->data_as<bUserMenuItem>()).size());
+}
+
+static void rna_user_menu_item_identifier_get(PointerRNA *ptr, char *value)
+{
+  const std::string identifier = rna_user_menu_item_identifier(*ptr->data_as<bUserMenuItem>());
+  memcpy(value, identifier.c_str(), identifier.size() + 1);
+}
+
+static int rna_user_menu_item_identifier_length(PointerRNA *ptr)
+{
+  return int(rna_user_menu_item_identifier(*ptr->data_as<bUserMenuItem>()).size());
+}
+
+static bool rna_user_menu_item_missing_get(PointerRNA *ptr)
+{
+  const bUserMenuItem &item = *ptr->data_as<bUserMenuItem>();
+  if (item.type == USER_MENU_TYPE_OPERATOR) {
+    return WM_operatortype_find(reinterpret_cast<const bUserMenuItem_Op &>(item).op_idname,
+                                true) == nullptr;
+  }
+  if (item.type == USER_MENU_TYPE_MENU) {
+    return WM_menutype_find(reinterpret_cast<const bUserMenuItem_Menu &>(item).mt_idname, true) ==
+           nullptr;
+  }
+  return false;
+}
+
+static void rna_user_menu_items_move(bUserMenu *menu, ReportList *reports, int from, int to)
+{
+  const int length = BLI_listbase_count(&menu->items);
+  if (from < 0 || from >= length || to < 0 || to >= length) {
+    BKE_report(reports, RPT_ERROR, "Quick Favorite index is out of range");
+    return;
+  }
+  if (from != to) {
+    BLI_listbase_link_move(&menu->items, BLI_findlink(&menu->items, from), to - from);
+    USERDEF_TAG_DIRTY;
+    WM_main_add_notifier(NC_WINDOW, nullptr);
+  }
+}
+
+static void rna_user_menu_items_remove(bUserMenu *menu, ReportList *reports, PointerRNA *item_ptr)
+{
+  bUserMenuItem *item = item_ptr->data_as<bUserMenuItem>();
+  if (BLI_findindex(&menu->items, item) == -1) {
+    BKE_report(reports, RPT_ERROR, "Quick Favorite does not belong to this menu");
+    return;
+  }
+  BLI_remlink(&menu->items, item);
+  BKE_blender_user_menu_item_free(item);
+  item_ptr->invalidate();
+  USERDEF_TAG_DIRTY;
+  WM_main_add_notifier(NC_WINDOW, nullptr);
 }
 
 static void rna_userdef_update_compact_tabs(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -7847,6 +7956,78 @@ static void rna_def_userdef_autoexec_path_collection(BlenderRNA *brna, PropertyR
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
+static void rna_def_userdef_quick_favorites(BlenderRNA *brna)
+{
+  StructRNA *srna = RNA_def_struct(brna, "UserMenuItem", nullptr);
+  RNA_def_struct_sdna(srna, "bUserMenuItem");
+  RNA_def_struct_ui_text(srna, "Quick Favorite", "Native Quick Favorites entry");
+  PropertyRNA *prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(
+      prop, "rna_user_menu_item_name_get", "rna_user_menu_item_name_length", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_ui_text(prop, "Name", "Label of this Quick Favorite");
+
+  prop = RNA_def_property(srna, "identifier", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(
+      prop, "rna_user_menu_item_identifier_get", "rna_user_menu_item_identifier_length", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Identifier", "Operator, menu or property referenced by this favorite");
+
+  prop = RNA_def_property(srna, "is_missing", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_user_menu_item_missing_get", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Missing", "The referenced operator or menu is not available");
+
+  static const EnumPropertyItem item_types[] = {
+      {USER_MENU_TYPE_SEP, "SEPARATOR", 0, "Separator", ""},
+      {USER_MENU_TYPE_OPERATOR, "OPERATOR", 0, "Operator", ""},
+      {USER_MENU_TYPE_MENU, "MENU", 0, "Menu", ""},
+      {USER_MENU_TYPE_PROP, "PROPERTY", 0, "Property", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, item_types);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Type", "Kind of Quick Favorite");
+
+  srna = RNA_def_struct(brna, "UserMenu", nullptr);
+  RNA_def_struct_sdna(srna, "bUserMenu");
+  RNA_def_struct_ui_text(
+      srna, "Quick Favorites Menu", "Native favorites for an editor and context");
+  prop = RNA_def_property(srna, "space_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_space_type_items);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Editor", "Editor in which this menu was created");
+  prop = RNA_def_property(srna, "context", PROP_STRING, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Context", "Mode or node tree type of this menu");
+  prop = RNA_def_property(srna, "entries", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", nullptr);
+  RNA_def_property_struct_type(prop, "UserMenuItem");
+  RNA_def_property_ui_text(prop, "Items", "Favorites in their native popup order");
+  RNA_def_property_srna(prop, "UserMenuItems");
+
+  srna = RNA_def_struct(brna, "UserMenuItems", nullptr);
+  RNA_def_struct_sdna(srna, "bUserMenu");
+  RNA_def_struct_ui_text(srna, "Quick Favorites Items", "Editable native favorites list");
+  FunctionRNA *func = RNA_def_function(srna, "move", "rna_user_menu_items_move");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Move a favorite without changing its settings");
+  prop = RNA_def_int(func, "from_index", 0, 0, INT_MAX, "From", "Current index", 0, INT_MAX);
+  RNA_def_parameter_flags(prop, PropertyFlag(0), PARM_REQUIRED);
+  prop = RNA_def_int(func, "to_index", 0, 0, INT_MAX, "To", "New index", 0, INT_MAX);
+  RNA_def_parameter_flags(prop, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "remove", "rna_user_menu_items_remove");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove a favorite from this menu");
+  prop = RNA_def_pointer(func, "item", "UserMenuItem", "Item", "Favorite to remove");
+  RNA_def_parameter_flags(prop, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(prop, PROP_THICK_WRAP, ParameterFlag(0));
+}
+
 void RNA_def_userdef(BlenderRNA *brna)
 {
   USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE;
@@ -7858,6 +8039,7 @@ void RNA_def_userdef(BlenderRNA *brna)
   rna_def_userdef_solidlight(brna);
   rna_def_userdef_walk_navigation(brna);
   rna_def_userdef_xr_navigation(brna);
+  rna_def_userdef_quick_favorites(brna);
 
   srna = RNA_def_struct(brna, "Preferences", nullptr);
   RNA_def_struct_sdna(srna, "UserDef");
@@ -7896,6 +8078,11 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "PathCompare");
   RNA_def_property_ui_text(prop, "Auto-Execution Paths", "");
   rna_def_userdef_autoexec_path_collection(brna, prop);
+
+  prop = RNA_def_property(srna, "user_menus", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "user_menus", nullptr);
+  RNA_def_property_struct_type(prop, "UserMenu");
+  RNA_def_property_ui_text(prop, "Quick Favorites", "Native editor and context favorites lists");
 
   prop = RNA_def_property(srna, "use_recent_searches", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_FLAG_RECENT_SEARCHES_DISABLE);

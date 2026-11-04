@@ -163264,8 +163264,8 @@ msgstr "Добавить данные маски скульптинга без �
 
 #. Bmax interface localization
 #: source/blender/editors/object/object_edit.cc:135
-msgid "Affect selected editable objects; hold Alt for the active object only"
-msgstr "Применить к выбранным редактируемым объектам; удерживайте Alt для применения только к активному объекту"
+msgid "Affect selected editable objects"
+msgstr "Применить к выбранным редактируемым объектам"
 
 #. Bmax interface localization
 #: source/blender/editors/mesh/editmesh_tools.cc:5412
@@ -163946,3 +163946,47 @@ msgstr "Объединить видимый скульпт в фиксирова
 #. Bmax static sculpt base
 msgid "Amount of this sculpt layer added to the static base"
 msgstr "Влияние этого слоя скульптинга, добавляемое к фиксированной основе"
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites..."
+msgstr "Управление избранным..."
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites"
+msgstr "Управление избранным"
+
+#. Bmax Quick Favorites manager
+msgid "Reorder or remove favorites for this editor and context"
+msgstr "Изменить порядок или удалить избранное для этого редактора и контекста"
+
+#. Bmax Quick Favorites manager
+msgid "Shared Favorites Mode"
+msgstr "Режим общего избранного"
+
+#. Bmax Quick Favorites manager
+msgid "No Quick Favorites in this context"
+msgstr "В этом контексте нет избранного"
+
+#. Bmax Quick Favorites manager
+msgid "Right-click a command to add it to Quick Favorites"
+msgstr "Нажмите правой кнопкой мыши на команду, чтобы добавить её в избранное"
+
+#. Bmax Quick Favorites manager
+msgid "Move Quick Favorite"
+msgstr "Переместить пункт избранного"
+
+#. Bmax Quick Favorites manager
+msgid "Change the order of favorites in this list"
+msgstr "Изменить порядок избранного в этом списке"
+
+#. Bmax Quick Favorites manager
+msgid "Remove Quick Favorite"
+msgstr "Удалить пункт избранного"
+
+#. Bmax Quick Favorites manager
+msgid "Remove this entry from Quick Favorites"
+msgstr "Удалить этот пункт из избранного"
+
+#. Bmax Quick Favorites missing entry
+msgid "Missing"
+msgstr "Отсутствует"

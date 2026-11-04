@@ -267,6 +267,11 @@ static void rna_SculptLayer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
   rna_Mesh_update_geom_and_params(bmain, scene, ptr);
 }
 
+static bool rna_Mesh_has_multires_color_get(PointerRNA *ptr)
+{
+  return CustomData_has_layer(&rna_mesh(ptr)->corner_data, CD_GRID_PAINT_COLOR);
+}
+
 static void rna_Mesh_update_normal_weighting(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_mesh(ptr)->tag_custom_normals_changed();
@@ -2984,6 +2989,12 @@ static void rna_def_mesh(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "Mesh", "ID");
   RNA_def_struct_ui_text(srna, "Mesh", "Mesh data-block defining geometric surfaces");
   RNA_def_struct_ui_icon(srna, ICON_MESH_DATA);
+
+  prop = RNA_def_property(srna, "has_multires_color", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_Mesh_has_multires_color_get", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Has Multires Color", "The mesh has Bmax high-resolution color grids");
 
   prop = RNA_def_property(srna, "sculpt_layers", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,

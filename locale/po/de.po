@@ -57968,8 +57968,8 @@ msgstr "Skulpturmaskendaten hinzufügen, ohne vorhandene Daten zu ersetzen"
 
 #. Bmax interface localization
 #: source/blender/editors/object/object_edit.cc:135
-msgid "Affect selected editable objects; hold Alt for the active object only"
-msgstr "Ausgewählte bearbeitbare Objekte beeinflussen; Alt gedrückt halten, um nur das aktive Objekt zu bearbeiten"
+msgid "Affect selected editable objects"
+msgstr "Ausgewählte bearbeitbare Objekte beeinflussen"
 
 #. Bmax interface localization
 #: source/blender/editors/mesh/editmesh_tools.cc:5412
@@ -58702,3 +58702,47 @@ msgstr "Fasst die sichtbare Skulptur in der festen Ebene 1 zusammen und entfernt
 #. Bmax static sculpt base
 msgid "Amount of this sculpt layer added to the static base"
 msgstr "Stärke dieser Skulpturebene zusätzlich zur festen Basis"
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites..."
+msgstr "Schnellzugriff verwalten..."
+
+#. Bmax Quick Favorites manager
+msgid "Manage Quick Favorites"
+msgstr "Schnellzugriff verwalten"
+
+#. Bmax Quick Favorites manager
+msgid "Reorder or remove favorites for this editor and context"
+msgstr "Favoriten für diesen Editor und Kontext neu anordnen oder entfernen"
+
+#. Bmax Quick Favorites manager
+msgid "Shared Favorites Mode"
+msgstr "Modus der gemeinsamen Favoriten"
+
+#. Bmax Quick Favorites manager
+msgid "No Quick Favorites in this context"
+msgstr "Keine Einträge im Schnellzugriff für diesen Kontext"
+
+#. Bmax Quick Favorites manager
+msgid "Right-click a command to add it to Quick Favorites"
+msgstr "Rechtsklick auf einen Befehl, um ihn zum Schnellzugriff hinzuzufügen"
+
+#. Bmax Quick Favorites manager
+msgid "Move Quick Favorite"
+msgstr "Eintrag im Schnellzugriff verschieben"
+
+#. Bmax Quick Favorites manager
+msgid "Change the order of favorites in this list"
+msgstr "Reihenfolge der Favoriten in dieser Liste ändern"
+
+#. Bmax Quick Favorites manager
+msgid "Remove Quick Favorite"
+msgstr "Eintrag aus dem Schnellzugriff entfernen"
+
+#. Bmax Quick Favorites manager
+msgid "Remove this entry from Quick Favorites"
+msgstr "Diesen Eintrag aus dem Schnellzugriff entfernen"
+
+#. Bmax Quick Favorites missing entry
+msgid "Missing"
+msgstr "Nicht gefunden"
