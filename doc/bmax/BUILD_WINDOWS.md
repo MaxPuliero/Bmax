@@ -2,6 +2,33 @@
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
 
+## Hide bone axes in Object Mode (2026-11-04)
+
+Incremental Release INSTALL completed on `main` with the documented parallelism 2
+and CL_MPCount=2. A pose-drawing condition hides bone axes in Object Mode without
+modifying the saved Axes flag; Edit/Pose retain the selected-bones filter and final
+always-in-front axis pass. No DNA, shared layout or evaluation change was made.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is timestamped
+2026-11-04 11:03:44 JST, 98,037,760 bytes, SHA-256
+`9DD853338B8C798BAB94EAEEA8BD96B75C553FA1CB19BD574CBD96E98E1398D1`,
+matching `bin/Release/blender.exe`. It reports base hash `8bd735d85ca2`; compilation
+preceded implementation commit [`304254a5c167`](https://github.com/MaxPuliero/Bmax/commit/304254a5c167240276db466546cf39f3bf072273), now on `main`.
+
+Thirteen GUI viewport states on each actual backend, OpenGL and Vulkan, verified
+Axes on/off in Object/Edit/Pose, selected and unselected bones, unchanged Axes
+settings during mode changes, and exact return-state image equality. The old
+runtime reproduced Object Mode axes (160 changed pixels); the corrected one has
+zero changed pixels there, 158 in selected Edit/Pose, and zero on unselected bones.
+Names remained off. Pose and Object captures were visually inspected. The change
+does not alter the always-in-front implementation; occluder-specific and full rig
+regressions were not repeated. C++ formatting and diff whitespace checks passed.
+
+The user accepted this follow-up and requested source publication. Existing user
+sessions, Desktop copies and the public binary package were preserved. Verification scripts,
+images, logs and recovery files were external and removed after checking; build
+caches and runtime dependencies were retained.
+
 ## Portable taskbar identity independent of registration (2026-11-04 follow-up)
 
 The user reported that the preceding icon attempt was insufficient: manually

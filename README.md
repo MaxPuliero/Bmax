@@ -23,9 +23,9 @@ See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented addit
 ### Portable icon and bone-name fixes (November 4, 2026)
 
 - **Windows portable:** the Bmax taskbar icon no longer depends on registering Bmax as the handler for `.blend` files. Each portable folder has its own taskbar identity, so separate copies do not reuse another copy's taskbar metadata. Keep `.blend` files associated with whichever Blender/Bmax version you prefer.
-- **Armatures:** bone names disappear in Object Mode, even when bones remain selected. Returning to Edit or Pose Mode restores their visibility according to the unchanged **Names** setting and the existing selected-bones filter.
+- **Armatures:** bone names and axes disappear in Object Mode, even when bones remain selected. Returning to Edit or Pose Mode restores their visibility according to the unchanged **Names** and **Axes** settings and the existing selected-bones filter.
 
-The implementation is included in source commit [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474) on `main`. The local Windows runtime is rebuilt and verified, and the user accepted the update. See the [validation and build record](doc/bmax/BUILD_WINDOWS.md#portable-taskbar-identity-independent-of-registration-2026-11-04-follow-up). Source publication does not update Desktop copies or the Gumroad binary package.
+The portable-icon and bone-name implementation is included in source commit [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474) on `main`. The local Windows runtime is rebuilt and verified, and the user accepted the update. See the [validation and build record](doc/bmax/BUILD_WINDOWS.md#portable-taskbar-identity-independent-of-registration-2026-11-04-follow-up). Source publication does not update Desktop copies or the Gumroad binary package. The matching axes behavior is included in source commit [`304254a5c167`](https://github.com/MaxPuliero/Bmax/commit/304254a5c167240276db466546cf39f3bf072273), rebuilt and verified on OpenGL/Vulkan; see the [axes build record](doc/bmax/BUILD_WINDOWS.md#hide-bone-axes-in-object-mode-2026-11-04).
 
 ### Multires sculpt layers (experimental)
 
@@ -278,7 +278,7 @@ When armature elements coincide at the same depth, unselected elements are drawn
 
 ### Names and axes for selected bones
 
-The armature's **Names** and **Axes** toggles display these overlays only for selected bones. **Bone names are hidden in Object Mode**; returning to Edit or Pose Mode restores their display according to the unchanged Names setting. In Edit Mode, selecting a head or tail also qualifies the bone. Existing master toggles still enable or disable each overlay.
+The armature's **Names** and **Axes** toggles display these overlays only for selected bones. **Bone names and axes are hidden in Object Mode**; returning to Edit or Pose Mode restores their display according to the unchanged Names and Axes settings. In Edit Mode, selecting a head or tail also qualifies the bone. Existing master toggles still enable or disable each overlay.
 
 ![Selected bone names demonstration](doc/bmax/media/bmax_name.webp)
 
