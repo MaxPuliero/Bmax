@@ -29,3 +29,53 @@ Entries up to 96 pixels use a 32-bit bottom-up BGRA DIB, double-height bitmap he
 - The Windows Release build and installation retain the previous C++ mesh-tools changes. The source update does not alter Blender's geometry or GPU drawing algorithms.
 
 All verification scripts, extracted frames, native render comparisons and build logs were temporary, outside the repository, and removed afterward. Required build caches and runtime files were retained. The user's existing Blender session, scan file, Desktop package and public download were preserved.
+
+## Initial portable taskbar attempt (2026-11-04; insufficient)
+
+The user's running portable window had a class icon but no
+`PKEY_AppUserModel_RelaunchIconResource`; its taskbar button showed the generic
+application image. The local correction supplies the current executable path with
+icon index 0 explicitly. The embedded artwork and ICO files are unchanged.
+Executable and launcher paths now use wide Win32 APIs and quoted Unicode commands.
+If the adjacent launcher is missing, relaunch uses the executable itself.
+
+Native property-store reads confirmed the previously absent value and the corrected
+resource path on the installed runtime and on a temporary Japanese/space-containing
+portable alias. Native ExtractIconExW returned valid large and small icon handles
+from both paths. This verifies taskbar metadata; cached pre-existing pinned shortcuts
+were not reset. The correction is built locally, uncommitted and unpublished;
+existing Desktop packages remain separate. The user subsequently confirmed that the
+visible taskbar icon was still generic until file registration. These property and
+extraction checks were insufficient to establish a visual fix. See the current [build record](BUILD_WINDOWS.md#portable-taskbar-icon-and-bone-name-mode-visibility-2026-11-04).
+
+## Separate portable identity from file association (2026-11-04)
+
+Registering Bmax also updates implicit taskbar shortcuts and a ProgID DefaultIcon,
+which explains why the file-registration action can affect the taskbar image.
+All copies previously reused `bmax.5.2`, allowing an old same-version shortcut to
+supply another installation's metadata. The follow-up uses a stable, case-normalized
+executable-path hash appended to the taskbar AppUserModelID. Process, windows and
+recent-document entries use that same per-copy identity. Reopening the same path
+keeps its identity; a different portable folder gets an independent identity.
+
+File registration remains an explicit preference action. Startup writes no ProgID,
+`.blend` association, Open With registration, thumbnail handler or existing pinned
+shortcut. The existing file-handler ProgID stays unchanged, so users may keep a
+different Blender/Bmax version associated with `.blend` files.
+
+Relaunch metadata is supplied before publishing the window identity. The icon
+reference uses `blender.exe,-1`, addressing numeric icon group 1, which already
+contains the Bmax artwork. Microsoft documents a negative resource ID for executable
+[RelaunchIconResource references](https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource).
+The prior `,0` check only proved index-based extraction worked; it did not verify
+this documented property format. Existing embedded artwork remains unchanged.
+
+The follow-up runtime passed native checks from both the installed path and an
+independent Japanese/space-containing portable alias. Each process/window used the
+expected path-specific identity, neither identity had an HKCU/HKLM registration,
+and `SHDefExtractIconW` returned valid 32/16-pixel Bmax icon handles for resource -1.
+Registry snapshots confirmed that file associations and the registered launch
+command/icon were unchanged. The user accepted the follow-up and requested source
+publication on November 4. The automated checks did not capture the actual taskbar
+image. Implementation: [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474). Source and binary status are in
+the [follow-up build record](BUILD_WINDOWS.md#portable-taskbar-identity-independent-of-registration-2026-11-04-follow-up).

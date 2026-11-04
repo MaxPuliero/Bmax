@@ -10,13 +10,22 @@ Sorry I can't include the compiled Windows build directly in this GitHub reposit
 
 For contributors and AI agents, see [the repository instructions](AGENTS.md) and [the Windows build guide](doc/bmax/BUILD_WINDOWS.md).
 
+Windows portable copies use their own taskbar identity and embedded Bmax icon independently of file registration. Associating `.blend` files with a chosen Blender/Bmax version remains an explicit preference action. See [Windows icon details and local build status](doc/bmax/windows_icons.md).
+
 ## Bug reports
 
 Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub tracker](https://github.com/MaxPuliero/Bmax/issues). The system-information launcher used when Bmax cannot start opens the same tracker. Include whether the issue also occurs in official Blender and which version was tested; Bmax reports are investigated here first.
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 1, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 4, 2026, their source commits, and removed items.
+
+### Portable icon and bone-name fixes (November 4, 2026)
+
+- **Windows portable:** the Bmax taskbar icon no longer depends on registering Bmax as the handler for `.blend` files. Each portable folder has its own taskbar identity, so separate copies do not reuse another copy's taskbar metadata. Keep `.blend` files associated with whichever Blender/Bmax version you prefer.
+- **Armatures:** bone names disappear in Object Mode, even when bones remain selected. Returning to Edit or Pose Mode restores their visibility according to the unchanged **Names** setting and the existing selected-bones filter.
+
+The implementation is included in source commit [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474) on `main`. The local Windows runtime is rebuilt and verified, and the user accepted the update. See the [validation and build record](doc/bmax/BUILD_WINDOWS.md#portable-taskbar-identity-independent-of-registration-2026-11-04-follow-up). Source publication does not update Desktop copies or the Gumroad binary package.
 
 ### Multires sculpt layers (experimental)
 
@@ -269,7 +278,7 @@ When armature elements coincide at the same depth, unselected elements are drawn
 
 ### Names and axes for selected bones
 
-The armature's **Names** and **Axes** toggles display these overlays only for selected bones. In Edit Mode, selecting a head or tail also qualifies the bone. Existing master toggles still enable or disable each overlay.
+The armature's **Names** and **Axes** toggles display these overlays only for selected bones. **Bone names are hidden in Object Mode**; returning to Edit or Pose Mode restores their display according to the unchanged Names setting. In Edit Mode, selecting a head or tail also qualifies the bone. Existing master toggles still enable or disable each overlay.
 
 ![Selected bone names demonstration](doc/bmax/media/bmax_name.webp)
 

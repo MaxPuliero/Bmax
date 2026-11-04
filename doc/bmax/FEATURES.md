@@ -4,6 +4,19 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Portable taskbar icon and bone names by mode (2026-11-04)
+
+Implementation: [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474) on `main`. Built and installed at `D:\blender_build\octahedral_radius\bin\blender.exe`:
+
+- Windows portable copies use a stable per-executable-path taskbar identity, shared by process, windows and recent-document entries, and explicitly provide `AppUserModel.RelaunchIconResource` as the numeric embedded Bmax icon resource. File association remains a separate explicit action; startup writes no association or shortcut registrations. The initial shared-identity attempt was reported insufficient by the user. Executable/launcher paths use Unicode, and a missing launcher falls back to the executable. Temporary property variants are released and the icon property is cleared when the window closes.
+- Selected bone names are hidden in Object Mode. The saved armature Names flag and bone selection remain unchanged; Edit/Pose Mode continue to honor Names and the existing selected-bones filter. Axes retain their existing behavior, including Object Mode. Weight Paint's associated pose-armature display is preserved.
+
+The preceding portable reproduced 2,246 changed viewport pixels when toggling Names in Object Mode. The corrected runtime has zero changed pixels there on both OpenGL and Vulkan; Names still adds 2,247 label pixels in each of Edit and Pose Mode. Nine states per backend verify enabled/disabled settings, selected bones and Object/Edit/Pose return transitions with identical viewport images. Mode switches preserve the Names preference. The live native window property was checked for both the installed path and a temporary portable alias containing Japanese characters and a space. These checks do not cover every armature configuration or pinned-shortcut cache state.
+
+Follow-up after the user's failed visual check: Release INSTALL now contains per-path identities and the documented negative icon resource ID. Two independent GUI processes (installed path and Japanese/space-containing portable alias) verified distinct, unregistered identities consistent between process and window, valid 32/16-pixel Shell icon extraction by resource ID, and unchanged file-association registry snapshots. No Register action was used. The user accepted the follow-up and requested source publication on November 4. No direct taskbar screenshot was captured by the automated checks; the first metadata-only attempt was insufficient. See the [follow-up build record](BUILD_WINDOWS.md#portable-taskbar-identity-independent-of-registration-2026-11-04-follow-up).
+
+The implementation is in source commit [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474). The installed runtime is updated; the existing Desktop portable and public download are separate and were not replaced. All verification artifacts are external and removed after checking.
+
 ## Multires sculpt layers with static Layer 1 (2026-11-01)
 
 Implementation: [`af594efca925`](https://github.com/MaxPuliero/Bmax/commit/af594efca9257511279692edd73f24b2f9084832), included in `main`; developed on `codex/sculpt-layers-prototype` from `15f7bbc89857`. The user confirmed the feature. This revision supersedes the earlier reversible Layer 1. Mesh Data Properties has a Sculpt Layers panel below Shape Keys for Multires objects. Layer 1 is fixed at full intensity, has no slider and cannot be removed. Its Influence RNA property is read-only. Layer 2 and subsequent rows have individual 0–1 sliders. The active row receives strokes; no reorder control or collection move API is exposed.
@@ -129,7 +142,7 @@ Commit: `a0f495c4`.
 | Absolute Octahedral Radius | Per-bone radius controls the octahedral body's half-width and endpoint spheres independently of rest-bone length. Default: `0.02` Blender units. Available in Edit and Pose Mode under N sidebar > Item. |
 | Pose scale and shear display | Octahedral bones retain evaluated pose scaling and shear, including nonuniform scaling. The change affects viewport display, not bone evaluation or constraints. |
 | Independent Axis Size | Per-bone display-axis length independent of radius and bone length. Default: `0.03` Blender units, available in Edit and Pose Mode under N sidebar > Item. Object scale still applies. |
-| Names and axes for selected bones | The armature Names and Axes toggles draw these overlays only for selected bones. Selecting a head or tail in Edit Mode also qualifies the bone. |
+| Names and axes for selected bones | The armature Names and Axes toggles draw these overlays only for selected bones. Names are hidden in Object Mode without changing the saved setting; Edit/Pose restore the chosen display. Selecting a head or tail in Edit Mode also qualifies the bone. |
 | Pose/Edit hide synchronization | Per-bone hidden state transfers between Pose and Edit Mode. Hidden bones are deselected; Bone Collection visibility remains a separate filter. |
 | Bmax branding | Custom splash logo and Windows icons, Bmax window titles and command-line version output, and a separate Bmax Windows application identity. The executable remains `blender.exe` and uses Blender 5.2 preferences and startup configuration. |
 

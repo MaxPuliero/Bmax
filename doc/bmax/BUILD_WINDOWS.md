@@ -2,6 +2,67 @@
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
 
+## Portable taskbar identity independent of registration (2026-11-04 follow-up)
+
+The user reported that the preceding icon attempt was insufficient: manually
+registering Bmax made the taskbar image appear immediately. The follow-up uses a
+stable per-executable-path AppUserModelID for process, windows and recent documents,
+sets relaunch metadata before the window identity, and references the embedded
+numeric Bmax icon as `blender.exe,-1`. Startup makes no file-association or pinned
+shortcut registration changes. The explicit Register/Unregister controls retain
+their existing file-handler behavior. See [Windows icon details](windows_icons.md#separate-portable-identity-from-file-association-2026-11-04).
+
+Release INSTALL completed with the existing parallelism 2 and CL_MPCount=2. No DNA
+or shared C++ layout changed. The installed executable is timestamped
+2026-11-04 10:46:05 JST, 98,037,760 bytes, SHA-256
+`C7870EC14632D403143014023A06AB3A282B0C8B5A529565D319696D0163AFAC`,
+matching `bin/Release/blender.exe`. It retains base hash `c9f23c567b8f` and includes
+the previously verified bone-name Object Mode correction.
+
+Two independent factory-startup GUI processes, launched from the installed path and
+a Japanese/space-containing temporary portable alias, passed native window/process
+identity consistency, expected stable path-hash identity, distinct identities,
+absence of HKCU/HKLM registration for those identities, quoted relaunch paths, and
+valid 32/16-pixel `SHDefExtractIconW` handles using resource ID -1. Full association
+subtree snapshots were unchanged during each check; external default association,
+registered launcher and DefaultIcon snapshots were also unchanged before/after.
+Changed C++ formatting and diff checks passed. The user accepted the follow-up
+and requested source publication on November 4. No direct taskbar screenshot was
+captured by the automated shell checks. The earlier
+OpenGL/Vulkan bone-label checks were not repeated for this Windows-only follow-up.
+
+Implementation: [`c6b2d4b917ab`](https://github.com/MaxPuliero/Bmax/commit/c6b2d4b917ab8884ba72c332a55ee28755bfc474)
+on `main`. Compilation preceded this commit, so the executable retains its base
+hash. Existing user sessions, Desktop copies and the public package were preserved. Temporary scripts, logs, recovery
+files and the portable alias were external and removed after checking. Build cache,
+dependencies and installed runtime were retained.
+
+## Portable taskbar icon and bone-name mode visibility (2026-11-04)
+
+Incremental Release INSTALL completed from `D:\blender_prj` on `main` with local,
+uncommitted corrections, using parallelism 2 and CL_MPCount=2. No DNA or shared
+C++ structure layout changed. Build caches and dependencies were retained.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is timestamped
+2026-11-04 10:29:19 JST, 98,035,200 bytes, SHA-256
+`9D7A7EDA07E4AC76089B5DC632BFE2B0B064F4C2614E0000652E83B1B2511214`.
+It matches `bin/Release/blender.exe` and reports base hash `c9f23c567b8f`.
+
+Nine viewport states on each of OpenGL and Vulkan verified Object Mode name
+suppression, enabled/disabled Edit/Pose labels, selected bones, unchanged Names
+settings during mode switches, and exact return-state image equality. The prior
+Desktop executable reproduced the Object Mode label defect in a separate process.
+Native property-store reads verified the explicit icon resource and quoted relaunch
+command, including a Japanese/space-containing portable path. Changed C++ formatting
+and diff whitespace checks passed. See [the inventory](FEATURES.md#portable-taskbar-icon-and-bone-names-by-mode-2026-11-04).
+
+Existing user sessions and the Desktop portable were preserved. Source changes
+have not been committed or published; the public download was not updated.
+Verification scripts, screenshots, logs, recovery files and the temporary path
+alias were external and removed after checking. To use this correction now, launch
+the installed executable above; copying or distributing a portable package is a
+separate step.
+
 ## Static Layer 1 and native single-layer path (2026-11-01)
 
 The implementation in source commit [`af594efca925`](https://github.com/MaxPuliero/Bmax/commit/af594efca9257511279692edd73f24b2f9084832), included in `main` and developed on
