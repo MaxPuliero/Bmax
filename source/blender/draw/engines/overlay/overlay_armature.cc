@@ -2358,7 +2358,10 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     {
       draw_bone_name(ctx, bone_ptr);
     }
-    if ((arm.flag & ARM_DRAWAXES) && (bone_ptr.flag() & BONE_SELECTED)) {
+    /* Keep the saved Axes preference while hiding bone axes in Object Mode. */
+    if (ctx->draw_mode == ARM_DRAW_MODE_POSE && (arm.flag & ARM_DRAWAXES) &&
+        (bone_ptr.flag() & BONE_SELECTED))
+    {
       draw_axes(ctx, bone_ptr, arm);
     }
   }
