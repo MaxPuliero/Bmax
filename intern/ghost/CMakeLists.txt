@@ -444,6 +444,7 @@ elseif(WIN32)
     intern/GHOST_TaskbarWin32.hh
     intern/GHOST_TrackpadWin32.hh
     intern/GHOST_WindowWin32.hh
+    intern/GHOST_Win32AppID.hh
     intern/GHOST_Wintab.hh
   )
 

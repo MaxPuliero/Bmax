@@ -2352,7 +2352,10 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     if (draw_dofs) {
       draw_bone_degrees_of_freedom(ctx, pchan);
     }
-    if (show_text && (arm.flag & ARM_DRAWNAMES) && (bone_ptr.flag() & BONE_SELECTED)) {
+    /* Keep the saved Names preference while hiding bone labels in Object Mode. */
+    if (show_text && ctx->draw_mode == ARM_DRAW_MODE_POSE && (arm.flag & ARM_DRAWNAMES) &&
+        (bone_ptr.flag() & BONE_SELECTED))
+    {
       draw_bone_name(ctx, bone_ptr);
     }
     if ((arm.flag & ARM_DRAWAXES) && (bone_ptr.flag() & BONE_SELECTED)) {

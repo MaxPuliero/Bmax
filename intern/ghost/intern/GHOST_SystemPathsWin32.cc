@@ -6,8 +6,9 @@
  * \ingroup GHOST
  */
 
-#include "GHOST_SystemPathsWin32.hh"
 #include "GHOST_Debug.hh"
+#include "GHOST_SystemPathsWin32.hh"
+#include "GHOST_Win32AppID.hh"
 
 #ifndef _WIN32_IE
 #  define _WIN32_IE 0x0501
@@ -130,7 +131,6 @@ const char *GHOST_SystemPathsWin32::getBinaryDir() const
 void GHOST_SystemPathsWin32::addToSystemRecentFiles(const char *filepath) const
 {
   UTF16_ENCODE(filepath);
-  UTF16_ENCODE(BLENDER_WIN_APPID);
   SHARDAPPIDINFO info;
   IShellItem *shell_item;
 
@@ -142,11 +142,10 @@ void GHOST_SystemPathsWin32::addToSystemRecentFiles(const char *filepath) const
   hr = SHCreateItemFromParsingName(filepath_16, nullptr, IID_PPV_ARGS(&shell_item));
   if (SUCCEEDED(hr)) {
     info.psi = shell_item;
-    info.pszAppID = BLENDER_WIN_APPID_16;
+    info.pszAppID = GHOST_win32_app_id();
     SHAddToRecentDocs(SHARD_APPIDINFO, &info);
   }
 
   CoUninitialize();
-  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
   UTF16_UN_ENCODE(filepath);
 }

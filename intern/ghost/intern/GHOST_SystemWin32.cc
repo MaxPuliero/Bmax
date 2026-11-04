@@ -40,6 +40,7 @@
 #include "GHOST_TimerTask.hh"
 #include "GHOST_WindowManager.hh"
 #include "GHOST_WindowWin32.hh"
+#include "GHOST_Win32AppID.hh"
 
 #include "GHOST_ContextD3D.hh"
 #ifdef WITH_OPENGL_BACKEND
@@ -171,9 +172,7 @@ GHOST_SystemWin32::GHOST_SystemWin32() : has_performance_counter_(false), freq_(
   SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
   /* Set App Id for the process so our console will be grouped on the Task Bar. */
-  UTF16_ENCODE(BLENDER_WIN_APPID);
-  SetCurrentProcessExplicitAppUserModelID(BLENDER_WIN_APPID_16);
-  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
+  SetCurrentProcessExplicitAppUserModelID(GHOST_win32_app_id());
 
   /* Check if current keyboard layout uses AltGr and save keylayout ID for
    * specialized handling if keys like VK_OEM_*. I.e. french keylayout

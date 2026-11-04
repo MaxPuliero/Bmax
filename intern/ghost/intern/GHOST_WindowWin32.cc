@@ -14,6 +14,7 @@
 #include "GHOST_SystemWin32.hh"
 #include "GHOST_WindowManager.hh"
 #include "GHOST_WindowWin32.hh"
+#include "GHOST_Win32AppID.hh"
 #include "utf_winfunc.hh"
 #include "utfconv.hh"
 
@@ -1226,38 +1227,52 @@ void GHOST_WindowWin32::endIME()
 
 void GHOST_WindowWin32::registerWindowAppUserModelProperties()
 {
+  /* Portable installations can live in paths outside the active Windows code page. */
+  std::wstring executable(32768, L'\0');
+  const DWORD length = GetModuleFileNameW(nullptr, executable.data(), DWORD(executable.size()));
+  if (length == 0 || length >= executable.size()) {
+    return;
+  }
+  executable.resize(length);
+  const size_t filename_offset = executable.find_last_of(L"\\/") + 1;
+  if (_wcsicmp(executable.c_str() + filename_offset, L"blender.exe") != 0) {
+    return;
+  }
+
   IPropertyStore *pstore;
-  char blender_path[MAX_PATH];
-  wchar_t shell_command[MAX_PATH];
-
-  /* Find the current executable, and see if it's blender.exe if not bail out. */
-  GetModuleFileName(0, blender_path, sizeof(blender_path));
-  char *blender_app = strstr(blender_path, "blender.exe");
-  if (!blender_app) {
+  if (FAILED(SHGetPropertyStoreForWindow(h_wnd_, IID_PPV_ARGS(&pstore)))) {
     return;
   }
 
-  HRESULT hr = SHGetPropertyStoreForWindow(h_wnd_, IID_PPV_ARGS(&pstore));
-  if (!SUCCEEDED(hr)) {
-    return;
+  /* Use our embedded icon explicitly: a portable install has no registered shortcut
+   * from which the taskbar can reliably resolve the relaunch icon. */
+  /* Resource 1 is the numeric Bmax icon group also used by the file handler.
+   * RelaunchIconResource requires a negative resource ID for an executable. */
+  const std::wstring icon_resource = executable + L",-1";
+  std::wstring launcher = executable.substr(0, filename_offset) + L"blender-launcher.exe";
+  const DWORD launcher_attributes = GetFileAttributesW(launcher.c_str());
+  if (launcher_attributes == INVALID_FILE_ATTRIBUTES ||
+      (launcher_attributes & FILE_ATTRIBUTE_DIRECTORY))
+  {
+    launcher = executable;
   }
-
-  /* Set the launcher as the shell command so the console window will not flash.
-   * when people pin blender to the taskbar. */
-  strcpy(blender_app, "blender-launcher.exe");
-  wsprintfW(shell_command, L"\"%S\"", blender_path);
-  UTF16_ENCODE(BLENDER_WIN_APPID);
+  /* Prefer the launcher to avoid flashing a console when relaunching a pinned window. */
+  const std::wstring shell_command = L"\"" + launcher + L"\"";
   UTF16_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
-  PROPVARIANT propvar;
-  hr = InitPropVariantFromString(BLENDER_WIN_APPID_16, &propvar);
-  hr = pstore->SetValue(PKEY_AppUserModel_ID, propvar);
-  hr = InitPropVariantFromString(shell_command, &propvar);
-  hr = pstore->SetValue(PKEY_AppUserModel_RelaunchCommand, propvar);
-  hr = InitPropVariantFromString(BLENDER_WIN_APPID_FRIENDLY_NAME_16, &propvar);
-  hr = pstore->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, propvar);
+  auto set_string = [&](const PROPERTYKEY &key, const wchar_t *value) {
+    PROPVARIANT propvar;
+    if (SUCCEEDED(InitPropVariantFromString(value, &propvar))) {
+      pstore->SetValue(key, propvar);
+      PropVariantClear(&propvar);
+    }
+  };
+  set_string(PKEY_AppUserModel_RelaunchCommand, shell_command.c_str());
+  set_string(PKEY_AppUserModel_RelaunchDisplayNameResource, BLENDER_WIN_APPID_FRIENDLY_NAME_16);
+  set_string(PKEY_AppUserModel_RelaunchIconResource, icon_resource.c_str());
+  /* Publish the identity after its relaunch metadata is ready for the shell. */
+  set_string(PKEY_AppUserModel_ID, GHOST_win32_app_id());
   pstore->Release();
   UTF16_UN_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
-  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
 }
 
 /* as per MSDN: Any property not cleared before closing the window, will be leaked and NOT be
@@ -1272,6 +1287,7 @@ void GHOST_WindowWin32::unregisterWindowAppUserModelProperties()
     pstore->SetValue(PKEY_AppUserModel_ID, value);
     pstore->SetValue(PKEY_AppUserModel_RelaunchCommand, value);
     pstore->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, value);
+    pstore->SetValue(PKEY_AppUserModel_RelaunchIconResource, value);
     pstore->Release();
   }
 }
