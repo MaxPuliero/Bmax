@@ -903,16 +903,34 @@ def brush_settings(layout, context, brush, popover=False):
         if capabilities.has_plane_depth:
             layout.prop(brush, "plane_depth", slider=True, text="Depth")
 
-        # use_persistent, set_persistent_base
-        if capabilities.has_persistence:
-            layout.separator()
-            col = layout.column()
-            # Persistent base is not supported when Dyntopo is enabled.
-            if context.sculpt_object and context.sculpt_object.use_dynamic_topology_sculpting:
-                col.enabled = False
-            col.prop(brush, "use_persistent")
-            col.operator("sculpt.set_persistent_base")
-            layout.separator()
+        # Match the native Layer/Cloth spacing for every brush's persistent controls.
+        layout.separator()
+        # A shared reference surface, with independent limits on each brush.
+        obj = context.sculpt_object
+        has_base = obj.has_sculpt_persistent_base
+        col = layout.column()
+        col.enabled = not obj.use_dynamic_topology_sculpting
+        col.prop(brush, "use_persistent")
+        col.operator(
+            "sculpt.set_persistent_base",
+            text="Update Persistent Base" if has_base else "Set Persistent Base",
+        )
+        col.operator("sculpt.flush_persistent_base", text="Flush Persistent")
+        for direction, label in (("up", "Limit Up"), ("down", "Limit Down")):
+            enabled = getattr(brush, "use_sculpt_limit_" + direction)
+            row = col.row(align=True)
+            toggle = row.row(align=True)
+            toggle.operator_context = 'INVOKE_DEFAULT'
+            props = toggle.operator(
+                "sculpt.thick_limit_toggle", text=label,
+                icon='CHECKBOX_HLT' if enabled and has_base else 'CHECKBOX_DEHLT',
+                emboss=has_base, depress=enabled and has_base,
+            )
+            props.up = direction == "up"
+            value = row.row(align=True)
+            value.enabled = has_base and brush.use_persistent and enabled
+            value.prop(brush, "sculpt_limit_" + direction, text="", slider=True)
+        layout.separator()
 
         if capabilities.has_color:
             ups = UnifiedPaintPanel.paint_settings(context).unified_paint_settings

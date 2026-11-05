@@ -569,6 +569,22 @@ static void version_bone_axis_size(ListBaseT<Bone> &bones)
 void blo_do_versions_520(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   /* Bmax fields use DNA presence, since official and earlier Bmax files share versions. */
+  const bool missing_sculpt_limit_up = !DNA_struct_member_exists(
+      fd->filesdna, "Brush", "float", "sculpt_limit_up");
+  const bool missing_sculpt_limit_down = !DNA_struct_member_exists(
+      fd->filesdna, "Brush", "float", "sculpt_limit_down");
+  if (missing_sculpt_limit_up || missing_sculpt_limit_down) {
+    for (Brush &brush : bmain->brushes) {
+      /* Initialize stock/older assets without overwriting saved values, including zero. */
+      if (missing_sculpt_limit_up) {
+        brush.sculpt_limit_up = 0.02f;
+      }
+      if (missing_sculpt_limit_down) {
+        brush.sculpt_limit_down = 0.02f;
+      }
+    }
+  }
+
   if (!DNA_struct_member_exists(fd->filesdna, "Mesh", "int", "normal_weight")) {
     for (Mesh &mesh : bmain->meshes) {
       mesh.normal_weighting_mode = ME_NORMAL_WEIGHTING_UNWEIGHTED;

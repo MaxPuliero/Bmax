@@ -3760,6 +3760,36 @@ static void rna_def_brush(BlenderRNA *brna)
       prop, "Smooth Stroke", "Brush lags behind mouse and follows a smoother path");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+  prop = RNA_def_property(srna, "use_sculpt_limit_up", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_sculpt_limit_up", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Limit Up",
+      "Limit outward deformation relative to the persistent base; Ctrl swaps the limits");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "use_sculpt_limit_down", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_sculpt_limit_down", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Limit Down",
+      "Limit inward deformation relative to the persistent base; Ctrl swaps the limits");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "sculpt_limit_up", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 4);
+  RNA_def_property_ui_text(
+      prop, "Outside", "Maximum distance outside the persistent base in scene units");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "sculpt_limit_down", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 4);
+  RNA_def_property_ui_text(
+      prop, "Inside", "Maximum depth inside the persistent base in scene units");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
   prop = RNA_def_property(srna, "use_persistent", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", BRUSH_PERSISTENT);
   RNA_def_property_ui_text(prop, "Persistent", "Sculpt on a persistent layer of the mesh");

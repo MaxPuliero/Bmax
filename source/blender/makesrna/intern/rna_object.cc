@@ -2067,6 +2067,11 @@ bool rna_Light_object_poll(PointerRNA * /*ptr*/, PointerRNA value)
   return (reinterpret_cast<Object *>(value.owner_id))->type == OB_LAMP;
 }
 
+static bool rna_Object_has_sculpt_persistent_base_get(PointerRNA *ptr)
+{
+  return BKE_sculpt_has_persistent_base(*static_cast<Object *>(ptr->data));
+}
+
 bool rna_Object_use_dynamic_topology_sculpting_get(PointerRNA *ptr)
 {
   return BKE_object_sculpt_use_dyntopo(reinterpret_cast<Object *>(ptr->owner_id));
@@ -3688,6 +3693,12 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Object_active_shape_update");
 
   /* sculpt */
+  prop = RNA_def_property(srna, "has_sculpt_persistent_base", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_funcs(prop, "rna_Object_has_sculpt_persistent_base_get", nullptr);
+  RNA_def_property_ui_text(
+      prop, "Has Persistent Base", "A valid sculpt reference surface is stored");
+
   prop = RNA_def_property(srna, "use_dynamic_topology_sculpting", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_Object_use_dynamic_topology_sculpting_get", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

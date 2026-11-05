@@ -97,6 +97,7 @@
 #include "sculpt_intern.hh"
 #include "sculpt_islands.hh"
 #include "sculpt_pose.hh"
+#include "sculpt_thick.hh"
 #include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
@@ -3459,6 +3460,14 @@ static void do_brush_action(const Depsgraph &depsgraph,
     return;
   }
 
+  const bool thick_geometry = !brush_type_is_paint(brush.sculpt_brush_type) &&
+                              brush.sculpt_brush_type != SCULPT_BRUSH_TYPE_MASK &&
+                              (brush.sculpt_brush_type != SCULPT_BRUSH_TYPE_DRAW_FACE_SETS ||
+                               ss.cache->toggle_settings.alt_smooth);
+  const thick::NodePositions thick_before = thick_geometry ?
+                                                thick::capture(depsgraph, ob, node_mask) :
+                                                thick::NodePositions{};
+
   if (auto_mask::is_enabled(sd.paint, ob, &brush)) {
     auto_mask::Cache &cache = auto_mask::stroke_cache_ensure(depsgraph, sd.paint, &brush, ob);
     if (cache.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
@@ -3683,6 +3692,8 @@ static void do_brush_action(const Depsgraph &depsgraph,
       cloth::do_simulation_step(depsgraph, sd, ob, *ss.cache->cloth_sim, node_mask);
     }
   }
+
+  thick::apply(depsgraph, sd, ob, node_mask, thick_before);
 
   /* Update average stroke position. */
   const float3 world_location = math::project_point(ob.object_to_world(), ss.cache->location);
@@ -5872,6 +5883,7 @@ bool SculptPaintStroke::test_start(wmOperator *op, const float mval[2])
     ED_view3d_init_mats_rv3d(&ob, this->vc.rv3d);
 
     stroke_cache_init(mval);
+    thick::prepare(ob, *brush);
     if (brush && brush_type_is_paint(brush->sculpt_brush_type)) {
       BKE_curvemapping_init(brush->curve_rand_hue);
       BKE_curvemapping_init(brush->curve_rand_saturation);

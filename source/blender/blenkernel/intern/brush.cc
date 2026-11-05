@@ -642,6 +642,10 @@ static void brush_defaults(Brush *brush)
   FROM_DEFAULT(falloff_shape);
   FROM_DEFAULT(tip_scale_x);
   FROM_DEFAULT(tip_roundness);
+  FROM_DEFAULT(sculpt_limit_up);
+  FROM_DEFAULT(sculpt_limit_down);
+  FROM_DEFAULT(use_sculpt_limit_up);
+  FROM_DEFAULT(use_sculpt_limit_down);
 
 #undef FROM_DEFAULT
 #undef FROM_DEFAULT_PTR

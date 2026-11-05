@@ -51,6 +51,7 @@
 #include "sculpt_filter.hh"
 #include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_thick.hh"
 #include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
@@ -1254,8 +1255,12 @@ BLI_NOINLINE static void solve_verts_simulation(const Object &object,
     cloth_sim.pos[vert] += pos_diff[i];
   }
 
-  for (const int vert : verts) {
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
     cloth_brush_solve_collision(object, cloth_sim, vert);
+    if (factors[i] > 0.0f) {
+      cloth_sim.pos[vert] = thick::constrain(ss, cloth_sim.init_pos[vert], cloth_sim.pos[vert]);
+    }
   }
 
   for (const int vert : verts) {
@@ -1362,7 +1367,8 @@ static void calc_constraint_factors(const Depsgraph &depsgraph,
 static void cloth_brush_satisfy_constraints(const Depsgraph &depsgraph,
                                             const Object &object,
                                             const Brush *brush,
-                                            SimulationData &cloth_sim)
+                                            SimulationData &cloth_sim,
+                                            const Span<int> thick_verts)
 {
   PRF_scope(ProfileCategory::Editor);
   const SculptSession &ss = *object.runtime->sculpt_session;
@@ -1428,6 +1434,11 @@ static void cloth_brush_satisfy_constraints(const Depsgraph &depsgraph,
         }
       }
     }
+    for (const int vert : thick_verts) {
+      if (factors[vert] > 0.0f) {
+        cloth_sim.pos[vert] = thick::constrain(ss, cloth_sim.init_pos[vert], cloth_sim.pos[vert]);
+      }
+    }
   }
 }
 
@@ -1443,7 +1454,35 @@ void do_simulation_step(const Depsgraph &depsgraph,
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
   /* Update the constraints. */
-  cloth_brush_satisfy_constraints(depsgraph, object, brush, cloth_sim);
+  Vector<int> thick_verts;
+  if (thick::is_active(ss)) {
+    if (pbvh.type() == bke::pbvh::Type::Mesh) {
+      const auto nodes = pbvh.nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) {
+        if (cloth_sim.node_state[cloth_sim.node_state_index.lookup(&nodes[i])] ==
+            SCULPT_CLOTH_NODE_ACTIVE)
+        {
+          thick_verts.extend(nodes[i].verts());
+        }
+      });
+    }
+    else if (pbvh.type() == bke::pbvh::Type::Grids) {
+      const auto nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      const int area = ss.subdiv_ccg->grid_area;
+      node_mask.foreach_index([&](const int i) {
+        if (cloth_sim.node_state[cloth_sim.node_state_index.lookup(&nodes[i])] ==
+            SCULPT_CLOTH_NODE_ACTIVE)
+        {
+          for (const int grid : nodes[i].grids()) {
+            for (const int vert : IndexRange(grid * area, area)) {
+              thick_verts.append(vert);
+            }
+          }
+        }
+      });
+    }
+  }
+  cloth_brush_satisfy_constraints(depsgraph, object, brush, cloth_sim, thick_verts);
 
   const float3 sim_location = cloth_brush_simulation_location_get(ss, brush);
 

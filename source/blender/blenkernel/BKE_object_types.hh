@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
 
 #include "BLI_array.hh"
@@ -25,6 +26,7 @@ struct ID;
 struct Mesh;
 struct PoseBackup;
 struct SculptSession;
+struct SculptPersistentBase;
 
 namespace bke {
 
@@ -152,6 +154,9 @@ struct ObjectRuntime {
   /* Runtime data used by mesh painting modes (Sculpt, Vertex, Weight). */
   /* TODO: Rename the struct and the variable to better indicate its wider usage */
   SculptSession *sculpt_session = nullptr;
+
+  /** Multires reference parked outside Sculpt Mode. Never copied into another object. */
+  std::shared_ptr<SculptPersistentBase> sculpt_persistent_base;
 };
 
 }  // namespace bke

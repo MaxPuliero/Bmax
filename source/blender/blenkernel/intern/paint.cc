@@ -51,6 +51,7 @@
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_deform.hh"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image.hh"
 #include "BKE_key.hh"
@@ -2217,6 +2218,137 @@ void SculptSession::clear_active_elements(bool persist_last_active)
 void SculptSession::set_active_vert(const ActiveVert vert)
 {
   active_vert_ = vert;
+}
+
+static bool sculpt_persistent_topology_matches(const Mesh &mesh)
+{
+  const auto matches = [&](const char *name, const int count) {
+    const IDProperty *prop = mesh.id.properties ?
+                                 IDP_GetPropertyFromGroup(mesh.id.properties, name) :
+                                 nullptr;
+    return prop && prop->type == IDP_INT && IDP_int_get(prop) == count;
+  };
+  return matches(".sculpt_base_verts", mesh.verts_num) &&
+         matches(".sculpt_base_edges", mesh.edges_num) &&
+         matches(".sculpt_base_faces", mesh.faces_num) &&
+         matches(".sculpt_base_corners", mesh.corners_num);
+}
+
+void BKE_sculpt_persistent_base_tag(Object &object)
+{
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  IDProperty *group = IDP_EnsureProperties(&mesh.id);
+  IDP_ReplaceInGroup(group, IDP_NewInt(mesh.verts_num, ".sculpt_base_verts"));
+  IDP_ReplaceInGroup(group, IDP_NewInt(mesh.edges_num, ".sculpt_base_edges"));
+  IDP_ReplaceInGroup(group, IDP_NewInt(mesh.faces_num, ".sculpt_base_faces"));
+  IDP_ReplaceInGroup(group, IDP_NewInt(mesh.corners_num, ".sculpt_base_corners"));
+  object.runtime->sculpt_persistent_base.reset();
+  if (SculptSession *ss = object.runtime->sculpt_session) {
+    ss->persistent.mesh_session_uid = mesh.id.session_uid;
+  }
+}
+
+bool BKE_sculpt_has_persistent_base(const Object &object)
+{
+  if (object.type != OB_MESH || !object.runtime->sculpt_session) {
+    return false;
+  }
+  const SculptSession &ss = *object.runtime->sculpt_session;
+  const Mesh &mesh = *id_cast<const Mesh *>(object.data);
+  if (ss.bm || !sculpt_persistent_topology_matches(mesh)) {
+    return false;
+  }
+  if (ss.subdiv_ccg) {
+    return ss.persistent.mesh_session_uid == mesh.id.session_uid &&
+           ss.persistent.grids_num == ss.subdiv_ccg->grids_num &&
+           ss.persistent.grid_size == ss.subdiv_ccg->grid_size &&
+           ss.persistent.sculpt_persistent_co.size() == ss.subdiv_ccg->positions.size() &&
+           ss.persistent.sculpt_persistent_no.size() == ss.subdiv_ccg->positions.size();
+  }
+  const auto attributes = mesh.attributes();
+  return attributes.contains(".sculpt_persistent_co") &&
+         attributes.contains(".sculpt_persistent_no");
+}
+
+bool BKE_sculpt_has_persistent_data(const Object &object)
+{
+  if (object.type != OB_MESH) {
+    return false;
+  }
+  if (object.runtime->sculpt_persistent_base) {
+    return true;
+  }
+  if (const SculptSession *ss = object.runtime->sculpt_session) {
+    if (!ss->persistent.sculpt_persistent_co.is_empty() || ss->thick_surface) {
+      return true;
+    }
+  }
+  const auto attributes = id_cast<const Mesh *>(object.data)->attributes();
+  return attributes.contains(".sculpt_persistent_co") ||
+         attributes.contains(".sculpt_persistent_no") ||
+         attributes.contains(".sculpt_persistent_disp");
+}
+
+void BKE_sculpt_persistent_base_park(Object &object)
+{
+  SculptSession *ss = object.runtime->sculpt_session;
+  if (!ss || object.type != OB_MESH) {
+    return;
+  }
+  const Mesh &mesh = *id_cast<const Mesh *>(object.data);
+  if (ss->bm || ss->persistent.sculpt_persistent_co.is_empty() ||
+      ss->persistent.mesh_session_uid != mesh.id.session_uid ||
+      !sculpt_persistent_topology_matches(mesh))
+  {
+    object.runtime->sculpt_persistent_base.reset();
+    return;
+  }
+  object.runtime->sculpt_persistent_base = std::make_shared<SculptPersistentBase>(
+      std::move(ss->persistent));
+  ss->persistent = {};
+}
+
+void BKE_sculpt_persistent_base_restore(Object &object)
+{
+  SculptSession *ss = object.runtime->sculpt_session;
+  if (!ss || !object.runtime->sculpt_persistent_base || object.type != OB_MESH) {
+    return;
+  }
+  std::shared_ptr<SculptPersistentBase> stored = std::move(object.runtime->sculpt_persistent_base);
+  const Mesh &mesh = *id_cast<const Mesh *>(object.data);
+  if (!ss->bm && stored->mesh_session_uid == mesh.id.session_uid &&
+      sculpt_persistent_topology_matches(mesh))
+  {
+    ss->persistent = std::move(*stored);
+  }
+}
+
+void BKE_sculpt_persistent_base_flush(Object &object)
+{
+  object.runtime->sculpt_persistent_base.reset();
+  if (SculptSession *ss = object.runtime->sculpt_session) {
+    ss->persistent = {};
+    ss->thick_surface.reset();
+  }
+  if (object.type != OB_MESH) {
+    return;
+  }
+  Mesh &mesh = *id_cast<Mesh *>(object.data);
+  auto attributes = mesh.attributes_for_write();
+  attributes.remove(".sculpt_persistent_co");
+  attributes.remove(".sculpt_persistent_no");
+  attributes.remove(".sculpt_persistent_disp");
+  if (IDProperty *group = mesh.id.properties) {
+    for (const char *name : {".sculpt_base_verts",
+                             ".sculpt_base_edges",
+                             ".sculpt_base_faces",
+                             ".sculpt_base_corners"})
+    {
+      if (IDProperty *prop = IDP_GetPropertyFromGroup(group, name)) {
+        IDP_FreeFromGroup(group, prop);
+      }
+    }
+  }
 }
 
 std::optional<PersistentMultiresData> SculptSession::persistent_multires_data()

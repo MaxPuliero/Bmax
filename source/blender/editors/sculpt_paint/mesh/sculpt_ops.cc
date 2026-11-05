@@ -26,6 +26,7 @@
 #include "BKE_ccg.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_material.hh"
@@ -84,7 +85,7 @@ namespace blender::ed::sculpt_paint {
 /** \name Set Persistent Base Operator
  * \{ */
 
-static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
+static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object &ob = *CTX_data_active_object(C);
@@ -104,6 +105,7 @@ static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator * /*op*
 
   switch (bke::object::pbvh_get(ob)->type()) {
     case bke::pbvh::Type::Mesh: {
+      ss->persistent = {};
       Mesh &mesh = *id_cast<Mesh *>(ob.data);
       bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
       attributes.remove(".sculpt_persistent_co");
@@ -111,7 +113,10 @@ static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator * /*op*
       attributes.remove(".sculpt_persistent_disp");
 
       const bke::AttributeReader positions = attributes.lookup<float3>("position");
-      if (positions.sharing_info && positions.varray.is_span()) {
+      const Span<float3> evaluated = bke::pbvh::vert_positions_eval(*depsgraph, ob);
+      if (positions.sharing_info && positions.varray.is_span() &&
+          positions.varray.get_internal_span().data() == evaluated.data())
+      {
         attributes.add<float3>(
             ".sculpt_persistent_co",
             bke::AttrDomain::Point,
@@ -121,7 +126,7 @@ static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator * /*op*
       else {
         attributes.add<float3>(".sculpt_persistent_co",
                                bke::AttrDomain::Point,
-                               bke::AttributeInitVArray(positions.varray));
+                               bke::AttributeInitVArray(VArray<float3>::from_span(evaluated)));
       }
 
       const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(*depsgraph, ob);
@@ -140,10 +145,22 @@ static wmOperatorStatus set_persistent_base_exec(bContext *C, wmOperator * /*op*
       break;
     }
     case bke::pbvh::Type::BMesh: {
+      BKE_report(op->reports, RPT_ERROR, "Persistent base is not supported with Dynamic Topology");
       return OPERATOR_CANCELLED;
     }
   }
 
+  BKE_sculpt_persistent_base_tag(ob);
+  WM_file_tag_modified();
+  if (Brush *brush = BKE_paint_brush(&CTX_data_tool_settings(C)->sculpt->paint)) {
+    if (BKE_id_is_editable(CTX_data_main(C), &brush->id)) {
+      brush->flag |= BRUSH_PERSISTENT;
+      BKE_brush_tag_unsaved_changes(brush);
+      WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
+    }
+  }
+  ss->thick_surface.reset();
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
   return OPERATOR_FINISHED;
 }
 
@@ -151,12 +168,118 @@ static void SCULPT_OT_set_persistent_base(wmOperatorType *ot)
 {
   ot->name = "Set Persistent Base";
   ot->idname = "SCULPT_OT_set_persistent_base";
-  ot->description = "Reset the copy of the mesh that is being sculpted on";
+  ot->description =
+      "Store the current sculpt surface as the reference for brush limits and persistent "
+      "sculpting";
 
   ot->exec = set_persistent_base_exec;
   ot->poll = sculpt_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  /* The reference is working state, not a sculpt deformation. A memfile step here destroys
+   * runtime-only Multires persistent data when undoing the next sculpt stroke. */
+  ot->flag = OPTYPE_REGISTER;
+}
+
+static bool flush_persistent_base_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_MESH || !object->data ||
+      !ELEM(object->mode, OB_MODE_OBJECT, OB_MODE_SCULPT) ||
+      !BKE_id_is_editable(CTX_data_main(C), object->data))
+  {
+    return false;
+  }
+  if (const SculptSession *ss = object->runtime->sculpt_session) {
+    if (ss->cache || ss->filter_cache || ss->expand_cache) {
+      return false;
+    }
+  }
+  return BKE_sculpt_has_persistent_data(*object);
+}
+
+static wmOperatorStatus flush_persistent_base_exec(bContext *C, wmOperator * /*op*/)
+{
+  Object &object = *CTX_data_active_object(C);
+  BKE_sculpt_persistent_base_flush(object);
+  if (Sculpt *sd = CTX_data_tool_settings(C)->sculpt) {
+    if (Brush *brush = BKE_paint_brush(&sd->paint)) {
+      if (BKE_id_is_editable(CTX_data_main(C), &brush->id)) {
+        brush->flag &= ~BRUSH_PERSISTENT;
+        BKE_brush_tag_unsaved_changes(brush);
+        WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
+      }
+    }
+  }
+  WM_file_tag_modified();
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &object);
+  return OPERATOR_FINISHED;
+}
+
+static void SCULPT_OT_flush_persistent_base(wmOperatorType *ot)
+{
+  ot->name = "Flush Persistent";
+  ot->idname = "SCULPT_OT_flush_persistent_base";
+  ot->description =
+      "Release the stored sculpt reference and collision cache without changing geometry";
+  ot->poll = flush_persistent_base_poll;
+  ot->exec = flush_persistent_base_exec;
+  /* Working-state release must not insert a memfile step in sculpt undo. */
+  ot->flag = OPTYPE_REGISTER;
+}
+
+static wmOperatorStatus thick_limit_toggle_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  Brush *brush = BKE_paint_brush(&CTX_data_tool_settings(C)->sculpt->paint);
+  if (!brush || !BKE_id_is_editable(CTX_data_main(C), &brush->id)) {
+    return OPERATOR_CANCELLED;
+  }
+  char &enabled = RNA_boolean_get(op->ptr, "up") ? brush->use_sculpt_limit_up :
+                                                   brush->use_sculpt_limit_down;
+  if (!BKE_sculpt_has_persistent_base(object)) {
+    if (set_persistent_base_exec(C, op) != OPERATOR_FINISHED) {
+      return OPERATOR_CANCELLED;
+    }
+    enabled = true;
+  }
+  else {
+    enabled = !enabled;
+  }
+  if (enabled) {
+    brush->flag |= BRUSH_PERSISTENT;
+  }
+  BKE_brush_tag_unsaved_changes(brush);
+  WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
+  return OPERATOR_FINISHED;
+}
+
+static wmOperatorStatus thick_limit_toggle_invoke(bContext *C, wmOperator *op, const wmEvent *)
+{
+  Object &object = *CTX_data_active_object(C);
+  if (!BKE_sculpt_has_persistent_base(object)) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Create Persistent Base?"),
+                                  IFACE_("Store the current surface and enable this limit?"),
+                                  IFACE_("Create Base"),
+                                  ui::AlertIcon::Question,
+                                  false);
+  }
+  return thick_limit_toggle_exec(C, op);
+}
+
+static void SCULPT_OT_thick_limit_toggle(wmOperatorType *ot)
+{
+  ot->name = "Toggle Thick Limit";
+  ot->idname = "SCULPT_OT_thick_limit_toggle";
+  ot->description =
+      "Toggle this brush limit, creating a persistent base after confirmation if needed";
+  ot->poll = sculpt_mode_poll;
+  ot->exec = thick_limit_toggle_exec;
+  ot->invoke = thick_limit_toggle_invoke;
+  /* Like native brush properties, toggles must not insert memfile steps in Sculpt undo. */
+  ot->flag = 0;
+  RNA_def_boolean(ot->srna, "up", true, "Up", "Toggle the outward limit");
 }
 
 /** \} */
@@ -343,6 +466,7 @@ static void init_sculpt_mode_session(Main &bmain, Depsgraph &depsgraph, Scene &s
 
   /* This function expects a fully evaluated depsgraph. */
   BKE_sculpt_update_object_for_edit(&depsgraph, &ob, false);
+  BKE_sculpt_persistent_base_restore(ob);
 
   Mesh &mesh = *id_cast<Mesh *>(ob.data);
   if (mesh.attributes().contains(".sculpt_face_set")) {
@@ -531,6 +655,7 @@ void object_sculpt_mode_exit(Main &bmain, Depsgraph &depsgraph, Scene &scene, Ob
   /* Leave sculpt mode. */
   ob.mode &= ~mode_flag;
 
+  BKE_sculpt_persistent_base_park(ob);
   BKE_sculptsession_free(&ob);
 
   paint_cursor_delete_textures();
@@ -1591,6 +1716,8 @@ void operatortypes_sculpt()
   WM_operatortype_append(SCULPT_OT_brush_stroke);
   WM_operatortype_append(SCULPT_OT_sculptmode_toggle);
   WM_operatortype_append(SCULPT_OT_set_persistent_base);
+  WM_operatortype_append(SCULPT_OT_flush_persistent_base);
+  WM_operatortype_append(SCULPT_OT_thick_limit_toggle);
   WM_operatortype_append(dyntopo::SCULPT_OT_dynamic_topology_toggle);
   WM_operatortype_append(SCULPT_OT_optimize);
   WM_operatortype_append(SCULPT_OT_symmetrize);

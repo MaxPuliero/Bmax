@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include <memory>
 #include <variant>
 
 #include "BLI_array.hh"
@@ -53,6 +54,9 @@ struct Cache;
 }
 namespace filter {
 struct Cache;
+}
+namespace thick {
+struct Surface;
 }
 struct StrokeCache;
 }  // namespace ed::sculpt_paint
@@ -126,6 +130,15 @@ void BKE_paint_invalidate_cursor_overlay(const Main &bmain,
                                          ViewLayer *view_layer,
                                          CurveMapping *curve);
 void BKE_paint_invalidate_overlay_all();
+
+/** Whether the stored sculpt surface matches the current topology and Multires level. */
+bool BKE_sculpt_has_persistent_base(const Object &object);
+void BKE_sculpt_persistent_base_tag(Object &object);
+bool BKE_sculpt_has_persistent_data(const Object &object);
+/** Move Multires reference buffers out of / into the active Sculpt session. */
+void BKE_sculpt_persistent_base_park(Object &object);
+void BKE_sculpt_persistent_base_restore(Object &object);
+void BKE_sculpt_persistent_base_flush(Object &object);
 ePaintOverlayControlFlags BKE_paint_get_overlay_flags();
 void BKE_paint_reset_overlay_invalid(ePaintOverlayControlFlags flag);
 void BKE_paint_set_overlay_override(eOverlayFlags flag);
@@ -379,6 +392,16 @@ struct PersistentMultiresData {
   MutableSpan<float> displacements;
 };
 
+/** Runtime-only reference. Buffer ownership moves across mode changes without copying samples. */
+struct SculptPersistentBase {
+  Array<float3> sculpt_persistent_co;
+  Array<float3> sculpt_persistent_no;
+  Array<float> sculpt_persistent_disp;
+  int grids_num = -1;
+  int grid_size = -1;
+  uint64_t mesh_session_uid = 0;
+};
+
 struct SculptSession : NonCopyable, NonMovable {
   /* The current active shapekey for the mesh. Only non-null for Type::Mesh */
   KeyBlock *shapekey_active = nullptr;
@@ -455,17 +478,9 @@ struct SculptSession : NonCopyable, NonMovable {
 
   /* "Persistent" positions and normals for multires. (For mesh the
    * ".sculpt_persistent_co" attribute is used, etc.). */
-  struct {
-    Array<float3> sculpt_persistent_co;
-    Array<float3> sculpt_persistent_no;
-    Array<float> sculpt_persistent_disp;
+  SculptPersistentBase persistent;
 
-    /* The stored state for the SubdivCCG at the time of attribute population, used to roughly
-     * determine if the topology when accessed at a current point in time is equivalent to when
-     * it was originally stored. */
-    int grids_num = -1;
-    int grid_size = -1;
-  } persistent;
+  std::shared_ptr<ed::sculpt_paint::thick::Surface> thick_surface;
 
   /* Contains information used by tools and brushes that require different logic based on boundary
    * elements. Typically used for anything which needs to consider neighbor values.

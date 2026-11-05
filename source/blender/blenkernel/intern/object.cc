@@ -5129,6 +5129,7 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int /*flag*/)
   runtime->geometry_set_eval = nullptr;
   runtime->contained_geometry_types = 0;
   runtime->sculpt_session = nullptr;
+  runtime->sculpt_persistent_base.reset();
 
   runtime->crazyspace_deform_imats = {};
   runtime->crazyspace_deform_cos = {};

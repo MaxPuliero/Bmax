@@ -384,6 +384,13 @@ struct Brush {
   eBrushBoundaryFalloffType boundary_falloff_type = BRUSH_BOUNDARY_FALLOFF_CONSTANT;
   float boundary_offset = 0;
 
+  /* Limits relative to the explicitly stored sculpt surface, in scene distance units. */
+  float sculpt_limit_up = 0.02f;
+  float sculpt_limit_down = 0.02f;
+  char use_sculpt_limit_up = false;
+  char use_sculpt_limit_down = false;
+  char _pad_thick[6] = {};
+
   /* cloth */
   eBrushClothDeformType cloth_deform_type = BRUSH_CLOTH_DEFORM_DRAG;
   eBrushClothForceFalloffType cloth_force_falloff_type = BRUSH_CLOTH_FORCE_FALLOFF_RADIAL;

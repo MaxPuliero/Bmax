@@ -144,6 +144,8 @@ set(SRC
   mesh/sculpt_islands.hh
   mesh/sculpt_pose.hh
   mesh/sculpt_smooth.hh
+  mesh/sculpt_thick.cc
+  mesh/sculpt_thick.hh
   mesh/sculpt_undo.hh
   mesh/vw_paint_intern.hh
 
