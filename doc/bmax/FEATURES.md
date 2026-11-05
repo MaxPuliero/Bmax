@@ -6,6 +6,135 @@ This is the current implemented feature list for `main`, checked against the Bma
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
 
+## Persistent-base brush limits (2026-11-05)
+
+Implementation: [`a70d32267f1b`](https://github.com/MaxPuliero/Bmax/commit/a70d32267f1b433062447253efae9dd05171d605) on `main`. Source publication does not update binary packages.
+
+### Retain the base between Sculpt sessions and Flush Persistent (2026-11-05)
+
+Leaving Sculpt now parks the native Multires reference on the object's runtime and restores
+it on reentry. Buffer ownership is moved, without copying all points or retaining a second
+base. The collision BVH is released with the session and rebuilt lazily. Ordinary-mesh bases
+continue using native mesh attributes. Multires retention is memory-only, not file persistence.
+One captured grid level is retained: another level suspends it, and returning restores it;
+Update replaces the reference. Mesh identity/count changes invalidate parked Multires data.
+Same-count connectivity changes still require manual recapture. Object copies do not alias
+the runtime reference; deleting an object releases its parked buffers.
+
+**Flush Persistent** appears below Set/Update and is enabled while reference/cache data exists,
+including an incompatible subdivision reference. It frees active/parked buffers, the collision
+cache, native base attributes and owned count metadata, and disables Persistent on the active
+brush. Geometry, limit switches and numerical distances are preserved. It can also run from
+F3 in Object Mode. Capture, Flush and limit toggles remain working settings without Undo steps.
+
+The standard runtime is now rebuilt/installed with this follow-up and the earlier Undo fix.
+The separate persistent_undo_fix runtime remains the prior correction. Desktop/public copies
+and the user's open Desktop process are unchanged; the implementation is committed on `main`.
+181 targeted assertions passed: 119 OpenGL data/operator checks, 7 native UI checks, 52 on
+actual Vulkan, and 3 Manifold Boolean/Sculpt Trim smoke checks. Coverage includes repeated
+mode round trips with Draw/Layer/Cloth, original-base caps, Flush in both modes, recapture,
+level restoration, data replacement/topology invalidation, independent copies, deletion and
+stroke Undo/Redo after mode changes. Panel states and the recapture prompt were inspected.
+No new stroke-performance benchmark was run; the collision solver is unchanged.
+
+### Retain the base across brush Undo (2026-11-05)
+
+Set/Update Persistent Base and limit toggles no longer push generic memfile Undo entries.
+The snapshot boundary previously caused undoing the following Multires stroke to reconstruct
+Sculpt-session runtime and discard its persistent base. Reference capture and brush switches
+are now working settings, consistent with ordinary Sculpt brush property edits. Capturing
+still marks the project modified and brush changes retain their normal unsaved-asset tag.
+
+No extra base copies per stroke, native Undo rewrite or DNA/runtime layout changes were added.
+Undo/Redo continues to restore brush geometry while leaving a compatible base, Persistent and
+limit selection active. Incompatible topology or Sculpt-session destruction retains the
+existing invalidation rules; this does not serialize Multires persistent data.
+
+The complete corrected runtime is `D:\blender_build\persistent_undo_fix\bin\blender.exe`.
+At this earlier stage the standard runtime was left untouched while open. The mode-retention
+follow-up above has since updated the standard installation; this separate runtime is retained.
+Desktop/public packages were not replaced.
+
+105 targeted assertions passed: 89 across ten OpenGL scenarios and 16 across two Vulkan
+Multires scenarios (actual Vulkan backend confirmed). Tests use Set -> stroke -> Undo/Redo
+without inserting a synthetic Undo checkpoint between capture and stroke. Coverage includes
+mesh, Layer, Cloth, Multires Draw/Layer/Cloth, creation from the missing-base toggle, toggling
+a limit after Set, and Update between two strokes. A separate undo-only Multires case checks
+that the evaluated surface returns to zero after leaving Sculpt; redo cases check the 0.02
+result, and Update undo retains the earlier sculpt result. Earlier checkpoint-based tests
+did not exercise the failing memfile boundary; these regressions reproduce it directly.
+
+
+### Persistent controls refinement (2026-11-05)
+
+All brushes now use the native Layer/Cloth separator before one shared Persistent checkbox
+and the Set/Update button. Capturing or updating a base enables the active brush's native
+BRUSH_PERSISTENT flag; enabling a limit also enables that flag. Persistent is the master
+switch for the limits, and still controls native Layer/Cloth persistent behavior. Switching
+it off retains the stored reference and disables distance editing.
+
+Limit Up/Down default to 0.02 Blender distance units (2 cm at standard scene unit scale).
+Stock/older assets missing these fields receive both defaults through DNA-presence versioning;
+already saved fields, including explicit zero/custom values, are preserved. No DNA size,
+member offset or shared runtime layout changed in this refinement.
+
+The updated local runtime passed 27 data/brush checks and 9 native-popup/UI checks on OpenGL.
+Draw, Inflate Cloth and Layer all auto-enable Persistent on Set/Update and respect the 0.02
+default cap. New brushes, RNA defaults, stock asset migration, saved zero/custom values,
+master-off behavior and retained base were checked. Draw/Cloth panel captures show a single
+checkbox and consistent spacing. A separate 2 -> 1 -> 2 Multires probe confirms that the
+stored base becomes inactive at level 1 and valid again upon returning to captured level 2,
+while the same Sculpt session/reference survives. Updating at another level replaces it.
+
+The following 87-check record and performance figures describe the initial implementation.
+The refinement was not separately benchmarked; native Cloth/Layer Persistent is now enabled
+automatically. Standard runtime updated, Desktop/public
+packages unchanged.
+
+
+Per-brush Limit Up / Limit Down use nonnegative scene-distance sliders. A shared native
+Set Persistent Base captures the current surface and becomes Update Persistent Base
+while valid. Missing-base toggles invoke confirmation; cancellation leaves the brush
+unchanged. Ctrl swaps enable flags and distances without rewriting saved brush settings.
+
+The common geometric brush path applies limits to changed points in affected PBVH nodes,
+including post-brush smoothing and gravity. Cloth also constrains active simulated points
+between length-constraint iterations and after integration. Mask/color-only strokes do
+not acquire geometric deformation from this feature. Native axis locks and mirror clips
+remain higher-priority constraints.
+
+Nearest sampled tangent planes approximate the frozen surface, with at most one million
+samples in the acceleration structure. The full native persistent base remains unchanged
+by this sampling. Distances are evaluated in world space, including unapplied object scale.
+Pre-existing violations are not snapped into the band; motion cannot worsen the violation
+relative to the same local reference plane.
+
+Dyntopo is unsupported. Topology-count and Multires grid-layout mismatches suspend the
+limits until the reference is captured again. A topology edit that preserves all counts
+is not detected by this lightweight check. Ordinary mesh references are native attributes
+and saved with the mesh; Multires references survive mode changes in object runtime but
+must be recaptured after the file is reopened. Linked mesh
+data shares its reference, as with native Persistent Base. Self-collision and continuous
+collision detection are not provided.
+
+The initial local runtime was rebuilt and installed. Initial validation passed 34 checks on
+OpenGL and the same 34 on actual Vulkan, plus 10 mask/reference/shape-key/Manifold checks,
+5 undo/redo/free-sliding checks and 4 native popup checks (87 total). Panel and confirmation
+captures were visually inspected. Cloth reached +0.03 / -0.025 scene units at the respective
+limits; free tangential drag stayed above a zero-depth base. Multires reached the 0.02 limit.
+Topology-preserving edits with changed connectivity, general modifier stacks, sharp/nearby
+surfaces and multi-layer Sculpt stacks were not exhaustively verified.
+
+Matched OpenGL synthetic-stroke medians (10 samples, two additional warm-up strokes after
+a separately timed cold stroke, seven measured strokes) were Draw 4.58 ms off / 6.92 ms on
+on 263,169 vertices, and Cloth 39.69 ms off / 72.87 ms on on 66,049 vertices. Disabled results
+were comparable to the prior runtime (4.67 / 39.87 ms). These are operator times, not
+interactive FPS or universal slowdowns. See [benchmark details](sculpt_thick.md).
+
+The source implementation is committed on `main`. Only the standard local runtime was
+updated; Desktop copies, official_save_preview and public packages were preserved. See the
+[build record](BUILD_WINDOWS.md#persistent-base-brush-limits-2026-11-05).
+
 ## Selected-item editing without the Alt exception (2026-11-04 local follow-up)
 
 Alt no longer restricts compatible UI property edits or multi-edit command

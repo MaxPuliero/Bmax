@@ -4,6 +4,143 @@
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
 
+## Persistent base between modes and Flush Persistent (2026-11-05)
+
+Shared SculptSession/ObjectRuntime layouts changed, so the existing build was rebuilt using:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /t:Rebuild /p:CL_MPCount=2
+cmake --install D:\blender_build\octahedral_radius --config Release
+```
+
+An initial compile rejected a mesh-session-ID wrapper comparison. The field was corrected to
+an equal-size uint64_t storing native numeric ID.session_uid, then dependency compilation
+and Release installation finished successfully. Build caches and pinned libraries were retained.
+
+The current standard executable is `D:\blender_build\octahedral_radius\bin\blender.exe`,
+98,086,400 bytes, timestamp 2026-11-05 15:46:58 JST, SHA-256
+`1DEA308D39BB6B12613E1D36799BCB06DA5BFD2C6953358C9F4A575010B87AD6`.
+It matches bin/Release/blender.exe and includes the earlier stroke-Undo fix. The separate
+persistent_undo_fix install remains the prior correction. Desktop/public copies were not
+updated; the user's open Desktop process was preserved. Source implementation: [`a70d32267f1b`](https://github.com/MaxPuliero/Bmax/commit/a70d32267f1b433062447253efae9dd05171d605) on `main`.
+
+181 assertions passed: 119 OpenGL data/operator checks, 7 native UI checks, 52 actual Vulkan
+checks and 3 native Manifold Boolean/Sculpt Trim checks. See [the inventory](FEATURES.md) and
+[technical notes](sculpt_thick.md) for cases and limits. Panel captures and the confirmation
+dialog were inspected. C++ formatting, Python syntax, installed UI equality and diff checks
+passed. Temporary scripts, scenes, logs, captures and isolated preferences were external and
+removed. No new stroke benchmark was run; the collision solver is unchanged.
+
+## Persistent base survives stroke Undo (2026-11-05)
+
+Incremental Release blender compilation completed with parallelism 2 and CL_MPCount=2.
+Only sculpt_ops.cc changes native behavior: Set/Update and limit toggles stop inserting
+memfile Undo entries; capture explicitly calls WM_file_tag_modified. No shared layout,
+geometry solver or GPU code changed, and no forced Rebuild was required.
+
+The standard runtime was open (user process preserved), so a complete separate install used:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /p:CL_MPCount=2
+cmake --install D:\blender_build\octahedral_radius --config Release --prefix D:\blender_build\persistent_undo_fix\bin
+```
+
+The ready executable `D:\blender_build\persistent_undo_fix\bin\blender.exe` is 98,080,768
+bytes, timestamp 2026-11-05 14:33:40 JST, SHA-256
+`E1399B9E1B28956FE478E5F4BA2DB9B5C3848297CAFE5D6B133E11C3A690EA4F`.
+At that stage it matched bin/Release/blender.exe and the standard 14:15:53 runtime was left
+untouched while in use. The mode-retention follow-up above has since updated the standard
+installation. Desktop/public copies and this separate runtime were not replaced.
+The install prefix override did not change the CMake cache. The source is now committed on `main`.
+
+The previous runtime reproduced the failure on Multires: first brush Undo invalidated the
+base; a no-memfile control retained it. The corrected runtime passed 105 targeted checks:
+89 in ten OpenGL scenarios and 16 in two Vulkan scenarios (actual Vulkan confirmed).
+Cases include ordinary mesh/Layer/Cloth, Multires Draw/Layer/Cloth, Undo-only geometry,
+Redo geometry, missing-base toggle capture, limit toggles after capture, and Update between
+two strokes. Set/Update has no artificial Undo checkpoint after it, and real strokes use
+explicit operator Undo registration. Geometry returns to zero on Undo or the expected 0.02
+stroke result on Redo; undoing a second stroke after Update leaves the first sculpt intact.
+Persistent, the limit flag and a compatible base remain active throughout.
+
+Format, syntax and runtime identity were checked. All temporary scripts, isolated settings,
+scenes, recovery files and logs were outside the repository and removed after recording
+results. The user's open Blender process, pre-existing files and build caches were preserved.
+
+## Persistent controls refinement (2026-11-05)
+
+Incremental Release INSTALL completed using the same MSVC v143 configuration, parallelism 2
+and CL_MPCount=2. Changes add uniform native Persistent-group spacing, a single checkbox on
+all brushes, automatic native Persistent activation on Set/Update, master gating of limits,
+and 0.02 distance defaults with DNA-presence migration for old brush assets. Existing saved
+distances, including zero, are preserved. Only default initializers changed in Brush DNA:
+sizes, offsets and shared C++ layouts are unchanged, so no forced Rebuild was required.
+Header/default/RNA dependencies were recompiled normally.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is 98,080,768 bytes,
+timestamp 2026-11-05 14:15:53 JST, SHA-256
+`5ACCBE55EA4773005C78D8BF24D3C4904F2BE1975022FA1C1677056E458F7DF5`.
+The standard runtime is updated. The source is now committed on main; Desktop/public
+packages and official_save_preview were not replaced.
+
+27 OpenGL data/brush assertions and 9 native confirmation/UI assertions passed on this
+runtime. They cover new/RNA/stock defaults, preservation of saved zero/custom distances,
+Set/Update auto-activation, default caps on Draw/Inflate Cloth/Layer, master-off suspension,
+retained reference, cancel/confirm and the initially requested limit. Before/after, master-off
+and Cloth captures were visually inspected: separator spacing is consistent and Persistent
+appears once. An isolated Multires 2 -> 1 -> 2 probe showed base validity true/false/true while
+the original session/storage survives. This refinement changes no GPU geometry algorithm;
+Vulkan and the prior performance benchmark were not repeated.
+
+Verification used graphical factory-startup sessions with isolated configuration and all
+scripts, scenes, captures and logs outside the repository. Task artifacts were removed after
+recording the results; pre-existing files and build dependencies were preserved.
+
+## Persistent-base brush limits (2026-11-05)
+
+The local main checkout adds per-brush Limit Up/Down, common Set/Update Persistent Base,
+missing-base confirmation and approximate reference collision inside the Cloth solver.
+Brush DNA and SculptSession layouts changed, so all dependencies were rebuilt with the
+existing MSVC v143 Release configuration before INSTALL:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /t:Rebuild /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+Initial DNA padding and MSVC Span-conversion errors were corrected. The final accelerator
+optimization changes only sculpt_thick.cc implementation and uses a native point BVH; its
+incremental INSTALL succeeded without another layout change. No cache/dependency deletion
+or user-process termination was needed.
+
+The installed `D:\blender_build\octahedral_radius\bin\blender.exe` is 98,080,768 bytes,
+timestamp 2026-11-05 13:27:30 JST, SHA-256
+`BE715221B01CC4AC7FF96FCFE36382F16B96AD14442DADB94139B92E15759609`.
+The installed file and bin/Release executable match. The source is now committed on main;
+official_save_preview remains the previous Bmax runtime used for comparison. Desktop copies
+and the public download were not replaced.
+
+The final installed binary passed 87 targeted checks: 34 OpenGL, 34 Vulkan, 10 extended
+geometry/reference/shape-key/Manifold checks, 5 undo/redo/tangential-slide checks and 4 real
+confirmation checks. Before/after panels and the native dialog were visually inspected.
+The data tests validate both distance signs, Ctrl side swapping, world distance under
+unapplied scale, Clay/Inflate/Draw/Cloth, current-level Multires, ordinary mesh save/reload,
+zero-depth collision, masks, no snapping of prior violations, reference updates and unchanged
+Basis shape keys. Manifold difference volume and half-cube Sculpt Trim passed after Rebuild.
+
+Matched seven-measurement median stroke times were Draw 4.58 ms off / 6.92 ms on (263,169
+vertices) and Cloth 39.69 ms off / 72.87 ms on (66,049 vertices). The previous build measured
+4.67 / 39.87 ms. Each operator has 10 samples; a separately timed cold stroke and two further
+warm-up strokes precede measurements. These are synchronous operator times, not FPS.
+See [full interpretation and limitations](sculpt_thick.md).
+
+Early fixture attempts used unsupported background viewport/stroke calls, omitted required
+tilt fields, used invalid direction enum names, kept a stale override during file reload,
+or omitted explicit Python Undo registration. Corrected tests ran in separate graphical
+factory-startup sessions; final sessions used an isolated configuration directory. Temporary
+scripts, scenes, settings, captures, recovery files and task logs were external and removed.
+Pre-existing diagnostic files, user data, runtimes and build dependencies were preserved.
+
 ## Remove the Alt active-only exception (2026-11-04)
 
 The Release blender and locales targets and CMake installation completed with

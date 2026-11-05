@@ -20,7 +20,42 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 4, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 5, 2026, their source commits, and removed items.
+
+### Persistent-base brush limits (November 5)
+
+<img src="doc/bmax/media/limits.gif" alt="Persistent Base with independent Limit Up and Limit Down sculpt brush controls and Flush Persistent" width="512">
+
+**Stroke Undo fix:** Set/Update Persistent Base and the limit toggles are working settings,
+so Undo/Redo removes/restores brush strokes while retaining a compatible base and activation.
+The standard runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` now includes
+this correction and retains the base when leaving/reentering Sculpt Mode. **Flush Persistent**
+frees the reference and collision cache without changing geometry; it also switches off the
+active brush's Persistent checkbox. A single captured Multires level is retained in memory,
+with no full-point copy on mode changes. Desktop/public
+packages and the earlier separate undo-fix runtime are unchanged.
+
+Sculpt brush settings group **Persistent** and **Set Persistent Base** below a separator,
+matching native Layer/Cloth spacing on every brush. Capturing or updating the reference
+automatically enables Persistent; switching it off suspends the limits while keeping the base.
+The button changes to **Update Persistent Base** while a valid reference exists.
+**Limit Up** and **Limit Down** independently enable distance sliders, defaulting to **2 cm**
+at the standard scene unit scale, measured outside/inside the reference in scene units. Clicking a
+limit without a base asks to capture the current surface first. Ctrl temporarily swaps
+both limits and their distances, alongside the brush's native inversion.
+
+The Cloth brush also enforces the reference during its constraint iterations. Down at
+zero acts as an approximate surface collision with free tangential motion. Self-collision
+is not included. The reference uses nearest sampled tangent planes rather than exact
+triangle collision; sharp features and closely spaced surfaces are approximate.
+
+The local Windows runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` is
+rebuilt and verified with 87 initial checks across OpenGL/Vulkan, UI confirmation and undo/redo,
+plus 36 checks for the Persistent/defaults/UI refinements. The mode-retention/Flush follow-up
+passed 181 additional checks, including OpenGL/Vulkan, native UI and Manifold/Sculpt Trim.
+The implementation is included in source commit [`a70d32267f1b`](https://github.com/MaxPuliero/Bmax/commit/a70d32267f1b433062447253efae9dd05171d605) on `main`.
+Desktop copies and the public package were not replaced. Multires references must be recaptured after reopening the file.
+See [technical details and measured performance](doc/bmax/sculpt_thick.md).
 
 ### Continuous viewport across workspaces
 
