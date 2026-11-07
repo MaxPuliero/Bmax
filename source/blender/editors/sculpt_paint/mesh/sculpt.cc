@@ -7,6 +7,7 @@
  * Implements the Sculpt Mode Brushes.
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -109,6 +110,43 @@
 #include "mesh_brush_common.hh"
 
 namespace blender {
+
+/* Dyntopo may split PBVH nodes at stroke completion without changing mesh topology. */
+static void stroke_delta_refresh_bmesh_nodes(Object &object)
+{
+  SculptSession &ss = *object.runtime->sculpt_session;
+  if (!ss.bm || !ss.stroke_delta) {
+    return;
+  }
+  SculptStrokeDelta &delta = *ss.stroke_delta;
+  bke::pbvh::Tree &tree = *bke::object::pbvh_get(object);
+  const Span<bke::pbvh::BMeshNode> nodes = tree.nodes<bke::pbvh::BMeshNode>();
+  delta.tree = &tree;
+  delta.node_data = nodes.data();
+  delta.nodes_num = nodes.size();
+  delta.node_indices.clear();
+  const int vert_offset = CustomData_get_offset_named(
+      &ss.bm->vdata, CD_PROP_INT32, ".sculpt_dyntopo_node_id_vertex");
+  const int face_offset = CustomData_get_offset_named(
+      &ss.bm->pdata, CD_PROP_INT32, ".sculpt_dyntopo_node_id_face");
+  for (BMVert *vert : delta.bmesh_verts) {
+    const int node = BM_ELEM_CD_GET_INT(vert, vert_offset);
+    if (node >= 0 && node < nodes.size()) {
+      delta.node_indices.append(node);
+    }
+    BMIter iter;
+    BMFace *face;
+    BM_ITER_ELEM (face, &iter, vert, BM_FACES_OF_VERT) {
+      const int neighbor = BM_ELEM_CD_GET_INT(face, face_offset);
+      if (neighbor >= 0 && neighbor < nodes.size()) {
+        delta.node_indices.append(neighbor);
+      }
+    }
+  }
+  std::sort(delta.node_indices.begin(), delta.node_indices.end());
+  delta.node_indices.resize(std::unique(delta.node_indices.begin(), delta.node_indices.end()) -
+                            delta.node_indices.begin());
+}
 
 static CLG_LogRef LOG = {"sculpt"};
 
@@ -5655,6 +5693,9 @@ static void stroke_undo_begin(const Scene &scene,
                               Object &object,
                               wmOperator *op)
 {
+  if (object.runtime->sculpt_session->bm) {
+    BM_log_stroke_position_begin(object.runtime->sculpt_session->bm_log);
+  }
   /* Setup the correct undo system. Image painting and sculpting are mutual exclusive.
    * Color attributes are part of the sculpting undo system. */
   if (brush && brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_PAINT &&
@@ -6107,6 +6148,7 @@ void SculptPaintStroke::done(bool is_cancel, bool stroke_started)
   ss.cache = nullptr;
 
   if (!is_cancel && stroke_started) {
+    undo::capture_stroke_delta(*this->depsgraph, ob);
     stroke_undo_end(*paint_mode_settings_, *this->object, brush);
   }
 
@@ -6125,6 +6167,7 @@ void SculptPaintStroke::done(bool is_cancel, bool stroke_started)
     flush_update_done(this->vc, *wm_, ob, UpdateType::Position);
   }
 
+  stroke_delta_refresh_bmesh_nodes(ob);
   WM_event_add_notifier(this->evil_C, NC_OBJECT | ND_DRAW, &ob);
   brush_exit_tex(sd);
 }
@@ -6321,6 +6364,155 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
                          "Ignore Background Click",
                          "Clicks on the background do not start the stroke");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+static bool sculpt_repeat_stroke_poll(bContext *C)
+{
+  if (!sculpt_mode_poll_view3d(C)) {
+    return false;
+  }
+  const Object &ob = *CTX_data_active_object(C);
+  if (!ob.runtime->sculpt_session->stroke_delta) {
+    CTX_wm_operator_poll_msg_set(C,
+                                 "No completed geometry stroke to amplify in this Sculpt session");
+    return false;
+  }
+  return true;
+}
+
+static wmOperatorStatus sculpt_repeat_stroke_exec(bContext *C, wmOperator *op)
+{
+  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
+  Object &ob = *CTX_data_active_object(C);
+  const auto delta = ob.runtime->sculpt_session->stroke_delta;
+  BKE_sculpt_update_object_for_edit(&depsgraph, &ob, false);
+  SculptSession &ss = *ob.runtime->sculpt_session;
+  Mesh &mesh = *id_cast<Mesh *>(ob.data);
+  bke::pbvh::Tree *tree = &bke::object::pbvh_ensure(depsgraph, ob);
+  if (delta->bmesh != ss.bm ||
+      (ss.bm && delta->bmesh_log_entry != BM_log_current_entry_get(ss.bm_log)) ||
+      delta->shape_key != ss.shapekey_active || delta->mesh_uid != mesh.id.session_uid ||
+      delta->verts_num != (ss.bm ? ss.bm->totvert : mesh.verts_num) ||
+      delta->faces_num != (ss.bm ? ss.bm->totface : mesh.faces_num) ||
+      (!ss.bm && (delta->corner_verts != mesh.corner_verts().data() ||
+                  delta->face_offsets != mesh.face_offsets().data() ||
+                  delta->corners_num != mesh.corners_num)) ||
+      delta->grid_size != (ss.subdiv_ccg ? ss.subdiv_ccg->grid_size : 0) ||
+      delta->grids_num != (ss.subdiv_ccg ? ss.subdiv_ccg->grids_num : 0))
+  {
+    BKE_report(op->reports,
+               RPT_WARNING,
+               "Sculpt topology or subdivision changed; draw a new stroke before repeating");
+    ss.stroke_delta.reset();
+    return OPERATOR_CANCELLED;
+  }
+  ss.stroke_delta = delta;
+  /* A save/evaluation can rebuild PBVH storage without changing point identity. Remap only
+   * in that case; ordinary repeated presses continue using the sparse cached node mask. */
+  const void *node_data = nullptr;
+  std::visit([&](const auto &nodes) { node_data = nodes.data(); }, tree->nodes_);
+  if (ss.bm) {
+    stroke_delta_refresh_bmesh_nodes(ob);
+  }
+  else if (delta->tree != tree || delta->node_data != node_data ||
+           delta->nodes_num != tree->nodes_num())
+  {
+    Set<int> changed;
+    for (const int index : delta->indices) {
+      changed.add(ss.subdiv_ccg ? index / ss.subdiv_ccg->grid_area : index);
+    }
+    delta->node_indices.clear();
+    if (tree->type() == bke::pbvh::Type::Mesh) {
+      const Span<bke::pbvh::MeshNode> nodes = tree->nodes<bke::pbvh::MeshNode>();
+      for (const int i : nodes.index_range()) {
+        for (const int vert : nodes[i].all_verts()) {
+          if (changed.contains(vert)) {
+            delta->node_indices.append(i);
+            break;
+          }
+        }
+      }
+    }
+    else {
+      const Span<bke::pbvh::GridsNode> nodes = tree->nodes<bke::pbvh::GridsNode>();
+      for (const int i : nodes.index_range()) {
+        for (const int grid : nodes[i].grids()) {
+          if (changed.contains(grid)) {
+            delta->node_indices.append(i);
+            break;
+          }
+        }
+      }
+    }
+    delta->tree = tree;
+    delta->node_data = node_data;
+    delta->nodes_num = tree->nodes_num();
+  }
+  if (!shape_key_check(ob, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
+  if (mesh.sculpt_layer_stack && !bke::sculpt_layers::native_single(mesh)) {
+    if (const char *error = bke::sculpt_layers::support_error(ob, true)) {
+      BKE_report(op->reports, RPT_ERROR, error);
+      return OPERATOR_CANCELLED;
+    }
+  }
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_indices<int>(delta->node_indices, memory);
+  undo::push_begin(*CTX_data_scene(C), ob, op);
+  undo::push_nodes(depsgraph, ob, mask, undo::Type::Position);
+  switch (tree->type()) {
+    case bke::pbvh::Type::Mesh: {
+      const PositionDeformData positions(depsgraph, ob);
+      Vector<float3> translations = delta->translations;
+      positions.deform(translations, delta->indices);
+      MutableSpan<bke::pbvh::MeshNode> nodes = tree->nodes<bke::pbvh::MeshNode>();
+      mask.foreach_index(
+          [&](int i) { bke::pbvh::update_node_bounds_mesh(positions.eval, nodes[i]); });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      SubdivCCG &ccg = *ss.subdiv_ccg;
+      for (const int i : delta->indices.index_range()) {
+        ccg.positions[delta->indices[i]] += delta->translations[i];
+      }
+      MutableSpan<bke::pbvh::GridsNode> nodes = tree->nodes<bke::pbvh::GridsNode>();
+      mask.foreach_index([&](int i) {
+        bke::pbvh::update_node_bounds_grids(ccg.grid_area, ccg.positions, nodes[i]);
+      });
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+      for (const int i : delta->bmesh_verts.index_range()) {
+        add_v3_v3(delta->bmesh_verts[i]->co, delta->translations[i]);
+      }
+      MutableSpan<bke::pbvh::BMeshNode> nodes = tree->nodes<bke::pbvh::BMeshNode>();
+      mask.foreach_index([&](int i) { bke::pbvh::update_node_bounds_bmesh(nodes[i]); });
+      break;
+    }
+  }
+  tree->tag_positions_changed(mask);
+  tree->flush_bounds_to_parents();
+  flush_update_step(C, UpdateType::Position);
+  undo::push_end(ob);
+  if (ss.bm) {
+    delta->bmesh_log_entry = BM_log_current_entry_get(ss.bm_log);
+  }
+  flush_update_done(C, ob, UpdateType::Position);
+  stroke_delta_refresh_bmesh_nodes(ob);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
+  return OPERATOR_FINISHED;
+}
+
+void SCULPT_OT_repeat_last_stroke(wmOperatorType *ot)
+{
+  ot->name = "Repeat Last Stroke";
+  ot->idname = "SCULPT_OT_repeat_last_stroke";
+  ot->description =
+      "Add the last geometry stroke's original displacement again, without changing topology";
+  ot->poll = sculpt_repeat_stroke_poll;
+  ot->exec = sculpt_repeat_stroke_exec;
+  /* Native Sculpt undo is pushed explicitly, one step per amplification. */
 }
 
 /* Fake Neighbors. */

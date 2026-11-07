@@ -3723,6 +3723,10 @@ class VIEW3D_MT_sculpt(Menu):
     def draw(self, context):
         layout = self.layout
 
+        layout.operator("sculpt.repeat_last_stroke")
+        layout.operator("sculpt.symmetrize_blend")
+        layout.separator()
+
         layout.menu("VIEW3D_MT_sculpt_transform", text="Transform")
 
         layout.separator()

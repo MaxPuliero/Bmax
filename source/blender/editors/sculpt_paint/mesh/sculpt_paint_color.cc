@@ -567,7 +567,9 @@ IndexMask multires_color_nodes(Object &object, const IndexMask &node_mask, Index
   const SubdivCCG &ccg = *ss.subdiv_ccg;
   const Span<bke::pbvh::GridsNode> nodes =
       bke::object::pbvh_get(object)->nodes<bke::pbvh::GridsNode>();
-  Array<int> &owners = ss.cache->paint_brush.grid_to_node;
+  /* Filters use the same seam-neighbor coverage without a brush stroke cache. */
+  Array<int> filter_owners;
+  Array<int> &owners = ss.cache ? ss.cache->paint_brush.grid_to_node : filter_owners;
   if (owners.is_empty()) {
     owners.reinitialize(ccg.grids_num);
     for (const int node : nodes.index_range()) {

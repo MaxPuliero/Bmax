@@ -402,7 +402,28 @@ struct SculptPersistentBase {
   uint64_t mesh_session_uid = 0;
 };
 
+/** Sparse displacement captured from the last completed brush stroke. */
+struct SculptStrokeDelta {
+  Vector<int> indices;
+  Vector<int> node_indices;
+  Vector<BMVert *> bmesh_verts;
+  const void *corner_verts = nullptr;
+  const void *face_offsets = nullptr;
+  int corners_num = 0;
+  const BMesh *bmesh = nullptr;
+  const void *bmesh_log_entry = nullptr;
+  const KeyBlock *shape_key = nullptr;
+  const void *tree = nullptr;
+  const void *node_data = nullptr;
+  int nodes_num = 0;
+  Vector<float3> translations;
+  uint64_t mesh_uid = 0;
+  int verts_num = 0, faces_num = 0, grids_num = 0, grid_size = 0;
+};
+
 struct SculptSession : NonCopyable, NonMovable {
+  std::shared_ptr<SculptStrokeDelta> stroke_delta;
+
   /* The current active shapekey for the mesh. Only non-null for Type::Mesh */
   KeyBlock *shapekey_active = nullptr;
 

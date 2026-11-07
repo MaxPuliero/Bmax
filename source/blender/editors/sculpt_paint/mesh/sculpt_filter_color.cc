@@ -12,6 +12,7 @@
 #include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_vector.hh"
+#include "BLI_set.hh"
 
 #include "BLT_translation.hh"
 
@@ -25,6 +26,7 @@
 #include "BKE_paint.hh"
 #include "BKE_paint_bvh.hh"
 #include "BKE_report.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "IMB_colormanagement.hh"
 
@@ -139,6 +141,136 @@ BLI_NOINLINE static void clamp_factors(const MutableSpan<float> factors,
   }
 }
 
+/** Identical pointwise color math for mesh vertices and Multires grid samples. */
+static void apply_color_filter(const FilterType mode,
+                               const Span<float4> orig_colors,
+                               MutableSpan<float> factors,
+                               const float3 &filter_fill_color,
+                               MutableSpan<float4> new_colors)
+{
+  for (const int i : orig_colors.index_range()) {
+    new_colors[i] = orig_colors[i];
+  }
+  switch (mode) {
+    case FilterType::Fill: {
+      clamp_factors(factors, 0.0f, 1.0f);
+      for (const int i : orig_colors.index_range()) {
+        float fill_color_rgba[4];
+        copy_v3_v3(fill_color_rgba, filter_fill_color);
+        fill_color_rgba[3] = 1.0f;
+        mul_v4_fl(fill_color_rgba, factors[i]);
+        blend_color_mix_float(new_colors[i], orig_colors[i], fill_color_rgba);
+      }
+      break;
+    }
+    case FilterType::Hue: {
+      for (const int i : orig_colors.index_range()) {
+        float3 hsv_color;
+        rgb_to_hsv_v(orig_colors[i], hsv_color);
+        const float hue = hsv_color[0];
+        hsv_color[0] = fmod((hsv_color[0] + fabs(factors[i])) - hue, 1);
+        hsv_to_rgb_v(hsv_color, new_colors[i]);
+      }
+      break;
+    }
+    case FilterType::Saturation: {
+      for (const int i : orig_colors.index_range()) {
+        float3 hsv_color;
+        rgb_to_hsv_v(orig_colors[i], hsv_color);
+
+        if (hsv_color[1] > 0.001f) {
+          hsv_color[1] = std::clamp(hsv_color[1] + factors[i] * hsv_color[1], 0.0f, 1.0f);
+          hsv_to_rgb_v(hsv_color, new_colors[i]);
+        }
+        else {
+          copy_v3_v3(new_colors[i], orig_colors[i]);
+        }
+      }
+      break;
+    }
+    case FilterType::Value: {
+      for (const int i : orig_colors.index_range()) {
+        float3 hsv_color;
+        rgb_to_hsv_v(orig_colors[i], hsv_color);
+        hsv_color[2] = std::clamp(hsv_color[2] + factors[i], 0.0f, 1.0f);
+        hsv_to_rgb_v(hsv_color, new_colors[i]);
+      }
+      break;
+    }
+    case FilterType::Red: {
+      for (const int i : orig_colors.index_range()) {
+        copy_v3_v3(new_colors[i], orig_colors[i]);
+        new_colors[i][0] = std::clamp(orig_colors[i][0] + factors[i], 0.0f, 1.0f);
+      }
+      break;
+    }
+    case FilterType::Green: {
+      for (const int i : orig_colors.index_range()) {
+        copy_v3_v3(new_colors[i], orig_colors[i]);
+        new_colors[i][1] = std::clamp(orig_colors[i][1] + factors[i], 0.0f, 1.0f);
+      }
+      break;
+    }
+    case FilterType::Blue: {
+      for (const int i : orig_colors.index_range()) {
+        copy_v3_v3(new_colors[i], orig_colors[i]);
+        new_colors[i][2] = std::clamp(orig_colors[i][2] + factors[i], 0.0f, 1.0f);
+      }
+      break;
+    }
+    case FilterType::Brightness: {
+      clamp_factors(factors, -1.0f, 1.0f);
+      for (const int i : orig_colors.index_range()) {
+        const float brightness = factors[i];
+        const float contrast = 0;
+        float delta = contrast / 2.0f;
+        const float gain = 1.0f - delta * 2.0f;
+        delta *= -1;
+        const float offset = gain * (brightness + delta);
+        for (int component = 0; component < 3; component++) {
+          new_colors[i][component] = std::clamp(
+              gain * orig_colors[i][component] + offset, 0.0f, 1.0f);
+        }
+      }
+      break;
+    }
+    case FilterType::Contrast: {
+      clamp_factors(factors, -1.0f, 1.0f);
+      for (const int i : orig_colors.index_range()) {
+        const float brightness = 0;
+        const float contrast = factors[i];
+        float delta = contrast / 2.0f;
+        float gain = 1.0f - delta * 2.0f;
+
+        float offset;
+        if (contrast > 0) {
+          gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
+          offset = gain * (brightness - delta);
+        }
+        else {
+          delta *= -1;
+          offset = gain * (brightness + delta);
+        }
+        for (int component = 0; component < 3; component++) {
+          new_colors[i][component] = std::clamp(
+              gain * orig_colors[i][component] + offset, 0.0f, 1.0f);
+        }
+      }
+      break;
+    }
+    case FilterType::Smooth:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  /* In particular Hue must never alter a fully masked or hidden sample. */
+  for (const int i : orig_colors.index_range()) {
+    if (factors[i] == 0.0f) {
+      new_colors[i] = orig_colors[i];
+    }
+  }
+}
+
 static void color_filter_task(const Depsgraph &depsgraph,
                               Object &ob,
                               const OffsetIndices<int> faces,
@@ -173,177 +305,66 @@ static void color_filter_task(const Depsgraph &depsgraph,
     new_colors[i][3] = orig_colors[i][3];
   }
 
-  switch (mode) {
-    case FilterType::Fill: {
-      clamp_factors(factors, 0.0f, 1.0f);
-      for (const int i : verts.index_range()) {
-        float fill_color_rgba[4];
-        copy_v3_v3(fill_color_rgba, filter_fill_color);
-        fill_color_rgba[3] = 1.0f;
-        mul_v4_fl(fill_color_rgba, factors[i]);
-        blend_color_mix_float(new_colors[i], orig_colors[i], fill_color_rgba);
-      }
-      break;
-    }
-    case FilterType::Hue: {
-      for (const int i : verts.index_range()) {
-        float3 hsv_color;
-        rgb_to_hsv_v(orig_colors[i], hsv_color);
-        const float hue = hsv_color[0];
-        hsv_color[0] = fmod((hsv_color[0] + fabs(factors[i])) - hue, 1);
-        hsv_to_rgb_v(hsv_color, new_colors[i]);
-      }
-      break;
-    }
-    case FilterType::Saturation: {
-      for (const int i : verts.index_range()) {
-        float3 hsv_color;
-        rgb_to_hsv_v(orig_colors[i], hsv_color);
+  if (mode == FilterType::Smooth) {
+    clamp_factors(factors, -1.0f, 1.0f);
 
-        if (hsv_color[1] > 0.001f) {
-          hsv_color[1] = std::clamp(hsv_color[1] + factors[i] * hsv_color[1], 0.0f, 1.0f);
-          hsv_to_rgb_v(hsv_color, new_colors[i]);
-        }
-        else {
-          copy_v3_v3(new_colors[i], orig_colors[i]);
-        }
-      }
-      break;
+    tls.colors.resize(verts.size());
+    const MutableSpan<float4> colors = tls.colors;
+    for (const int i : verts.index_range()) {
+      colors[i] = color_vert_get(faces,
+                                 corner_verts,
+                                 vert_to_face_map,
+                                 color_attribute.span,
+                                 color_attribute.domain,
+                                 verts[i]);
     }
-    case FilterType::Value: {
-      for (const int i : verts.index_range()) {
-        float3 hsv_color;
-        rgb_to_hsv_v(orig_colors[i], hsv_color);
-        hsv_color[2] = std::clamp(hsv_color[2] + factors[i], 0.0f, 1.0f);
-        hsv_to_rgb_v(hsv_color, new_colors[i]);
-      }
-      break;
-    }
-    case FilterType::Red: {
-      for (const int i : verts.index_range()) {
-        copy_v3_v3(new_colors[i], orig_colors[i]);
-        new_colors[i][0] = std::clamp(orig_colors[i][0] + factors[i], 0.0f, 1.0f);
-      }
-      break;
-    }
-    case FilterType::Green: {
-      for (const int i : verts.index_range()) {
-        copy_v3_v3(new_colors[i], orig_colors[i]);
-        new_colors[i][1] = std::clamp(orig_colors[i][1] + factors[i], 0.0f, 1.0f);
-      }
-      break;
-    }
-    case FilterType::Blue: {
-      for (const int i : verts.index_range()) {
-        copy_v3_v3(new_colors[i], orig_colors[i]);
-        new_colors[i][2] = std::clamp(orig_colors[i][2] + factors[i], 0.0f, 1.0f);
-      }
-      break;
-    }
-    case FilterType::Brightness: {
-      clamp_factors(factors, -1.0f, 1.0f);
-      for (const int i : verts.index_range()) {
-        const float brightness = factors[i];
-        const float contrast = 0;
-        float delta = contrast / 2.0f;
-        const float gain = 1.0f - delta * 2.0f;
-        delta *= -1;
-        const float offset = gain * (brightness + delta);
-        for (int component = 0; component < 3; component++) {
-          new_colors[i][component] = std::clamp(
-              gain * orig_colors[i][component] + offset, 0.0f, 1.0f);
-        }
-      }
-      break;
-    }
-    case FilterType::Contrast: {
-      clamp_factors(factors, -1.0f, 1.0f);
-      for (const int i : verts.index_range()) {
-        const float brightness = 0;
-        const float contrast = factors[i];
-        float delta = contrast / 2.0f;
-        float gain = 1.0f - delta * 2.0f;
 
-        float offset;
-        if (contrast > 0) {
-          gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
-          offset = gain * (brightness - delta);
-        }
-        else {
-          delta *= -1;
-          offset = gain * (brightness + delta);
-        }
-        for (int component = 0; component < 3; component++) {
-          new_colors[i][component] = std::clamp(
-              gain * orig_colors[i][component] + offset, 0.0f, 1.0f);
-        }
-      }
-      break;
-    }
-    case FilterType::Smooth: {
-      clamp_factors(factors, -1.0f, 1.0f);
+    const GroupedSpan<int> neighbors = calc_vert_neighbors(
+        faces, corner_verts, vert_to_face_map, {}, verts, tls.neighbor_offsets, tls.neighbor_data);
 
-      tls.colors.resize(verts.size());
-      const MutableSpan<float4> colors = tls.colors;
-      for (const int i : verts.index_range()) {
-        colors[i] = color_vert_get(faces,
+    tls.average_colors.resize(verts.size());
+    const MutableSpan<float4> average_colors = tls.average_colors;
+    smooth::neighbor_color_average(faces,
                                    corner_verts,
                                    vert_to_face_map,
                                    color_attribute.span,
                                    color_attribute.domain,
-                                   verts[i]);
+                                   neighbors,
+                                   average_colors);
+
+    for (const int i : verts.index_range()) {
+      const int vert = verts[i];
+
+      if (factors[i] < 0.0f) {
+        interp_v4_v4v4(average_colors[i], average_colors[i], colors[i], 0.5f);
       }
 
-      const GroupedSpan<int> neighbors = calc_vert_neighbors(faces,
-                                                             corner_verts,
-                                                             vert_to_face_map,
-                                                             {},
-                                                             verts,
-                                                             tls.neighbor_offsets,
-                                                             tls.neighbor_data);
+      bool copy_alpha = colors[i][3] == average_colors[i][3];
 
-      tls.average_colors.resize(verts.size());
-      const MutableSpan<float4> average_colors = tls.average_colors;
-      smooth::neighbor_color_average(faces,
-                                     corner_verts,
-                                     vert_to_face_map,
-                                     color_attribute.span,
-                                     color_attribute.domain,
-                                     neighbors,
-                                     average_colors);
+      if (factors[i] < 0.0f) {
+        float4 delta_color;
 
-      for (const int i : verts.index_range()) {
-        const int vert = verts[i];
+        /* Unsharp mask. */
+        copy_v4_v4(delta_color, ss.filter_cache->pre_smoothed_color[vert]);
+        delta_color -= average_colors[i];
 
-        if (factors[i] < 0.0f) {
-          interp_v4_v4v4(average_colors[i], average_colors[i], colors[i], 0.5f);
-        }
-
-        bool copy_alpha = colors[i][3] == average_colors[i][3];
-
-        if (factors[i] < 0.0f) {
-          float4 delta_color;
-
-          /* Unsharp mask. */
-          copy_v4_v4(delta_color, ss.filter_cache->pre_smoothed_color[vert]);
-          delta_color -= average_colors[i];
-
-          copy_v4_v4(new_colors[i], colors[i]);
-          madd_v4_v4fl(new_colors[i], delta_color, factors[i]);
-        }
-        else {
-          blend_color_interpolate_float(new_colors[i], colors[i], average_colors[i], factors[i]);
-        }
-
-        new_colors[i] = math::clamp(new_colors[i], 0.0f, 1.0f);
-
-        /* Prevent accumulated numeric error from corrupting alpha. */
-        if (copy_alpha) {
-          new_colors[i][3] = average_colors[i][3];
-        }
+        copy_v4_v4(new_colors[i], colors[i]);
+        madd_v4_v4fl(new_colors[i], delta_color, factors[i]);
       }
-      break;
+      else {
+        blend_color_interpolate_float(new_colors[i], colors[i], average_colors[i], factors[i]);
+      }
+
+      new_colors[i] = math::clamp(new_colors[i], 0.0f, 1.0f);
+
+      /* Prevent accumulated numeric error from corrupting alpha. */
+      if (copy_alpha) {
+        new_colors[i][3] = average_colors[i][3];
+      }
     }
+  }
+  else {
+    apply_color_filter(mode, orig_colors, factors, filter_fill_color, new_colors);
   }
 
   for (const int i : verts.index_range()) {
@@ -417,12 +438,193 @@ static void sculpt_color_presmooth_init(const Mesh &mesh, Object &object)
   }
 }
 
+/** Per-operator buffers; no change to the shared filter cache or saved mesh layout. */
+struct GridColorFilterData {
+  Vector<int> grids;
+  Array<int> offsets;
+  Array<int> grid_to_node;
+  Array<float4> previous;
+  Array<float4> pre_smoothed;
+  Set<int> dirty_grids;
+  IndexMaskMemory undo_memory;
+};
+
+static void grid_color_filter_init(Depsgraph &depsgraph, Object &object, wmOperator &op)
+{
+  SculptSession &ss = *object.runtime->sculpt_session;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  const SubdivCCG &ccg = *ss.subdiv_ccg;
+  auto *data = MEM_new<GridColorFilterData>(__func__);
+  op.customdata = data;
+  const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+  data->offsets = Array<int>(ccg.grids_num, -1);
+  data->grid_to_node = Array<int>(ccg.grids_num, -1);
+  for (const int i : nodes.index_range()) {
+    for (const int grid : nodes[i].grids()) {
+      data->grid_to_node[grid] = i;
+    }
+  }
+  ss.filter_cache->node_mask.foreach_index([&](const int i) {
+    for (const int grid : nodes[i].grids()) {
+      data->offsets[grid] = data->grids.size() * ccg.grid_area;
+      data->grids.append(grid);
+    }
+  });
+  /* Seam stitching can write duplicate samples owned by adjacent, otherwise locked nodes. */
+  const IndexMask undo_nodes = multires_color_nodes(
+      object, ss.filter_cache->node_mask, data->undo_memory);
+  undo::push_nodes(depsgraph, object, undo_nodes, undo::Type::Color);
+}
+
+static void sculpt_color_filter_apply_grids(bContext *C, wmOperator *op, Object &object)
+{
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
+  const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
+  SculptSession &ss = *object.runtime->sculpt_session;
+  SubdivCCG &ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(ccg);
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+  GridColorFilterData &data = *static_cast<GridColorFilterData *>(op->customdata);
+  const FilterType mode = FilterType(RNA_enum_get(op->ptr, "type"));
+  const float strength = RNA_float_get(op->ptr, "strength");
+  const float3 fill_color = fill_color_resolve(
+      C, op, RNA_boolean_get(op->ptr, "use_secondary_color"));
+  const IndexMask &node_mask = ss.filter_cache->node_mask;
+  if (auto_mask::is_enabled(sd.paint, object, nullptr) && ss.filter_cache->automasking &&
+      ss.filter_cache->automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL)
+  {
+    ss.filter_cache->automasking->calc_cavity_factor(depsgraph, object, node_mask);
+  }
+  const auto snapshot = [&](MutableSpan<float4> dst) {
+    for (const int grid : data.grids) {
+      dst.slice(data.offsets[grid], ccg.grid_area)
+          .copy_from(ccg.colors.as_span().slice(grid * ccg.grid_area, ccg.grid_area));
+    }
+  };
+  const auto read = [&](const Span<float4> src, const SubdivCCGCoord coord) -> float4 {
+    const int offset = data.offsets[coord.grid_index];
+    return offset < 0 ? ccg.colors[coord.to_index(key)] :
+                        src[offset + coord.y * ccg.grid_size + coord.x];
+  };
+  const auto average = [&](const Span<float4> src, const SubdivCCGCoord coord) {
+    SubdivCCGNeighbors neighbors;
+    BKE_subdiv_ccg_neighbor_coords_get(ccg, coord, false, neighbors);
+    float4 sum(0);
+    for (const SubdivCCGCoord other : neighbors.unique()) {
+      sum += read(src, other);
+    }
+    return neighbors.unique().is_empty() ? read(src, coord) : sum / neighbors.unique().size();
+  };
+  if (mode == FilterType::Smooth) {
+    if (data.previous.is_empty()) {
+      data.previous.reinitialize(data.grids.size() * ccg.grid_area);
+    }
+    snapshot(data.previous);
+    if (strength < 0.0f && data.pre_smoothed.is_empty()) {
+      data.pre_smoothed = data.previous;
+      for ([[maybe_unused]] const int iteration : IndexRange(2)) {
+        for (const int grid : data.grids) {
+          for (int y = 0; y < ccg.grid_size; y++) {
+            for (int x = 0; x < ccg.grid_size; x++) {
+              const SubdivCCGCoord coord{grid, short(x), short(y)};
+              data.pre_smoothed[data.offsets[grid] + y * ccg.grid_size + x] = math::interpolate(
+                  read(data.previous, coord), average(data.previous, coord), 0.5f);
+            }
+          }
+        }
+        data.previous.as_mutable_span().copy_from(data.pre_smoothed);
+      }
+      snapshot(data.previous);
+    }
+  }
+  Array<bool> changed_grids(ccg.grids_num, false);
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  node_mask.foreach_index(
+      [&](const int node_i) {
+        const bke::pbvh::GridsNode &node = nodes[node_i];
+        const Span<int> grids = node.grids();
+        LocalData &tls = all_tls.local();
+        tls.factors.resize(grids.size() * ccg.grid_area);
+        fill_factor_from_hide_and_mask(ccg, grids, tls.factors);
+        auto_mask::calc_grids_factors(
+            depsgraph, object, ss.filter_cache->automasking.get(), node, grids, tls.factors);
+        scale_factors(tls.factors, strength);
+        const Span<float4> original = *orig_color_data_lookup_grids(node);
+        tls.new_colors.resize(original.size());
+        if (mode != FilterType::Smooth) {
+          apply_color_filter(mode, original, tls.factors, fill_color, tls.new_colors);
+        }
+        else {
+          clamp_factors(tls.factors, -1.0f, 1.0f);
+          int local = 0;
+          for (const int grid : grids) {
+            for (int y = 0; y < ccg.grid_size; y++) {
+              for (int x = 0; x < ccg.grid_size; x++, local++) {
+                const SubdivCCGCoord coord{grid, short(x), short(y)};
+                const float4 current = read(data.previous, coord);
+                float4 mean = average(data.previous, coord);
+                const float factor = tls.factors[local];
+                if (factor == 0.0f) {
+                  tls.new_colors[local] = current;
+                  continue;
+                }
+                if (factor < 0.0f) {
+                  mean = (mean + current) * 0.5f;
+                  tls.new_colors[local] = current +
+                                          (read(data.pre_smoothed, coord) - mean) * factor;
+                }
+                else {
+                  tls.new_colors[local] = math::interpolate(current, mean, factor);
+                }
+                tls.new_colors[local] = math::clamp(tls.new_colors[local], 0.0f, 1.0f);
+                if (current[3] == mean[3]) {
+                  tls.new_colors[local][3] = mean[3];
+                }
+              }
+            }
+          }
+        }
+        int local = 0;
+        for (const int grid : grids) {
+          for (const int offset : IndexRange(ccg.grid_area)) {
+            const int index = grid * ccg.grid_area + offset;
+            const float4 value = tls.new_colors[local++];
+            if (math::distance_squared(ccg.colors[index], value) > 0.0f) {
+              ccg.colors[index] = value;
+              changed_grids[grid] = true;
+            }
+          }
+        }
+      },
+      exec_mode::grain_size(1));
+  Vector<int> dirty;
+  for (const int grid : data.grids) {
+    if (changed_grids[grid]) {
+      dirty.append(grid);
+    }
+  }
+  const Vector<int> stitched = BKE_subdiv_ccg_colors_stitch(ccg, dirty);
+  Array<bool> changed_nodes(nodes.size(), false);
+  for (const int grid : stitched) {
+    data.dirty_grids.add(grid);
+    changed_nodes[data.grid_to_node[grid]] = true;
+  }
+  IndexMaskMemory memory;
+  pbvh.tag_attribute_changed(IndexMask::from_bools(changed_nodes, memory), ccg.color_name);
+  flush_update_step(C, UpdateType::Color);
+}
+
 static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object &ob)
 {
   const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   SculptSession &ss = *ob.runtime->sculpt_session;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
+  if (pbvh.type() == bke::pbvh::Type::Grids) {
+    sculpt_color_filter_apply_grids(C, op, ob);
+    return;
+  }
   MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
 
   const FilterType mode = FilterType(RNA_enum_get(op->ptr, "type"));
@@ -481,10 +683,29 @@ static void sculpt_color_filter_end(bContext *C, wmOperator *op, Object &ob)
     fill_color_store_current(C, op);
   }
 
+  if (auto *data = static_cast<GridColorFilterData *>(op->customdata)) {
+    const Vector<int> dirty(data->dirty_grids.begin(), data->dirty_grids.end());
+    if (!dirty.is_empty()) {
+      BKE_subdiv_ccg_colors_store(*id_cast<Mesh *>(ob.data), *ss.subdiv_ccg, dirty);
+    }
+    MEM_delete(data);
+    op->customdata = nullptr;
+  }
+  ss.stroke_delta.reset();
   undo::push_end(ob);
   MEM_delete(ss.filter_cache);
   ss.filter_cache = nullptr;
   flush_update_done(C, ob, UpdateType::Color);
+}
+
+static void sculpt_color_filter_cancel(bContext *C, wmOperator *op)
+{
+  if (auto *data = static_cast<GridColorFilterData *>(op->customdata)) {
+    Object &object = *CTX_data_active_object(C);
+    undo::restore_color_grids_from_undo_step(object);
+    data->dirty_grids.clear();
+    sculpt_color_filter_end(C, op, object);
+  }
 }
 
 static wmOperatorStatus sculpt_color_filter_modal(bContext *C,
@@ -493,6 +714,11 @@ static wmOperatorStatus sculpt_color_filter_modal(bContext *C,
 {
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.runtime->sculpt_session;
+
+  if (op->customdata && ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE) && event->val == KM_PRESS) {
+    sculpt_color_filter_cancel(C, op);
+    return OPERATOR_CANCELLED;
+  }
 
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     /* For Fill: if this was a click (not a drag), apply once at the tool's configured strength */
@@ -558,10 +784,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     }
   }
 
-  if (BKE_sculpt_multires_active(&scene, &ob)) {
-    BKE_report(op->reports, RPT_ERROR, "Color Filter is not supported on multiresolution grids");
-    return OPERATOR_CANCELLED;
-  }
   /* Disable for dyntopo for now. */
   if (!color_supported_check(scene, ob, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -577,6 +799,10 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
    * creation of color layer data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, true);
+  if (SubdivCCG *ccg = ob.runtime->sculpt_session->subdiv_ccg) {
+    const Mesh &mesh = *id_cast<Mesh *>(ob.data);
+    BKE_subdiv_ccg_colors_ensure(mesh, *ccg, mesh.active_color_attribute);
+  }
 
   filter::cache_init(C,
                      ob,
@@ -590,6 +816,9 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   filter_cache->active_face_set = face_set_none_id;
   if (auto_mask::is_enabled(sd.paint, ob, nullptr)) {
     auto_mask::filter_cache_ensure(*depsgraph, sd.paint, ob);
+  }
+  if (bke::object::pbvh_get(ob)->type() == bke::pbvh::Type::Grids) {
+    grid_color_filter_init(*depsgraph, ob, *op);
   }
 
   return OPERATOR_PASS_THROUGH;
@@ -674,6 +903,7 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
   ot->invoke = sculpt_color_filter_invoke;
   ot->exec = sculpt_color_filter_exec;
   ot->modal = sculpt_color_filter_modal;
+  ot->cancel = sculpt_color_filter_cancel;
   ot->poll = sculpt_mode_poll;
   ot->ui = sculpt_color_filter_ui;
   ot->get_name = sculpt_color_filter_get_name;

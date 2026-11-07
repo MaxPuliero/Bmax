@@ -1126,6 +1126,35 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
         layout.operator("sculpt.symmetrize")
 
 
+class VIEW3D_PT_sculpt_blend_symmetry(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".sculpt_mode"
+    bl_label = "Blend Symmetry"
+
+    @classmethod
+    def poll(cls, context):
+        return context.sculpt_object is not None
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        settings = WindowManager.operator_properties_last("sculpt.symmetrize_blend")
+        layout.prop(settings, "axis", expand=True)
+        layout.prop(settings, "strength", slider=True)
+        layout.prop(settings, "tolerance")
+        layout.prop(settings, "use_vertex_paint")
+
+        layout.separator()
+        layout.operator_context = 'EXEC_REGION_WIN'
+        props = layout.operator("sculpt.symmetrize_blend", text="Blend Symmetry")
+        props.axis = settings.axis
+        props.strength = settings.strength
+        props.tolerance = settings.tolerance
+        props.use_vertex_paint = settings.use_vertex_paint
+
+
 class VIEW3D_PT_sculpt_symmetry_for_topbar(Panel):
     bl_space_type = 'TOPBAR'
     bl_region_type = 'HEADER'
@@ -2375,6 +2404,7 @@ classes = (
     VIEW3D_PT_sculpt_dyntopo,
     VIEW3D_PT_sculpt_voxel_remesh,
     VIEW3D_PT_sculpt_symmetry,
+    VIEW3D_PT_sculpt_blend_symmetry,
     VIEW3D_PT_sculpt_symmetry_for_topbar,
     VIEW3D_PT_sculpt_options,
     VIEW3D_PT_sculpt_options_gravity,

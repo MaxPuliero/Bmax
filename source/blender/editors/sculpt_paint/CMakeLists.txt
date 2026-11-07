@@ -107,6 +107,7 @@ set(SRC
   mesh/sculpt_mask_extract.cc
   mesh/sculpt_mask_init.cc
   mesh/sculpt_ops.cc
+  mesh/sculpt_symmetrize_blend.cc
   mesh/sculpt_paint_color.cc
   mesh/sculpt_paint_image.cc
   mesh/sculpt_pose.cc

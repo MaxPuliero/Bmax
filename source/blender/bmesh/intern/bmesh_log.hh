@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 /** \file
  * \ingroup bmesh
  */
@@ -16,6 +18,16 @@ struct BMVert;
 struct BMesh;
 struct BMLog;
 struct BMLogEntry;
+
+/** Runtime identity used to reject a cached displacement after another BMesh edit. */
+const BMLogEntry *BM_log_current_entry_get(const BMLog *log);
+void BM_log_stroke_position_begin(BMLog *log);
+void BM_log_stroke_position_end(BMLog *log);
+
+/** Visit surviving vertices changed in the current stroke. New vertices use their birth position.
+ */
+void BM_log_foreach_stroke_position(BMLog *log,
+                                    FunctionRef<void(BMVert *, const float *)> callback);
 
 /**
  * Allocate, initialize, and assign a new BMLog.

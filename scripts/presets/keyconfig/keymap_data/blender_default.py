@@ -5289,6 +5289,7 @@ def km_sculpt(params):
 
     items.extend([
         # Brush strokes
+        ("sculpt.repeat_last_stroke", {"type": 'ONE', "value": 'PRESS'}, None),
         ("sculpt.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("sculpt.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),

@@ -945,8 +945,10 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 namespace ed::sculpt_paint {
 
 void SCULPT_OT_brush_stroke(wmOperatorType *ot);
+void SCULPT_OT_repeat_last_stroke(wmOperatorType *ot);
+void SCULPT_OT_symmetrize_blend(wmOperatorType *ot);
 
-}
+}  // namespace ed::sculpt_paint
 
 namespace ed::sculpt_paint::expand {
 

@@ -40,6 +40,7 @@
 #include "BKE_paint.hh"
 #include "BKE_paint_types.hh"
 #include "BKE_report.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -274,13 +275,22 @@ static std::optional<float3> sample_mesh_attribute_color(ViewContext &vc,
     return std::nullopt;
   }
 
+  const int index = std::get<int>(active_element->vert);
+  if (active_element->active_grid_idx >= 0) {
+    SubdivCCG *ccg = object.runtime->sculpt_session->subdiv_ccg;
+    if (!ccg || index < 0 || index >= ccg->positions.size()) {
+      return std::nullopt;
+    }
+    BKE_subdiv_ccg_colors_ensure(mesh, *ccg, mesh.active_color_attribute);
+    return ccg->colors[index].xyz();
+  }
+  if (index < 0 || index >= mesh.verts_num) {
+    return std::nullopt;
+  }
+
   const GVArraySpan colors = *color_attribute;
-  return color::color_vert_get(faces,
-                               corner_verts,
-                               vert_to_face_map,
-                               colors,
-                               color_attribute.domain,
-                               std::get<int>(active_element->vert))
+  return color::color_vert_get(
+             faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, index)
       .xyz();
 }
 

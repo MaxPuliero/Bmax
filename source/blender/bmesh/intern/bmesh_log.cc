@@ -87,6 +87,8 @@ struct BMLog {
    * The ID is needed because element pointers will change as they
    * are created and deleted.
    */
+  bool capture_birth_positions = false;
+  Map<uint, float3> stroke_birth_positions;
   Map<uint, BMElem *, 0> id_to_elem;
   Map<BMElem *, uint, 0> elem_to_id;
 
@@ -515,6 +517,7 @@ void BM_log_free(BMLog *log)
 
 BMLogEntry *BM_log_entry_add(BMLog *log)
 {
+  log->stroke_birth_positions.clear();
   /* WARNING: Deleting any entries after the current one is now handled by the
    * UndoSystem: BKE_UNDOSYS_TYPE_SCULPT freeing here causes unnecessary complications. */
 
@@ -675,6 +678,9 @@ void BM_log_vert_added(BMLog *log, BMVert *v, const int cd_vert_mask_offset)
   bm_log_vert_id_set(log, v, v_id);
   BMLogVert *lv = bm_log_vert_alloc(log, v, cd_vert_mask_offset);
   log->current_entry->added_verts.add(v_id, lv);
+  if (log->capture_birth_positions) {
+    log->stroke_birth_positions.add_overwrite(v_id, float3(v->co));
+  }
 }
 
 void BM_log_face_modified(BMLog *log, BMFace *f)
@@ -701,6 +707,7 @@ void BM_log_vert_removed(BMLog *log, BMVert *v, const int cd_vert_mask_offset)
 {
   BMLogEntry *entry = log->current_entry;
   const uint v_id = bm_log_vert_id_get(log, v);
+  log->stroke_birth_positions.remove(v_id);
 
   BLI_assert(!entry->added_verts.contains(v_id) ||
              (entry->added_verts.contains(v_id) && entry->added_verts.lookup(v_id) != nullptr));
@@ -783,6 +790,41 @@ void BM_log_before_all_removed(BMesh *bm, BMLog *log)
   BM_ITER_MESH (v, &bm_iter, bm, BM_VERTS_OF_MESH) {
     BM_log_vert_removed(log, v, cd_vert_mask_offset);
   }
+}
+
+const BMLogEntry *BM_log_current_entry_get(const BMLog *log)
+{
+  return log->current_entry;
+}
+
+void BM_log_stroke_position_begin(BMLog *log)
+{
+  log->stroke_birth_positions.clear();
+  log->capture_birth_positions = true;
+}
+
+void BM_log_stroke_position_end(BMLog *log)
+{
+  log->capture_birth_positions = false;
+  log->stroke_birth_positions.clear();
+}
+
+void BM_log_foreach_stroke_position(BMLog *log,
+                                    FunctionRef<void(BMVert *, const float *)> callback)
+{
+  log->capture_birth_positions = false;
+  if (!log->current_entry) {
+    return;
+  }
+  for (const auto item : log->current_entry->modified_verts.items()) {
+    callback(bm_log_vert_from_id(log, item.key), item.value->position);
+  }
+  for (const uint id : log->current_entry->added_verts.keys()) {
+    if (const float3 *position = log->stroke_birth_positions.lookup_ptr(id)) {
+      callback(bm_log_vert_from_id(log, id), *position);
+    }
+  }
+  log->stroke_birth_positions.clear();
 }
 
 const float *BM_log_find_original_vert_co(BMLog *log, BMVert *v)

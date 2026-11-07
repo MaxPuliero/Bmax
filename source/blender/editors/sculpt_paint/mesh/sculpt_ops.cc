@@ -1714,6 +1714,7 @@ void operatortypes_sculpt()
   WM_operatortype_append(SCULPT_OT_layer_remove);
   WM_operatortype_append(SCULPT_OT_layer_bake);
   WM_operatortype_append(SCULPT_OT_brush_stroke);
+  WM_operatortype_append(SCULPT_OT_repeat_last_stroke);
   WM_operatortype_append(SCULPT_OT_sculptmode_toggle);
   WM_operatortype_append(SCULPT_OT_set_persistent_base);
   WM_operatortype_append(SCULPT_OT_flush_persistent_base);
@@ -1721,6 +1722,7 @@ void operatortypes_sculpt()
   WM_operatortype_append(dyntopo::SCULPT_OT_dynamic_topology_toggle);
   WM_operatortype_append(SCULPT_OT_optimize);
   WM_operatortype_append(SCULPT_OT_symmetrize);
+  WM_operatortype_append(SCULPT_OT_symmetrize_blend);
   WM_operatortype_append(dyntopo::SCULPT_OT_detail_flood_fill);
   WM_operatortype_append(dyntopo::SCULPT_OT_sample_detail_size);
   WM_operatortype_append(filter::SCULPT_OT_mesh_filter);
