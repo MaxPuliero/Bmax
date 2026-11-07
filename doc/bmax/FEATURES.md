@@ -1,10 +1,168 @@
 # Bmax feature inventory
 
+**November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
+
 **November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
 
 This is the current implemented feature list for `main`, checked against the Bmax commits and source code on **2026-10-08**, including the complete history on `main`, the changed source files relative to the imported snapshot, and the per-feature implementation notes. Dates below are the dates the changes were committed to the published Bmax source, in Japan time. They are not separate binary release dates.
 
 For demonstrations and usage details, see the [main README](../../README.md). For compilation, see [Building Bmax on Windows](BUILD_WINDOWS.md). Contributor and AI-agent rules are in [AGENTS.md](../../AGENTS.md).
+
+## Multires Color Filter (2026-11-07)
+
+The subsequent color-picker correction reads current Multires grid colors for non-merged
+sampling (Shift+X). Grid sample indices are no longer used to index base-mesh colors;
+ordinary mesh sampling also validates its vertex index. Sample Merged and the generic
+screen eyedropper retain display-color sampling, including shading.
+
+Implemented in source commit `631dd2d0`. Sculpt Color Filter now handles
+Multires grids for Fill, Hue, Saturation, Value, Brightness, Contrast, Red, Green, Blue and
+Smooth. Mesh and grid backends share pointwise filter math; Smooth reads grid neighbors
+across boundaries from a stable snapshot, including the negative/unsharp path.
+
+- Uses the visible Sculpt level, masks, hidden samples and native automasking. Fully locked
+  samples remain unchanged; the shared Hue path also retains zero-factor mesh vertices.
+- Undo captures affected nodes plus seam neighbors, including runtime colors and persistent
+  maximum-resolution arrays. The grid-neighbor helper also works without a brush stroke cache.
+  Redo recreates missing color storage for the first color operation after a memfile snapshot.
+  Initial filter undo also retains exact coarse Float/Byte values and removes newly created
+  empty grid storage when restoring an unpainted mesh. The extra coarse backup is restricted
+  to global filters; localized brush strokes retain their sparse capture path.
+- Per-operator buffers are reused during the gesture; only Smooth snapshots reached grids.
+  Persistent grids are stored once at gesture completion, propagating lower-level deltas to
+  existing higher detail with the native painting path. Only changed grids/nodes are updated.
+- Float/Byte Point/Corner attributes are supported. Colors are float RGBA in Multires;
+  alpha follows the corresponding native filter. Geometry and other color attributes remain
+  unchanged. No shared C++ structure layout, DNA or file-format changes were introduced.
+- Mask by Color remains mesh-only, and Dyntopo color painting remains unsupported.
+
+OpenGL/Vulkan checks each passed 110 cases covering all filter modes and all four storage/
+domain combinations, masks, zero/negative Strength, comparison to the applied-mesh backend
+and Undo/Redo. Real painted detail survived a lower-level filter, switching levels, native
+color brush regression checks, native file serialization/read and applying Multires. Smooth
+and negative Smooth changed nonuniform painted grids without non-finite colors. Full masks
+and hidden surfaces were no-ops. Maximum checked lower-level delta error was below 1e-7.
+
+Native mouse-event simulation verified modal dragging, Esc cancellation, commit and Undo/Redo.
+First-use checks also covered automatic attribute creation, a preceding Sculpt mask undo step,
+nonuniform Byte attributes and zero-strength filters, with exact coarse-color restoration.
+An isolated 24,576-quad HUE comparison, one warm-up and three measurements per backend,
+measured median synchronous operator times of 2.70 ms for Multires and 0.38 ms for the same
+applied mesh. It does not measure viewport frame rate or establish production performance.
+
+## Symmetrize Blend (2026-11-07)
+
+Implemented in source commit `631dd2d0`. The standard runtime
+`D:\blender_build\octahedral_radius\bin\blender.exe` and the separate runtime
+`D:\blender_build\symmetrize_blend\bin\blender.exe` include ordinary mesh and color support.
+OpenGL/Vulkan validation passed.
+
+- **Sculpt > Symmetrize Blend** / F3, with object-space X/Y/Z, Strength and Match Tolerance.
+- **N > Tool > Blend Symmetry** is a dedicated Sculpt panel with Axis, Strength, Match
+  Tolerance, Vertex Paint and a direct execution button. It reuses the native operator's
+  last properties, without new saved scene settings or a second parameter store.
+- **Vertex Paint**, enabled by default, blends the active color attribute in scene-linear RGBA
+  with the geometry's mask weighting, hidden-point protection and Strength. Disable it to
+  retain colors. No attribute is created when none is active; other color attributes remain
+  unchanged. Float/Byte and Point/Face Corner storage are retained. On ordinary meshes, native
+  position and color undo are grouped into one user-visible Undo step, including color-only
+  changes on already symmetric geometry. Independent Face Corner colors remain independent.
+- Ordinary mesh geometry works without a Multires modifier, with Multires disabled, or with
+  Sculpt Base Mesh enabled. Point-domain masks and hidden vertices are respected. Native
+  Sculpt position deformation/undo supports editable shape keys and deforming modifiers.
+  Disabled Multires displacement arrays and level settings are retained. Dyntopo is an
+  informational no-op. Multiple Sculpt Layers still require the active Multires path.
+- Unmasked pairs average their object-space positions after reflection. Fully masked points
+  stay fixed and anchor the opposite side; two locked points do not move. Soft masks use
+  mobility `1 - mask`, both for the target's weighting and for the final movement amount.
+  Center-plane samples follow the same rule, with no forced snapping of locked points.
+- Uses the maximum Multires level for geometry and bilinear sampling of the **active Sculpt
+  level's mask**, so finer masks retained in storage do not override the mask currently shown.
+  Masks are preserved; hidden highest-level samples are also treated as locked. Color symmetry
+  samples and commits the maximum-level persistent color grids, then synchronizes the active
+  coarse attribute. Only changed grids are stored; unmatched grids and coarse colors are retained.
+  The high-resolution samples remain float RGBA even for a Byte base attribute. Color symmetry
+  is stored independently of geometry Sculpt Layers, following the existing Multires paint path.
+- Base vertices are paired spatially with the matching tolerance. Coincident candidates are
+  distinguished by connectivity and mapped neighbors, including Suzanne's eyelid/head contacts.
+  Native Topology Mirror fills unresolved pairs when possible; unique reversed faces anchored
+  by known mirrored edges propagate matches through sculpted geometry, including regular
+  meshes whose vertices cannot be distinguished by topology hashing alone. Each accepted face has
+  a unique reversed counterpart and reciprocal corner mapping.
+- Matching is **partial**: missing or ambiguous faces are skipped, and the rest are processed.
+  If nothing matches, the command finishes unchanged with an informational message. There is
+  no global correspondence error, nearest-surface projection, welding or topology repair.
+  Shared border samples adjacent to skipped grids, or mesh vertices shared with skipped faces,
+  are held fixed to preserve the unmatched region.
+- Reflection pairs base corner grids and swaps grid x/y coordinates. The complete calculation
+  and native reshape happen on temporary geometry; only validated displacement arrays are
+  committed. Untouched/unmatched displacement arrays are not swapped or rewritten. Base vertices,
+  connectivity and Multires level settings do not change.
+- Native geometry Undo/Redo captures the complete operation, including persistent Multires
+  displacement. Multiple Sculpt Layers record the correction in the current editable layer;
+  other layers are retained. Zero-influence active layers retain native editing restrictions.
+- The high-resolution Multires path requires a single-user, editable, packed mesh without
+  shape keys or other enabled viewport modifiers. These cases report an
+  error instead of silently changing shared data, external displacement or the evaluation order.
+- Multires uses a whole-surface operation at the highest level with global geometry undo; memory and
+  processing scale with that surface and any authoring buffers. It is not a per-brush-step path.
+  No DNA or file-format changes were introduced. Repeat Last Stroke is invalidated on commit.
+
+Validation used a three-level cube (386 evaluated vertices), a UV sphere with triangular
+caps (2,818 evaluated vertices), and a cylinder with n-gon caps (770 evaluated vertices).
+Checks cover X/Y/Z averages, current-level masks, one masked side, both masked sides,
+soft masks, Strength, lower display levels, Undo/Redo, base RGBA preservation, and retaining
+other Sculpt Layers by switching off the active correction layer. Regression checks also cover
+Suzanne, a connected mesh with a missing counterpart face, a detached unmatched component
+(962 evaluated vertices unchanged exactly), and an entirely unmatched no-op without an error.
+Errors were within normal float evaluation noise
+(maximum observed about 3.88e-7 Blender units). These are correctness checks, not a benchmark.
+
+The ordinary mesh extension passed OpenGL/Vulkan checks on a deformed cube, Suzanne and
+UV sphere: X/Y/Z, full/soft masks, hidden points, Strength, active shape keys, disabled
+Multires and native Undo/Redo. Matching pairs agreed with an independent reference exactly
+in these fixtures. The matcher can leave a completely deformed regular component unmatched
+when it has neither reliable spatial seeds nor distinguishable topology.
+
+Color validation passed on OpenGL/Vulkan for all four Float/Byte and Point/Corner combinations,
+full/soft masks, Strength, geometry-plus-color and color-only changes, option off, other
+attributes and one-step Undo/Redo. Multires checks cover lower Sculpt levels, retained maximum
+detail, full masks, actual Paint Hard strokes and level switching. Unmatched component colors
+remained exact; serialized meshes reloaded from a temporary copy retained coarse colors and
+applied Multires produced standard Float Corner colors. Float residuals were below
+1.2e-7; ordinary Byte results have the expected quantization (below 0.0038 in the checked
+scene-linear components). No performance benchmark was run.
+
+See the [Windows build record](BUILD_WINDOWS.md#symmetrize-blend-2026-11-07).
+
+## Repeat Last Stroke (2026-11-07)
+
+In Sculpt Mode, press **1** or choose **Sculpt > Repeat Last Stroke** (also in F3)
+to add the last geometry stroke's original displacement again: successive presses
+produce **2x, 3x, 4x** the original displacement, rather than doubling exponentially.
+The command adds the final deformation; it does not reevaluate the brush, pressure,
+spacing, masks, symmetry or brush limits. Rotating the view or changing brushes is allowed.
+Each amplification uses its own native Sculpt undo step.
+
+Only changed points from reached undo nodes are retained, with no full-surface snapshot.
+Mesh and Multires geometry are supported. In Dyntopo, repetition keeps the current
+vertices/faces unchanged; vertices created during the source stroke use their birth
+positions as their displacement reference. Dyntopo Undo clears the cached displacement
+because topology restoration can replace vertex identities.
+
+The data is runtime-only, per Sculpt session. Leaving Sculpt Mode clears it. Changes
+to topology or Multires level invalidate it; draw a new stroke to recapture.
+PBVH rebuilds remap the sparse point selection when point identity is preserved.
+Same-count in-place connectivity edits require a new stroke to recapture the reference.
+Color Paint/Blur/Smear, mask and other attribute-only strokes are not amplified and clear
+the previous geometry displacement. Smooth/Flatten/Cloth amplify their resulting
+vertex offsets rather than solving the brush again. No `.blend` format changes are needed.
+The standard local runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` is
+rebuilt and installed. Source changes are local and not yet committed/published.
+Draw-brush geometry, linear amplification and Undo/Redo passed on mesh, Multires and
+Dyntopo with actual OpenGL/Vulkan backends. Native mouse input and the **1** shortcut
+also passed with Undo/Redo on OpenGL. Desktop copies and the public package are unchanged.
+See the [build record](BUILD_WINDOWS.md#repeat-last-stroke-2026-11-07).
 
 ## Persistent-base brush limits (2026-11-05)
 

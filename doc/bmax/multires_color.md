@@ -1,10 +1,36 @@
 # Multires color painting in Sculpt Mode
 
+**November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
+
 Implemented in Bmax source on 2026-10-05, commit `92db31e2b2c8`. The local installed Windows build was compiled and verified with this implementation and its performance correction. Publishing the source does not publish a new downloadable Windows package.
 
 ## Usage
 
 Create or select a mesh color attribute, add Multires and subdivide, then enter Sculpt Mode and use Paint, Blur, or Smear. Painting operates on the current Sculpt level. Sculpt masks and hidden grid samples restrict the brush. Color appears in the Sculpt viewport and is supplied to evaluated mesh color attributes for materials and modifier application.
+
+The local November 7 extension enables all Sculpt **Color Filter** modes on Multires:
+Fill, Hue, Saturation, Value, Brightness, Contrast, Red, Green, Blue and Smooth, including
+negative Strength. They use the displayed Sculpt level, masks, hidden samples and native
+automasking. Native color undo includes persistent high-resolution grids; completing a
+lower-level filter propagates its delta into retained higher-resolution color. Pointwise
+filters share the mesh implementation; Smooth uses stable neighboring grid samples across
+seams. Geometry and other color attributes are retained. Persistent grids are committed once
+at completion, rather than at each mouse move. Fully locked filters skip storage updates.
+The first filter's undo retains exact coarse Float/Byte values and restores the initial
+absence of color-grid storage. This coarse backup is limited to global filters; localized
+brush strokes retain their sparse capture path. Native mouse-event checks covered dragging,
+Esc cancellation, commit and Undo/Redo. An isolated 24,576-quad HUE fixture measured median
+operator latency of 2.70 ms for Multires versus 0.38 ms for an applied mesh, after one warm-up
+and three measurements each; this is not a viewport frame-rate or production guarantee.
+
+The local November 7 Symmetrize Blend extension also handles the active color attribute.
+Its **Vertex Paint** option defaults on: mirrored samples blend in scene-linear RGBA using
+the same mask weighting and Strength as geometry. It processes the maximum Multires color
+level using the currently visible Sculpt mask, retains unmatched regions and other color
+attributes, and records colors with geometry in one native geometry undo step. It preserves
+the subdivision levels; color changes are independent of geometry Sculpt Layers. This is a
+whole-surface command, separate from the sparse brush-step performance path described below.
+The source changes remain local and uncommitted; Desktop/public packages are unchanged.
 
 Float Color and Byte Color attributes on Point and Face Corner domains are accepted. Multires detail is stored in float RGBA even when the coarse attribute is Byte Color. The coarse attribute remains synchronized at its own vertices/corners, with Byte Color conversion as needed. Different color attributes retain separate grids; renaming/removing attributes follows their associated grids.
 
@@ -19,7 +45,7 @@ Evaluated subdivision meshes expose painted attributes as Float Color on the Fac
 ## Scope and limitations
 
 - Classic Vertex Paint mode is unchanged. Dynamic Topology remains unsupported for Sculpt color painting.
-- Color Filter and Mask by Color have mesh-only implementations and are explicitly unavailable with Multires in this version.
+- Mask by Color remains mesh-only and is unavailable with Multires; Color Filter is supported by the local November 7 extension described above.
 - Painting stitches shared grid boundaries; independent color discontinuities at base face boundaries are not preserved by this vertex-like workflow.
 - Runtime colors still scale with the current grid resolution. Persistent storage and undo allocate high-resolution buffers only for grids reached by painting or its boundary neighbors. Existing files may already contain full-surface buffers from the first version. Painting at a lower level can require resampling retained high-resolution detail at stroke completion; production-scale memory and latency are not guaranteed by the small benchmark below.
 - Bmax-specific grid data requires this build. Official Blender cannot be relied on to retain it when re-saving. Apply Multires in Bmax before transferring a finished painted mesh to other builds.

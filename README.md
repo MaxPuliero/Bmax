@@ -1,5 +1,7 @@
 # Bmax - Blender 5.2.3 LTS
 
+**November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
+
 **November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
 
 Bmax is a custom Blender **5.2.3 LTS** build focused on clearer armature visualization, a more convenient rigging interface, UV inspection tools, mesh cleanup workflows, Sculpt topology and mask tools, Multires color painting, and layered Multires sculpting. Bone evaluation, constraints, and animation mathematics retain Blender's existing behavior.
@@ -20,7 +22,84 @@ Use **Help > Report a Bmax Bug** to open a pre-filled report in the [Bmax GitHub
 
 ## Features
 
-See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 5, 2026, their source commits, and removed items.
+See the [complete feature inventory](doc/bmax/FEATURES.md) for implemented additions and dated updates through November 7, 2026, their source commits, and removed items.
+
+### Multires Color Filter (November 7 source update)
+
+**Color sampling fix:** Shift+X now reads the current Multires color-grid sample instead
+of interpreting its index as a base-mesh vertex. This also applies after subdivision and
+Sculpt level changes. Sample Merged and the generic color-dialog eyedropper still sample
+the displayed image, including shading.
+
+All Sculpt **Color Filter** modes now work on Multires color: **Fill, Hue, Saturation,
+Value, Brightness, Contrast, Red, Green, Blue and Smooth**, including negative Strength.
+They respect Sculpt masks, hidden points and automasking. Filters operate at the visible
+Sculpt level; their delta is committed to retained higher-resolution color when the gesture
+ends. Native color Undo/Redo preserves the painted grids and geometry stays unchanged.
+Float/Byte and Point/Face Corner base attributes are supported; other color attributes are
+retained. Mask by Color and Dyntopo color painting remain outside this extension.
+
+Source is committed in `631dd2d0`; Desktop/public packages are unchanged.
+
+### Symmetrize Blend (November 7 source update)
+
+**Sculpt > Symmetrize Blend** (also in F3) symmetrizes fixed-topology meshes, with or
+without an active Multires modifier.
+Unmasked counterparts meet at their average; a fully masked side stays fixed and becomes
+the reference for its unmasked counterpart. Two fully masked points stay unchanged, and
+soft masks reduce movement while increasing the protected side's influence.
+
+**Vertex Paint** is enabled by default and blends the active color attribute with the same
+mask weighting and Strength, including alpha. Turn it off to preserve all colors. Float/Byte
+and Point/Face Corner attributes work on ordinary meshes; Multires uses its saved high-resolution
+color grids. Other color attributes are retained. A single Undo restores geometry and color.
+In Sculpt Mode, **N > Tool > Blend Symmetry** provides Axis, Strength, Match Tolerance,
+Vertex Paint and a button that applies the displayed settings directly.
+
+Choose the object-space **X/Y/Z** axis and **Strength**. Ordinary meshes use native Sculpt
+position undo, including shape keys and deforming modifiers, grouped with native color undo.
+Disabled Multires modifiers and
+Sculpt Base Mesh operate on the base mesh. With active Multires, geometry is solved at the highest
+level while the mask comes from the currently displayed Sculpt level. The command
+preserves levels, masks and other color attributes, and records the geometry correction in the active Sculpt Layer
+when using multiple layers. Matching regions are validated against reversed faces; missing
+or ambiguous counterparts are skipped without aborting the rest. Coincident base vertices
+(such as Suzanne's eyelid/head contacts) are resolved using their connectivity. Native Topology
+Mirror and propagation through uniquely matched reversed faces recover deformed counterparts.
+Hidden points and borders shared with unmatched faces remain fixed. Dyntopo is excluded.
+
+The current build is installed at `D:\blender_build\octahedral_radius\bin\blender.exe`
+and `D:\blender_build\symmetrize_blend\bin\blender.exe`; no user session was closed.
+OpenGL/Vulkan checks passed for axes, masks, Strength, Sculpt Layers and Undo/Redo.
+Source is committed in `631dd2d0`; Desktop/public packages are unchanged. See the [inventory](doc/bmax/FEATURES.md#symmetrize-blend-2026-11-07).
+
+### Repeat Last Stroke (November 7 source update)
+
+In Sculpt Mode, press **1** or choose **Sculpt > Repeat Last Stroke** (also in F3)
+to add the last geometry stroke's original displacement again: successive presses
+produce **2x, 3x, 4x** the original displacement, rather than doubling exponentially.
+The command adds the final deformation; it does not reevaluate the brush, pressure,
+spacing, masks, symmetry or brush limits. Rotating the view or changing brushes is allowed.
+Each amplification uses its own native Sculpt undo step.
+
+Only changed points from reached undo nodes are retained, with no full-surface snapshot.
+Mesh and Multires geometry are supported. In Dyntopo, repetition keeps the current
+vertices/faces unchanged; vertices created during the source stroke use their birth
+positions as their displacement reference. Dyntopo Undo clears the cached displacement
+because topology restoration can replace vertex identities.
+
+The data is runtime-only, per Sculpt session. Leaving Sculpt Mode clears it. Changes
+to topology or Multires level invalidate it; draw a new stroke to recapture.
+PBVH rebuilds remap the sparse point selection when point identity is preserved.
+Color Paint/Blur/Smear, mask and other attribute-only strokes are not amplified and clear
+the previous geometry displacement. Smooth/Flatten/Cloth amplify their resulting
+vertex offsets rather than solving the brush again. No `.blend` format changes are needed.
+The standard local runtime at `D:\blender_build\octahedral_radius\bin\blender.exe` is
+rebuilt and installed. Source is committed in `631dd2d0`; the public download package is unchanged.
+Draw-brush geometry, linear amplification and Undo/Redo passed on mesh, Multires and
+Dyntopo with actual OpenGL/Vulkan backends. Native mouse input and the **1** shortcut
+also passed with Undo/Redo on OpenGL. Desktop copies and the public package are unchanged.
+See the [build record](doc/bmax/BUILD_WINDOWS.md#repeat-last-stroke-2026-11-07).
 
 ### Persistent-base brush limits (November 5)
 

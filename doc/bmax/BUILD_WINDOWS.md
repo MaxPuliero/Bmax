@@ -1,8 +1,285 @@
 # Building Bmax on Windows
 
+**November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
+
 **November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
+
+## Multires color sampling fix (2026-11-07)
+
+Non-merged sampling now reads the selected current CCG color sample. Previously the grid
+sample index was passed to base-mesh color access, producing unrelated/out-of-range reads.
+The ordinary mesh path also validates vertex indices. Sample Merged and the generic
+color-dialog screen eyedropper retain display-color sampling, including shading.
+
+Only paint_sample_color.cc changed; no shared layout or DNA changed. The Sculpt target and
+blender were incrementally rebuilt, then INSTALL and the separate-prefix install updated
+both local runtimes using the commands below. Executable: **98,114,560 bytes**, timestamp
+**2026-11-07 23:03:36 JST**, SHA-256
+`3984D47062FD4724B70EBD8915F30B3589D8D1E0A9C94D3F6E019A613BAA5DC6`.
+Earlier records below describe historical builds. Source remains uncommitted; Desktop/public
+packages are unchanged and no user session was closed.
+
+An isolated graphical check sampled known Float Point colors at multiple locations before
+Multires subdivision, immediately after each subdivision through level 3 and after changing
+Sculpt levels 1/3/2 without restarting. Every sample matched the attribute within 2e-6.
+Formatting/diff checks passed. External verification scripts, logs, scenes and isolated
+configuration were removed afterward; build caches and runtime dependencies were retained.
+
+## Multires Color Filter (2026-11-07)
+
+All ten Sculpt Color Filter modes now support Multires color grids. The implementation
+shares pointwise math with meshes, adds stable grid-neighbor Smooth/unsharp processing,
+and uses native masks, hidden samples, automasking and color undo. Persistent changes are
+committed once at completion; lower-level edits retain higher-level detail. Native modal
+dragging, cancellation and commit are supported. The first filter's undo preserves exact
+coarse Float/Byte values and the original absence of painted grid storage.
+
+Changed native translation units: sculpt_filter_color.cc, sculpt_paint_color.cc and
+sculpt_undo.cc. New filter buffers and undo bookkeeping are private to those translation
+units; no shared C++ layout, DNA or file format changed. Incremental MSVC v143 compilation
+of bf_editor_sculpt_paint and linking blender reused the fully rebuilt dependencies, followed
+by INSTALL and the separate-prefix installation using the commands below.
+
+Both local runtimes contain this version:
+`D:\blender_build\octahedral_radius\bin\blender.exe` and
+`D:\blender_build\symmetrize_blend\bin\blender.exe`.
+Executable: **98,114,560 bytes**, timestamp **2026-11-07 22:32:49 JST**, SHA-256
+`C887CDB76B1924F0CE9BA021E0DE221F896BDA0E02BDE823D5630899B5748976`.
+No user process was closed. Source changes remain local and uncommitted; Desktop and public
+packages are unchanged. Earlier executable records below are historical.
+
+Isolated graphical OpenGL/Vulkan sessions each passed 110 cases across all ten filter modes,
+Float/Byte Point/Corner combinations, masks, zero/negative Strength, comparisons with an
+applied mesh, unchanged coordinates and Undo/Redo. Painted-detail checks covered lower-level
+deltas (maximum checked error below 1e-7), level switching, positive/negative Smooth, masks,
+hidden surfaces, native Paint, other attributes, serialization/read and modifier application.
+First-use cases included nonuniform Byte colors, an existing Sculpt mask undo step and
+automatic attribute creation, with exact coarse-color restoration. Native mouse-event
+simulation passed dragging, Esc cancellation, commit and Undo/Redo. Final changes restricting
+the coarse backup to global filters passed the first-use and painted-detail checks again.
+
+An isolated OpenGL benchmark used a cube with 384 base quads, three Multires levels and
+24,576 evaluated quads, compared with the same applied mesh. HUE at Strength 0.25 used one
+warm-up and three measurements per backend, with undo outside the timed section and no
+concurrent verification processes. The median synchronous operator times were **2.70 ms**
+for Multires and **0.38 ms** for the applied mesh. This measures operator latency, not viewport
+frame rate; it is a small correctness/performance fixture, not a production guarantee.
+
+Formatting and diff checks passed. All temporary scripts, scenes, logs, isolated preferences
+and caches were external and removed after verification; build caches and runtime dependencies
+were retained.
+
+## Blend Symmetry sidebar panel (2026-11-07)
+
+The subsequent Python UI update adds **N > Tool > Blend Symmetry** in Sculpt Mode, with
+Axis, Strength, Match Tolerance, Vertex Paint and direct execution. It reuses native operator
+last properties. INSTALL and the separate-prefix installation below update the startup UI
+scripts; no native rebuild or executable hash change is required for this panel.
+An isolated graphical check verified Sculpt-only visibility, registered panel drawing,
+the default enabled color option and forwarding all displayed settings to direct execution.
+Both installed startup scripts match the source. Temporary verification artifacts were removed.
+
+## Symmetrize Blend vertex colors (2026-11-07)
+
+**Vertex Paint** now defaults on in Symmetrize Blend. It blends the active attribute in
+scene-linear RGBA, using the geometry's masks, hidden-point protection and Strength. Ordinary
+Float/Byte Point/Corner attributes retain their storage; native position/color undo steps are
+grouped into one user-visible operation. Multires samples and stores the highest-level color
+grids and includes them in geometry undo. The option off retains the geometry-only path.
+
+Only sculpt_symmetrize_blend.cc changed native behavior; no shared layout or DNA changed.
+Incremental compilation of bf_editor_sculpt_paint, linking blender, INSTALL and installation
+to the separate prefix reused the commands below. No Blender instances were open during the
+installations; no user session was closed. Both local runtime paths now contain this version:
+
+- `D:\blender_build\octahedral_radius\bin\blender.exe`
+- `D:\blender_build\symmetrize_blend\bin\blender.exe`
+
+Executable: **98,103,808 bytes**, timestamp **2026-11-07 21:50:17 JST**, SHA-256
+`C0086FEFA4D1E62AD0875D9DB17090F24FD0ED94528F306DE19DBC289411503B`.
+Source changes remain uncommitted; Desktop/public packages are unchanged. Earlier executable
+records below are historical.
+
+OpenGL/Vulkan graphical checks used all four Float/Byte Point/Corner combinations, masks,
+Strength, alpha, geometry-plus-color and color-only changes, option off, separate attributes
+and one-step Undo/Redo. Maximum Float discrepancy was below 1.2e-7; ordinary Byte differences
+from unquantized means stayed below 0.0038 in the checked scene-linear components. Multires
+checks cover maximum/lower Sculpt levels, full masks, actual Paint Hard strokes and retained
+detail after changing levels. Partial-region checks retained unmatched component colors exactly;
+meshes loaded from a saved temporary copy retained coarse colors and applying Multires produced
+standard Float Corner colors. These are correctness checks, not a performance benchmark.
+
+C++ formatting and diff checks passed. All verification artifacts were external and removed
+afterward; build caches and runtime dependencies were retained.
+
+## Symmetrize Blend without active Multires (2026-11-07)
+
+The operator now supports ordinary Sculpt mesh geometry, including disabled Multires and
+Sculpt Base Mesh. It reuses native Topology Mirror matching and extends reliable pairs
+through unique reversed faces to recover deformed vertices. Masks, hidden points and
+unmatched face borders are locked as appropriate. Native Sculpt position deformation and
+undo handle mesh updates without replacing topology or Multires displacement storage.
+
+Only sculpt_symmetrize_blend.cc changed native behavior; no shared layout or DNA changed.
+The Sculpt target and blender were incrementally rebuilt, then INSTALL updated the standard
+runtime, using the same reference-skipping commands recorded below. The separate runtime
+at `D:\blender_build\symmetrize_blend\bin\blender.exe` was **not** replaced: the user's
+existing session is running there and was left open. It retains the previous Multires-only
+version. Desktop/public packages are unchanged; source changes remain uncommitted.
+
+`D:\blender_build\octahedral_radius\bin\blender.exe`: 98,095,616 bytes,
+timestamp **2026-11-07 21:19:36 JST**, SHA-256
+`6C5FED9063D3AA36842DBA7A2D5E73F854E835A21D5E6DEA2E2B5CE0607FBD3C`.
+Earlier executable records below describe their respective historical builds.
+
+Isolated graphical OpenGL/Vulkan checks passed for a deformed cube, Suzanne and UV sphere:
+X/Y/Z averaging, full/soft masks, hidden vertices, Strength, shape keys, disabled Multires
+and native Undo/Redo. Expected pair coordinates matched exactly in these fixtures. Partial
+connected/disconnected regions preserved unmatched faces/components, and no matches finished
+unchanged without an error. Active Multires Suzanne retained 7,958 evaluated vertices and
+passed reflected-surface validation (maximum residual about 2.41e-7 Blender units).
+
+C++ formatting and diff checks passed. No performance benchmark was run. Verification
+scripts, scenes, logs, isolated preferences and caches were external and removed afterward.
+Build caches and runtime dependencies were retained; no user process or project was modified.
+
+## Suzanne and partial Symmetrize Blend (2026-11-07)
+
+The original nearest-two uniqueness check rejected Suzanne because four base vertices occupy
+two coincident positions with different eyelid/head connectivity. Candidate matches now use
+neighbor connectivity to distinguish them, followed by reciprocal reversed-face validation.
+The requested best-effort behavior also replaces whole-mesh rejection: matched regions are
+processed, unmatched parts are kept, and an empty match is an informational no-op. Border
+samples next to unmatched grids are locked, and only changed displacement arrays are committed.
+
+Only sculpt_symmetrize_blend.cc changed native behavior; no shared layout or DNA changed.
+The Sculpt target was incrementally compiled and blender linked using the reference-skipping
+commands below (the already rebuilt dependencies were retained). With no Blender processes
+open, both local installations were updated:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target bf_editor_sculpt_paint --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL -- /p:BuildProjectReferences=false
+cmake --install D:\blender_build\octahedral_radius --config Release --prefix D:\blender_build\symmetrize_blend\bin
+```
+
+Current executables at both `D:\blender_build\octahedral_radius\bin\blender.exe` and
+`D:\blender_build\symmetrize_blend\bin\blender.exe` match bin/Release/blender.exe:
+98,089,984 bytes, timestamp **2026-11-07 20:39:39 JST**, SHA-256
+`CACA5FED86930B50DB51DF30021CCC3C6183B58EECDE7472DA89DB7BA15C0066`.
+Desktop/public packages were not updated. Source changes remain local and uncommitted.
+Earlier binary records below are historical.
+
+Regression validation used graphical factory-startup sessions with isolated temporary
+configuration on actual OpenGL and Vulkan. Suzanne with two Multires levels produced 7,958
+evaluated vertices: every reference pair passed averaging, with maximum positional error
+about 2.41e-7 Blender units and reflected-surface residual about 2.39e-7. Undo/Redo and a full
+mask passed. A cube plus a disconnected unmatched icosphere processed only the cube: all
+962 evaluated points on the unmatched component stayed exactly unchanged (Vulkan). A cube
+with a missing mirrored face processed its remaining valid region and passed Undo/Redo and
+mask checks. An entirely unmatched component finished without errors or changes. The final
+subsequent rebuild changed only the informational message text, removing grid terminology.
+
+C++ formatting and diff checks passed; no performance benchmark was run. All temporary
+scripts, scenes, logs and configuration/cache artifacts were external and removed after
+verification. No existing user process or scene was closed or modified.
+
+## Symmetrize Blend (2026-11-07)
+
+This initial build record is superseded by the Suzanne/partial-matching correction above.
+
+The new operator is a separate Sculpt translation unit, registered alongside native
+Symmetrize and exposed in the Sculpt menu. No DNA or existing shared C++ layout changed;
+the incremental MSVC v143 build reused the complete rebuild from Repeat Last Stroke.
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target bf_editor_sculpt_paint --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --install D:\blender_build\octahedral_radius --config Release --prefix D:\blender_build\symmetrize_blend\bin
+```
+
+Reference skipping is appropriate here only because the existing dependencies were already
+fully rebuilt and no shared layout changed. CMake regenerated the project for the new file.
+The install-prefix override did not change the CMake cache. Build caches and dependencies
+were retained.
+
+The standard runtime was open and was preserved: `D:\blender_build\octahedral_radius\bin\blender.exe`
+remains the earlier Repeat Last Stroke build (SHA-256
+`A3448241F7263BC1A915803F97AE3E6751B0FC81D81FBC2C424E2D28302315E7`).
+The complete new runtime is `D:\blender_build\symmetrize_blend\bin\blender.exe`, 98,085,888 bytes,
+timestamp **2026-11-07 15:50:03 JST**, SHA-256
+`40E9221FE182D1962C2FC97EF50F19CB6B6CEFE7F71ED642CA5A066FF5924817`.
+It matches bin/Release/blender.exe. Desktop/public packages were not replaced. Source
+changes remain local and uncommitted, including the earlier Repeat Last Stroke addition.
+
+Correctness checks ran in isolated graphical factory-startup sessions on actual OpenGL
+and Vulkan. Temporary Object Mode copies evaluated the highest Multires level after native
+flush, avoiding the active Sculpt object's base-cage readback. Fixtures included a three-level
+cube, triangle-capped UV sphere and n-gon-capped cylinder. Each was asymmetrically sculpted
+before comparing the output against mirrored vertex pairs on an undeformed reference mesh.
+
+Verified X/Y/Z averaging, Strength 0.25, uniform soft mask 0.5, full-mask no-op, one-sided
+mask anchoring, levels retained with the first Sculpt level displayed, Undo/Redo, and base
+Float Corner RGBA preservation. Multiple Sculpt Layers retained the earlier geometry when
+the correction layer was switched off and restored symmetry when switched back on. A mask
+cleared at the visible low level was respected despite finer mask data remaining in storage.
+A missing mirrored base face was rejected without changing geometry or level counts.
+Maximum observed positional residual was about 3.88e-7 Blender units; no timing/frame-rate
+benchmark was run. Installed UI equality, Python syntax, C++ formatting and diff checks passed.
+
+All verification scripts, scenes, logs and configuration/cache files were external
+temporary artifacts and removed after validation. The user's existing Blender process was
+not closed or controlled.
+
+## Repeat Last Stroke (2026-11-07)
+
+A runtime-only shared pointer was added to SculptSession, so all components were rebuilt
+with the existing cache/dependencies retained. The final Sculpt/BMesh implementation was
+then compiled and linked against those rebuilt libraries before running the INSTALL target:
+
+```powershell
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /t:Rebuild /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target bf_editor_sculpt_paint bf_bmesh --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target blender --parallel 2 -- /p:BuildProjectReferences=false /p:CL_MPCount=2
+cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL -- /p:BuildProjectReferences=false
+```
+
+The reference-skipping switches above apply only after the complete rebuild. For a fresh
+build or any further shared-layout changes, rebuild all dependencies normally first.
+The separate Sculpt/BMesh Rebuild also completed during this task; no build caches were removed.
+
+Installed executable: `D:\blender_build\octahedral_radius\bin\blender.exe`, 98,079,232 bytes,
+timestamp 2026-11-07 14:09:38 JST, SHA-256
+`A3448241F7263BC1A915803F97AE3E6751B0FC81D81FBC2C424E2D28302315E7`.
+It matches bin/Release/blender.exe. No user Blender instance was closed. Desktop/public
+packages and the separate earlier runtimes were not replaced. Source changes remain
+local, uncommitted and unpublished.
+
+Validation used isolated graphical factory-startup sessions with temporary configuration:
+
+- Mesh: original displacement x2/x3/x4, changed brush strength and view, separate Undo/Redo;
+  a subsequent Mask stroke clears the geometry cache without moving vertices.
+- Multires: two levels, 12,034 evaluated vertices; equal increments and Undo/Redo, including
+  saving between repetitions. Maximum increment residual was about 1.21e-7 Blender units.
+  Geometry was inspected through temporary Object Mode copies after native flush, since
+  reading the evaluated active Sculpt object directly can return the base cage.
+- Dyntopo: 897 vertices / 1,790 faces retained across repetitions; equal increments, saves
+  and Undo/Redo. Maximum increment residual was about 5.98e-8 Blender units. New vertices
+  use their birth position rather than an undefined pre-creation coordinate.
+- Actual OpenGL and Vulkan backends passed geometry checks. A changed Multires sculpt
+  level was rejected on Vulkan. Native mouse stroke + key 1 + Undo/Redo passed on OpenGL;
+  the first simulated gesture was consumed by initial UI setup, so the input check used
+  a second gesture. The shortcut and installed operator name were also checked.
+- Boolean Manifold and Sculpt Trim passed on both backends, producing the expected
+  volume 4 from a volume-8 cube cut in half.
+
+These checks use Draw for the source geometry stroke; they are not a brush-wide benchmark
+or a frame-rate claim. C++ formatting, Python syntax, installed executable identity and
+Git diff checks passed. Verification scripts, scenes, logs, screenshots and isolated
+configuration/cache files were temporary and outside the repository, and were removed afterward.
 
 ## Persistent base between modes and Flush Persistent (2026-11-05)
 
