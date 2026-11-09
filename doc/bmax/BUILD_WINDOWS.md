@@ -6,6 +6,32 @@
 
 See the [complete feature inventory](FEATURES.md) for the implemented additions, and [AGENTS.md](../../AGENTS.md) for contributor and AI-agent instructions.
 
+## UV selection visibility and pins (2026-11-09)
+
+Shell Outline now resolves below editable UV edges, face dots and vertices.
+Pinned vertex markers are also drawn in modes that hide ordinary vertex dots.
+Pin/Unpin/Invert use selected edge endpoints or face corners in their respective
+modes, with native vertex rules retained for Vertex/Island selection.
+
+No DNA or shared C++ structure layout changed. The component build used
+`bf_draw bf_editor_uvedit` with BuildProjectReferences=false, followed by the
+normal complete `INSTALL --parallel 2 -- /p:CL_MPCount=2` build to regenerate
+shader dependencies and update all out-of-date components from the current source.
+INSTALL succeeded. The installed executable and Release executable match:
+**98,135,552 bytes**, timestamp **2026-11-09 10:31:02 JST**, SHA-256
+`412FB38DB57F96918D1CD9378BE00CAE73BF5D05908F348EFECE79DA88774ABF`.
+Build metadata reports base source hash `d7011ba9b18b`; the UV changes are committed on main. Only the standard runtime at
+`D:\blender_build\octahedral_radius\bin\blender.exe` was updated for this work.
+
+243 background operator assertions and 19 graphical assertions per actual
+OpenGL/Vulkan backend passed; see [coverage and limits](FEATURES.md#uv-editing-priority-and-pins-2026-11-09-local-source-change).
+Opaque selection colors and vertex cores are unchanged by toggling Shell Outline;
+Edge/Face markers each have ten red pin pixels at the tested UV corner.
+C++ formatting and diff whitespace checks passed. Scripts, GPU captures, arrays,
+logs and recovery files were external and removed after verification. Build caches
+and dependencies were retained. The user's Desktop process was preserved;
+Desktop copies, other runtime prefixes and public packages were not replaced.
+
 ## Multires color sampling fix (2026-11-07)
 
 Non-merged sampling now reads the selected current CCG color sample. Previously the grid

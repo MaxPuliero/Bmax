@@ -718,7 +718,7 @@ class MeshUVs : Overlay {
       pass.push_constant("do_smooth_wire", do_smooth_wire);
     }
 
-    if (select_vert_) {
+    if (show_uv_edit_) {
       const float dot_size = ui::theme::get_value_f(TH_VERTEX_SIZE) * UI_SCALE_FAC;
       float4 theme_color;
       ui::theme::get_color_4fv(TH_VERTEX, theme_color);
@@ -733,6 +733,7 @@ class MeshUVs : Overlay {
       pass.bind_ubo(DRW_CLIPPING_UBO_SLOT, &res.clip_planes_buf);
       pass.push_constant("dot_size", (dot_size + 1.5f) * float(M_SQRT2));
       pass.push_constant("outline_width", 0.75f);
+      pass.push_constant("pinned_only", !select_vert_);
       pass.push_constant("color", theme_color);
     }
 
@@ -878,7 +879,7 @@ class MeshUVs : Overlay {
         gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
         edges_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
       }
-      if (select_vert_) {
+      if (show_uv_edit_) {
         gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_verts(ob, mesh);
         verts_ps_.draw(geom, res_handle);
       }
@@ -1096,16 +1097,17 @@ class MeshUVs : Overlay {
     if (show_wireframe_ && wireframe_on_top_) {
       manager.submit(wireframe_ps_, view);
     }
+    /* Keep shell boundaries below editable edges, face dots and pins. */
+    diagnostics_.draw_outline(framebuffer, manager);
     if (show_uv_edit_) {
       manager.submit(edges_ps_, view);
     }
     if (select_face_dots_) {
       manager.submit(facedots_ps_, view);
     }
-    if (select_vert_) {
+    if (show_uv_edit_) {
       manager.submit(verts_ps_, view);
     }
-    diagnostics_.draw_outline(framebuffer, manager);
     if (show_stencil_) {
       manager.submit(brush_stencil_ps_, view);
     }

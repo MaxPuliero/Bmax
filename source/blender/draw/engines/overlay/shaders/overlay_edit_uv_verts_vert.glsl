@@ -26,6 +26,10 @@ void main()
    * actual pixels are at 0.75, 1.0 is used for the background. */
   float depth = is_selected ? (is_pinned ? 0.05f : 0.10f) : 0.15f;
   gl_Position = float4(drw_point_world_to_homogenous(world_pos).xy, depth, 1.0f);
+  /* Keep pin markers visible in selection modes that hide ordinary vertices. */
+  if (pinned_only && !is_pinned) {
+    gl_Position = float4(2.0f, 2.0f, 2.0f, 1.0f);
+  }
   gl_PointSize = dot_size;
 
   /* calculate concentric radii in pixels */

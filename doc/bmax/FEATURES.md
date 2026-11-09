@@ -668,7 +668,7 @@ Implementation commit: `ee9bcdf37b32`. Source publication does not update the se
 | Feature | Implemented behavior |
 | --- | --- |
 | Independent UV fill opacities | Overlap, Flipped UVs, and Faces have separate opacity sliders in the shared Geometry panel, defaulting to 0.5 (50%) for new settings. Faces opacity is independent of UV lines and paint-mode face opacity. Saved values, including zero, are retained; missing properties migrate to the new defaults. |
-| Object Mode UV line priority | UV wire lines are submitted after Faces and Flipped/Overlap diagnostic fills, keeping the lines visible above their colors at the chosen UV line opacity, without automatic quarter-strength fading. Edit Mode keeps its existing line order and white shell outlines remain on top. |
+| Object Mode UV line priority | UV wire lines are submitted after Faces and Flipped/Overlap diagnostic fills, keeping the lines visible above their colors at the chosen UV line opacity, without automatic quarter-strength fading. In Edit Mode, shell outlines are below editable edges, vertices and pin markers; in Object Mode, white shell outlines remain on top. |
 | Wire endpoint radius | Head and Tail spheres in Wire Edit Mode use the per-bone Octahedral Radius independently of rest-bone length. Selection and endpoint picking use the same sphere geometry. |
 | Default bone rotation mode | Newly created pose channels and the Rotation Mode property default use XYZ Euler. Existing channels and copied bone rotation modes are preserved. |
 
@@ -844,3 +844,32 @@ The existing toggle now applies to vertices, edges and faces, including mixed me
 The existing RNA identifier `use_select_through_vertices` and stored flag are retained for compatibility with saved files and scripts; their scope now includes all mesh element types. No second toggle, DNA layout or modifier evaluation change is introduced. Both new label and tooltip are localized in all nine catalogs from the preceding localization work. Existing localization edits are preserved on `codex/select-through-elements`. Release INSTALL completed. 474 checks passed on each actual backend, OpenGL and Vulkan, with matching results (948 total). The full matrix covers vertex/edge/face and all mixed modes, toggle on/off, Box/Lasso/Circle and subtraction in Solid, Material Preview and EEVEE Rendered. Separate checks cover occluded click picking for all three element types and shading modes, hidden geometry, multiple edited meshes, perspective projection, Cycles CPU Rendered selection, face-selection Undo/Redo, retained toggle state across selection-mode changes and the localized label/tooltip in all nine catalogs. A file saved by the previous executable retained the enabled flag in all ten saved 3D spaces, with the renamed RNA label and unchanged default-off value. Menus in Edge/Face Mode were visually inspected. The off-state click control accepts Blender's existing front-edge fallback but never a rear edge. Custom clip-volume gestures, modifier-deformed selection and production scenes were not revalidated.
 
 The installed executable is timestamped 2026-10-30 12:55:13 JST and reports base hash `97e896e6079d`; the implementation is included in source commit [`1d0507ec174c`](https://github.com/MaxPuliero/Bmax/commit/1d0507ec174c14d8814a9ad5cde9e7b66aae9a23) on `main`. Python syntax, formatting of changed C++ and diff whitespace checks passed. The initial front-edge click harness expectation was adjusted to the existing fallback behavior; no production-code correction was required. All follow-up scripts, scenes, results, logs, captures, preferences and recovery files were external and removed after checking. Desktop and public binary packages remain unchanged.
+
+
+## UV editing priority and pins (2026-11-09, local source change)
+
+Shell Outline resolves before editable UV edges, face dots and vertices, so it
+cannot cover vertex selection, edge selection or pinned-vertex indicators.
+Object Mode retains the outline above its UV wireframe. Diagnostic fills,
+constant physical outline width and Modified Edges behavior are preserved.
+
+Pinned vertices are also submitted when ordinary vertex dots are hidden by the
+selection mode; non-pinned vertices retain their previous visibility. Pin,
+Unpin and Invert Pins explicitly use selected edge endpoints in Edge mode and
+selected face corners in Face mode. Vertex/Island selection retains the native
+vertex selection rules. Synchronized selection uses the native UV edge/face
+tests, retaining sticky selection, hidden-face and multi-object handling.
+
+The standard local runtime was rebuilt and installed on November 9. Validation
+passed 243 background assertions across Vertex/Edge/Face, all three Sticky modes,
+Sync off, and Sync on with both mesh-derived and valid UV selection. Cases cover
+Pin/Unpin/Invert, separate UV corners, and preservation of pins outside selection.
+OpenGL and Vulkan each passed 19 graphical assertions: outline on/off preserves
+opaque selection pixels and vertex cores (including unselected vertices); pinned
+markers are present at their UV positions in Edge/Face mode. The antialiased
+fringes blend normally with the underlying outline. The preceding runtime
+reproduced the Vertex Mode overlap. Actual UV captures were visually inspected.
+These focused checks do not cover interactive undo/redo gestures or every modifier
+stack. Source changes remain local and uncommitted; Desktop/public packages are
+unchanged. All temporary verification artifacts were external and removed.
+See the November 9 entry in [the build guide](BUILD_WINDOWS.md).

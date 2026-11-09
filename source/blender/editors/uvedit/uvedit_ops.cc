@@ -1723,6 +1723,13 @@ static wmOperatorStatus uv_pin_exec(bContext *C, wmOperator *op)
   BMFace *efa;
   BMLoop *l;
   BMIter iter, liter;
+  const ToolSettings *ts = scene->toolsettings;
+  const bool sync_selection = ts->uv_flag & UV_FLAG_SELECT_SYNC;
+  const bool select_face = sync_selection ? (ts->selectmode == SCE_SELECT_FACE) :
+                                            (ts->uv_selectmode == UV_SELECT_FACE);
+  const bool select_edge = sync_selection ? ((ts->selectmode & SCE_SELECT_VERTEX) == 0 &&
+                                             (ts->selectmode & SCE_SELECT_EDGE)) :
+                                            (ts->uv_selectmode == UV_SELECT_EDGE);
   const bool clear = RNA_boolean_get(op->ptr, "clear");
   const bool invert = RNA_boolean_get(op->ptr, "invert");
 
@@ -1754,7 +1761,19 @@ static wmOperatorStatus uv_pin_exec(bContext *C, wmOperator *op)
 
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
 
-        if (uvedit_uv_select_test(scene, em->bm, l, offsets)) {
+        bool selected;
+        if (select_face) {
+          selected = uvedit_face_select_test(scene, em->bm, efa);
+        }
+        else if (select_edge) {
+          selected = uvedit_edge_select_test(scene, em->bm, l, offsets) ||
+                     uvedit_edge_select_test(scene, em->bm, l->prev, offsets);
+        }
+        else {
+          selected = uvedit_uv_select_test(scene, em->bm, l, offsets);
+        }
+
+        if (selected) {
           changed = true;
           if (invert) {
             BM_ELEM_CD_SET_BOOL(l, offsets.pin, !BM_ELEM_CD_GET_BOOL(l, offsets.pin));
