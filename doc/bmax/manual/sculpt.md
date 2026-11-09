@@ -19,6 +19,8 @@ Layers work across Multires Sculpt levels, including level 0. They are saved wit
 
 This feature is experimental. Extra layers require a single-user mesh without shape keys, with Sculpt Base Mesh off and no other enabled modifiers. Ordinary mesh sculpting, Voxel Remesh and Dyntopo do not use this layer stack.
 
+<img src="../media/layers.gif" alt="Adjusting the influence of Multires Sculpt Layers" width="720">
+
 ## Paint color on Multires
 
 Use the **Paint**, **Blur** and **Smear** brushes in Sculpt Mode on a Multires mesh. Your painted detail is retained when changing subdivision levels and when saving the project. Sculpt masks protect the painted surface.
@@ -62,6 +64,8 @@ You can rotate the view or change brushes first. Each repetition can be undone s
 
 Draw a new stroke after changing topology or Multires level. Leaving Sculpt Mode clears the remembered stroke. Color and mask strokes are not repeated by this tool.
 
+<img src="../media/repeat.gif" alt="Repeating the last sculpt stroke to build up its deformation" width="540">
+
 ## Blend symmetry without discarding one side
 
 Use **Sculpt > Symmetrize Blend**, or open **N > Tool > Blend Symmetry**.
@@ -71,6 +75,8 @@ Choose the axis and Strength. Matching unmasked areas blend toward their average
 **Vertex Paint** is on by default and blends the active color attribute too. Turn it off to change only the shape.
 
 This works with fixed-topology meshes and Multires, including Sculpt Layers. Unmatched or ambiguous regions are skipped. Dyntopo is not supported.
+
+<img src="../media/symmetry.gif" alt="Blending sculpt geometry and painted color with Symmetrize Blend" width="640">
 
 ## Remesh and prepare scans
 
