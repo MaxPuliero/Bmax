@@ -899,6 +899,10 @@ Block *popup_block_refresh(bContext *C, PopupBlockHandle *handle, ARegion *butre
     blocklist_free_inactive(C, region);
   }
 
+  /* Popup centering, clipping and region-space translation move view-item buttons after
+   * block_end() calculated view bounds. Refresh hit areas before handling scroll events. */
+  block_views_end(region, block);
+
   /* checks which buttons are visible, sets flags to prevent draw (do after region init) */
   popup_block_scrolltest(block);
 
