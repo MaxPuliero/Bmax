@@ -1,5 +1,49 @@
 # Building Bmax on Windows
 
+## Selective image saving (2026-11-11)
+
+The committed source implements the project-save image checklist on this version's
+separate branch. The list uses native TreeView scrolling; popup event routing sends
+wheel and trackpad events to embedded scrollable views before the outer menu consumes
+them, and refreshes view hit bounds after popup positioning. UDIM sets are listed
+once per Image datablock, including the tile count.
+No existing shared C++ structure layout or DNA changed.
+
+Build command: `cmake --build D:\blender_build\bmax_5.3 --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`.
+The installed runtime is `D:\blender_build\bmax_5.3\bin\blender.exe`.
+Implementation: source commit `ae98b7b445fdb2776371c7227dce3c1989c7ac31` on `codex/bmax-5.3`,
+committed locally and not yet pushed. Published branches still refer to their preceding
+commits. Desktop copies and the Gumroad package are unchanged.
+The audited runtime below was built and verified before this commit from the same
+implementation. Its embedded metadata may refer to the preceding tracking commit;
+committing the source and documentation does not rebuild or replace that executable.
+
+Real mouse-event checks on isolated OpenGL processes passed on both 5.2.3 and 5.3:
+master all/none, per-image selection, partial-state display, collapse/reopen persistence,
+Save and Cancel. Only the selected PNG changed on disk and became clean; unselected
+PNGs retained identical SHA-256 hashes and dirty image buffers. Both mouse Cancel and
+Esc left the project and image file hashes unchanged. Zero-selection saving preserved
+all modified external images. All verification artifacts were external to the
+repositories and have been removed.
+
+Final Release INSTALL succeeded. Installed and Release executables match exactly:
+**110,996,480 bytes**, **2026-11-11 18:17:17 JST**, SHA-256
+`532665EB4C1DB101B4BF8FD874790676A303524B87528FA3EC592BBEDC6A71CC`.
+
+The final 13-image checks passed on both versions: wheel scrolling down/up/down,
+selections retained outside the visible rows, a single two-tile UDIM entry, generated
+image packing, disabled invalid destinations, and the popup opening when only an
+unsavable image is dirty. Selecting one external image, the UDIM set and the generated
+image saved only those three Image datablocks. The dirty UDIM tile changed on disk;
+the clean tile and all nine unselected external textures retained identical hashes.
+The unselected textures and invalid-path image stayed dirty in memory. The generated
+image became packed and clean. Scrollbar dragging was also checked. Physical trackpad
+input was not exercised. C++ formatting and Git whitespace checks passed.
+
+Temporary verification scripts, scenes, screenshots, logs and isolated runtime caches
+were removed after verification; build caches, dependencies and user sessions were retained.
+
+
 **5.3 migration, 2026-11-11:** This branch contains the compiled and locally verified 5.3 source port. Release INSTALL, 66 background checks, OpenGL/Vulkan checks and official 5.3 export reading passed. The preserved 5.2.3 source and build remain separate. See [version separation and current status](blender_5_3_sync.md). Historical validation entries below describe their original 5.2 builds and are not 5.3 validation claims.
 
 ## Blender 5.3 version separation (2026-11-11)

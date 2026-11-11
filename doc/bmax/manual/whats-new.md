@@ -4,6 +4,22 @@
 
 These are the latest improvements in Bmax development. They are planned for the next public Windows package; check the download's release notes before expecting them in your installed version.
 
+## November 11, 2026 — Choose which textures to save
+
+Available in the verified local Bmax 5.2.3 and 5.3 builds; the public Windows package
+has not been replaced with this update.
+
+- Expand **Modified Images** in the project-save confirmation to inspect names and destinations.
+- Select individual images or use the global checkbox to select or deselect all saveable images.
+- Scroll through a compact list while Save and Cancel remain visible.
+- Treat each UDIM set as one image with a single checkbox.
+- Save only selected images; unselected external files stay unchanged and their images stay modified in memory.
+
+The list appears with **Save Modified Images: Ask**. The separate close-file prompt
+and **Image > Save All Modified** retain their existing behavior.
+
+[Saving and compatibility](compatibility.md#choose-which-modified-images-to-save)
+
 ## November 9, 2026 — Clearer UV editing
 
 - Shell outlines stay beneath UV edges, selected and unselected vertices, and pin markers.

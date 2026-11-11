@@ -1,5 +1,32 @@
 # Bmax feature inventory
 
+## Selective modified-image saving (2026-11-11)
+
+Implementation: source commit `ae98b7b445fdb2776371c7227dce3c1989c7ac31` on `codex/bmax-5.3`, committed locally.
+This feature has not been pushed; the local runtime is installed and verified.
+
+Implemented on the separate Bmax 5.2.3 and 5.3 branches. The project-save popup
+has a collapsible list with image names/destinations, individual selections,
+a select-all checkbox with partial-selection state and a selected/saveable counter.
+A native scrolling list initially shows at most six rows, with Save/Cancel outside
+the scroll area; selections survive scrolling and collapsing. Each UDIM image is one
+entry (with a tile count), never one checkbox per tile. Images that cannot be saved
+directly are disabled and native warnings remain visible. Generated/packed images retain native packing behavior.
+
+Selection is owned by each popup, not serialized or stored in preferences. Saving
+resolves image session IDs against the current Main, saves only selected eligible
+images through the native image-saving implementation, then continues the original
+project-save callback. Cancel/Esc frees popup data without saving. Existing shared
+structure layouts and DNA are unchanged. Image > Save All Modified and the separate
+close-file prompt retain their all-images semantics.
+
+Release INSTALL and isolated OpenGL UI/file checks passed on both versions, including
+scrolling, retained selections, single-entry UDIM saving, generated packing, Save/Cancel
+and unchanged hashes/dirty buffers for unselected external images. See the detailed
+validation/build audit in [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
+Desktop copies and the Gumroad download have not been replaced for this feature.
+
+
 **5.3 migration, 2026-11-11:** This branch contains the compiled and locally verified 5.3 source port. Release INSTALL, 66 background checks, OpenGL/Vulkan checks and official 5.3 export reading passed. The preserved 5.2.3 source and build remain separate. See [version separation and current status](blender_5_3_sync.md). Historical validation entries below describe their original 5.2 builds and are not 5.3 validation claims.
 
 ## Blender 5.3 version separation (2026-11-11)

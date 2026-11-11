@@ -8,6 +8,29 @@ Save your working project normally in Bmax to retain its custom settings, painte
 
 Keep this editable original when preparing a version for another application or for someone using official Blender.
 
+## Choose which modified images to save
+
+With Preferences > Save & Load > Save Modified Images set to Ask, the project-save
+confirmation has a **Modified Images** expander. Each entry shows its image name and
+file destination, or **Packed in blend file** for images stored inside the project.
+The top checkbox selects or deselects all saveable entries; individual checkboxes
+let you choose a subset. The counter shows selected / saveable images, and a dash
+in the top checkbox indicates a partial selection. The list shows four to six rows
+initially and scrolls with the mouse wheel or scrollbar;
+Save and Cancel stay outside the scrolling area. Selections persist while scrolling
+and while collapsed. Each UDIM set is a single entry with its tile count; its checkbox
+controls the whole image, using the native UDIM save/pack path.
+
+**Save** saves the project and the selected images using Blender's native save/pack
+rules. Unselected external files remain untouched and their images stay modified
+in memory. **Cancel** (or Esc) cancels this project-save request and writes no files.
+Unsavable entries are disabled, with the native warnings and a Save As hint.
+Generated images are packed using the existing Blender behavior.
+
+This selection applies to the project-save confirmation. The separate close-file
+prompt, Image > Save All Modified, and the Always/Never preference retain their
+existing behavior. Save As still opens its normal file browser after confirmation.
+
 ## Save a copy for official Blender
 
 Choose **File > Save as Official…**. The command creates a separate file while leaving your open project, filename and editable data in place.

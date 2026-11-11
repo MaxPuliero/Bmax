@@ -1,5 +1,13 @@
 # Blender 5.3 integration and separate versions
 
+**Subsequent image-save update, 2026-11-11:** Selective image saving is now committed
+locally on both version branches (`e9115666` for 5.2.3, `ae98b7b4` for 5.3), with
+separate verified local builds. This feature has not been pushed. See the current
+[feature inventory](FEATURES.md#selective-modified-image-saving-2026-11-11) and
+[build audit](BUILD_WINDOWS.md#selective-image-saving-2026-11-11). The migration
+records and executable hashes below describe the earlier port, before this update.
+
+
 ## Source and status
 
 Official release: `v5.3.0`, commit `02f0899d78e374b63e7181d9061e1f7ab03419cc`, released November 10, 2026. The port starts from Bmax `361ec41e` and integrates the release-to-release delta using the official 5.2.3 tree as the three-way base. Bmax keeps its imported-snapshot history; upstream Blender history is not published as Bmax history.
