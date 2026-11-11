@@ -11,6 +11,7 @@ Bmax is a custom Blender 5.2.3 LTS build with tools for sculpting, rigging, UV e
 - **Inspect UVs:** spot overlaps and flipped faces, outline shells and adjust the texture background independently.
 - **Clean up meshes:** highlight open boundaries, fill holes, separate parts and control normal weighting.
 - **Work comfortably:** manage Quick Favorites, carry your view between workspaces and edit selected objects together.
+- **Save textures selectively:** inspect modified images in a compact scrolling list, select individual images or all images, and save each UDIM set as one image. See [Saving and compatibility](doc/bmax/manual/compatibility.md#choose-which-modified-images-to-save).
 
 Browse the [artist guide](doc/bmax/manual/README.md) for practical instructions, images and feature limits.
 

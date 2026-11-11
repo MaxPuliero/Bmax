@@ -1,5 +1,49 @@
 # Building Bmax on Windows
 
+## Selective image saving (2026-11-11)
+
+The committed source implements the project-save image checklist on this version's
+separate branch. The list uses native TreeView scrolling; popup event routing sends
+wheel and trackpad events to embedded scrollable views before the outer menu consumes
+them, and refreshes view hit bounds after popup positioning. UDIM sets are listed
+once per Image datablock, including the tile count.
+No existing shared C++ structure layout or DNA changed.
+
+Build command: `cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`.
+The installed runtime is `D:\blender_build\octahedral_radius\bin\blender.exe`.
+Implementation: source commit `e9115666e4cdb8105151617ecfeeced445b1c523` on `codex/bmax-5.2.3`,
+committed locally and not yet pushed. Published branches still refer to their preceding
+commits. Desktop copies and the Gumroad package are unchanged.
+The audited runtime below was built and verified before this commit from the same
+implementation. Its embedded metadata may refer to the preceding tracking commit;
+committing the source and documentation does not rebuild or replace that executable.
+
+Real mouse-event checks on isolated OpenGL processes passed on both 5.2.3 and 5.3:
+master all/none, per-image selection, partial-state display, collapse/reopen persistence,
+Save and Cancel. Only the selected PNG changed on disk and became clean; unselected
+PNGs retained identical SHA-256 hashes and dirty image buffers. Both mouse Cancel and
+Esc left the project and image file hashes unchanged. Zero-selection saving preserved
+all modified external images. All verification artifacts were external to the
+repositories and have been removed.
+
+Final Release INSTALL succeeded. Installed and Release executables match exactly:
+**98,142,208 bytes**, **2026-11-11 18:17:29 JST**, SHA-256
+`95486C2787DD45E418F89700DD397162C193538A3213C7ABE4C86B17A65D0708`.
+
+The final 13-image checks passed on both versions: wheel scrolling down/up/down,
+selections retained outside the visible rows, a single two-tile UDIM entry, generated
+image packing, disabled invalid destinations, and the popup opening when only an
+unsavable image is dirty. Selecting one external image, the UDIM set and the generated
+image saved only those three Image datablocks. The dirty UDIM tile changed on disk;
+the clean tile and all nine unselected external textures retained identical hashes.
+The unselected textures and invalid-path image stayed dirty in memory. The generated
+image became packed and clean. Scrollbar dragging was also checked. Physical trackpad
+input was not exercised. C++ formatting and Git whitespace checks passed.
+
+Temporary verification scripts, scenes, screenshots, logs and isolated runtime caches
+were removed after verification; build caches, dependencies and user sessions were retained.
+
+
 **November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
 
 **November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.

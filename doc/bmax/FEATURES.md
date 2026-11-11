@@ -1,5 +1,32 @@
 # Bmax feature inventory
 
+## Selective modified-image saving (2026-11-11)
+
+Implementation: source commit `e9115666e4cdb8105151617ecfeeced445b1c523` on `codex/bmax-5.2.3`, committed locally.
+This feature has not been pushed; the local runtime is installed and verified.
+
+Implemented on the separate Bmax 5.2.3 and 5.3 branches. The project-save popup
+has a collapsible list with image names/destinations, individual selections,
+a select-all checkbox with partial-selection state and a selected/saveable counter.
+A native scrolling list initially shows at most six rows, with Save/Cancel outside
+the scroll area; selections survive scrolling and collapsing. Each UDIM image is one
+entry (with a tile count), never one checkbox per tile. Images that cannot be saved
+directly are disabled and native warnings remain visible. Generated/packed images retain native packing behavior.
+
+Selection is owned by each popup, not serialized or stored in preferences. Saving
+resolves image session IDs against the current Main, saves only selected eligible
+images through the native image-saving implementation, then continues the original
+project-save callback. Cancel/Esc frees popup data without saving. Existing shared
+structure layouts and DNA are unchanged. Image > Save All Modified and the separate
+close-file prompt retain their all-images semantics.
+
+Release INSTALL and isolated OpenGL UI/file checks passed on both versions, including
+scrolling, retained selections, single-entry UDIM saving, generated packing, Save/Cancel
+and unchanged hashes/dirty buffers for unselected external images. See the detailed
+validation/build audit in [BUILD_WINDOWS.md](BUILD_WINDOWS.md).
+Desktop copies and the Gumroad download have not been replaced for this feature.
+
+
 > Contributor reference: this inventory includes technical history and superseded records. For current usage, see the [artist guide](manual/README.md).
 
 **November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
