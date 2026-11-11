@@ -2541,20 +2541,41 @@ int ED_image_save_all_modified_info(const Main *bmain, ReportList *reports)
   return num_saveable_images;
 }
 
-bool ED_image_save_all_modified(const bContext *C, ReportList *reports)
+Vector<Image *> ED_image_save_modified_get_images(const Main *bmain, const bool only_saveable)
+{
+  Vector<Image *> images;
+  for (Image *ima = bmain->images.first(); ima; ima = static_cast<Image *>(ima->id.next)) {
+    bool writable;
+    if (!image_should_be_saved(ima, &writable)) {
+      continue;
+    }
+    const bool pack = BKE_image_has_packedfile(ima) || image_should_pack_during_save_all(ima);
+    if (!only_saveable || (pack ? ID_IS_EDITABLE(ima) : writable && image_has_valid_path(ima))) {
+      images.append(ima);
+    }
+  }
+  return images;
+}
+
+bool ED_image_save_modified(const bContext *C, ReportList *reports, Span<Image *> images)
 {
   Main *bmain = CTX_data_main(C);
 
-  ED_image_save_all_modified_info(bmain, reports);
-
   bool ok = true;
 
-  for (Image *ima = bmain->images.first(); ima; ima = static_cast<Image *>(ima->id.next)) {
+  for (Image *ima : images) {
     bool is_format_writable;
 
     if (image_should_be_saved(ima, &is_format_writable)) {
       if (BKE_image_has_packedfile(ima) || image_should_pack_during_save_all(ima)) {
-        BKE_image_memorypack(ima);
+        if (ID_IS_EDITABLE(ima)) {
+          BKE_image_memorypack(ima);
+        }
+        else {
+          BKE_reportf(
+              reports, RPT_WARNING, "Packed library image cannot be saved: %s", ima->id.name + 2);
+          ok = false;
+        }
       }
       else if (is_format_writable) {
         if (image_has_valid_path(ima)) {
@@ -2570,6 +2591,13 @@ bool ED_image_save_all_modified(const bContext *C, ReportList *reports)
     }
   }
   return ok;
+}
+
+bool ED_image_save_all_modified(const bContext *C, ReportList *reports)
+{
+  Main *bmain = CTX_data_main(C);
+  ED_image_save_all_modified_info(bmain, reports);
+  return ED_image_save_modified(C, reports, ED_image_save_modified_get_images(bmain, false));
 }
 
 void ED_image_internal_autosave_flush(const Main *bmain)

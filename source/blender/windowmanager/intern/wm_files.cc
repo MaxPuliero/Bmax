@@ -60,6 +60,7 @@
 
 #include "BLF_api.hh"
 
+#include "DNA_image_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -82,6 +83,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_idprop.hh"
+#include "BKE_image.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_remap.hh"
@@ -133,6 +135,7 @@
 #include "UI_interface.hh"
 #include "UI_interface_layout.hh"
 #include "UI_resources.hh"
+#include "UI_tree_view.hh"
 #include "UI_view2d.hh"
 
 /* Only to report a missing engine. */
@@ -3809,8 +3812,100 @@ static bool wm_show_save_modified_images_dialog(const Main *bmain, wmOperator *o
   }
 
   return !G.background && U.save_modified_images == USER_SAVE_MODIFIED_IMAGES_ASK &&
-         show_save_image_dialog && ED_image_save_all_modified_info(bmain, nullptr) > 0;
+         show_save_image_dialog && !ED_image_save_modified_get_images(bmain, false).is_empty();
 }
+
+/* Per-popup state: never stored in preferences or in the blend file. */
+struct SaveModifiedImageItem {
+  uint session_uid;
+  std::string name;
+  std::string path;
+  bool saveable;
+  bool selected;
+};
+
+struct SaveModifiedImagesDialog {
+  wmGenericCallback *post_action = nullptr;
+  Vector<SaveModifiedImageItem> images;
+  bool expanded = false;
+};
+
+static void wm_save_modified_images_dialog_free(void *arg)
+{
+  auto *data = static_cast<SaveModifiedImagesDialog *>(arg);
+  WM_generic_callback_free(data->post_action);
+  MEM_delete(data);
+}
+
+static void wm_save_modified_images_refresh(bContext *C, void *, void *)
+{
+  ED_region_tag_refresh_ui(CTX_wm_region_popup(C));
+}
+
+static void wm_save_modified_images_select_all(bContext *C, void *arg, void *)
+{
+  auto *data = static_cast<SaveModifiedImagesDialog *>(arg);
+  bool all_selected = true;
+  for (const SaveModifiedImageItem &image : data->images) {
+    all_selected &= !image.saveable || image.selected;
+  }
+  for (SaveModifiedImageItem &image : data->images) {
+    image.selected = image.saveable && !all_selected;
+  }
+  wm_save_modified_images_refresh(C, nullptr, nullptr);
+}
+
+class SaveModifiedImageViewItem : public ui::BasicTreeViewItem {
+  SaveModifiedImageItem &image_;
+
+ public:
+  explicit SaveModifiedImageViewItem(SaveModifiedImageItem &image)
+      : ui::BasicTreeViewItem(image.name), image_(image)
+  {
+  }
+
+  void build_row(ui::Layout &row) override
+  {
+    row.active_set(image_.saveable);
+    ui::Layout &split = row.split(0.4f, false);
+    split.row(false);
+    ui::Button *but = uiDefIconTextBut(
+        row.block(),
+        ui::ButtonType::But,
+        image_.selected ? ICON_CHECKBOX_HLT : ICON_CHECKBOX_DEHLT,
+        image_.name,
+        0,
+        0,
+        6 * UI_UNIT_X,
+        UI_UNIT_Y,
+        nullptr,
+        image_.saveable ? image_.path : TIP_("Cannot save directly; use Image > Save As"));
+    button_func_set(
+        but,
+        [](bContext *C, void *arg, void *) {
+          auto *image = static_cast<SaveModifiedImageItem *>(arg);
+          image->selected = !image->selected;
+          wm_save_modified_images_refresh(C, nullptr, nullptr);
+        },
+        &image_,
+        nullptr);
+    split.label(image_.path, image_.saveable ? ICON_NONE : ICON_ERROR);
+  }
+};
+
+class SaveModifiedImagesView : public ui::AbstractTreeView {
+  SaveModifiedImagesDialog &data_;
+
+ public:
+  explicit SaveModifiedImagesView(SaveModifiedImagesDialog &data) : data_(data) {}
+
+  void build_tree() override
+  {
+    for (SaveModifiedImageItem &image : data_.images) {
+      add_tree_item<SaveModifiedImageViewItem>(image);
+    }
+  }
+};
 
 static void wm_block_save_modified_images_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
 {
@@ -3822,19 +3917,25 @@ static void wm_block_save_modified_images_save(bContext *C, void *arg_block, voi
 {
   const Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = bmain->wm.first();
-  wmGenericCallback *callback = WM_generic_callback_steal(
-      static_cast<wmGenericCallback *>(arg_data));
+  auto *data = static_cast<SaveModifiedImagesDialog *>(arg_data);
+  wmGenericCallback *callback = WM_generic_callback_steal(data->post_action);
 
+  /* Resolve session IDs against the current Main before closing (which frees popup state). */
+  Vector<Image *> selected;
+  for (Image *image : ED_image_save_modified_get_images(bmain, true)) {
+    for (const SaveModifiedImageItem &item : data->images) {
+      if (item.session_uid == image->id.session_uid && item.selected) {
+        selected.append(image);
+        break;
+      }
+    }
+  }
+  wm->runtime->save_modified_images_when_file_is_saved = !selected.is_empty();
   wmWindow *win = CTX_wm_window(C);
   popup_block_close(C, win, static_cast<ui::Block *>(arg_block));
 
-  if (wm->runtime->save_modified_images_when_file_is_saved && ED_image_should_save_modified(bmain))
-  {
-    ReportList *reports = CTX_wm_reports(C);
-    bool is_successful = ED_image_save_all_modified(C, reports);
-    if (!is_successful) {
-      WM_report_banner_show(wm, win);
-    }
+  if (!selected.is_empty() && !ED_image_save_modified(C, CTX_wm_reports(C), selected)) {
+    WM_report_banner_show(wm, win);
   }
 
   callback->exec(C, callback->user_data);
@@ -3842,20 +3943,20 @@ static void wm_block_save_modified_images_save(bContext *C, void *arg_block, voi
 }
 
 static void wm_block_save_modified_images_cancel_button(ui::Block *block,
-                                                        wmGenericCallback *post_action)
+                                                        SaveModifiedImagesDialog *data)
 {
   ui::Button *but = uiDefIconTextBut(
       block, ui::ButtonType::But, ICON_NONE, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, "");
-  button_func_set(but, wm_block_save_modified_images_cancel, block, post_action);
+  button_func_set(but, wm_block_save_modified_images_cancel, block, data);
   button_drawflag_disable(but, ui::BUT_TEXT_LEFT);
 }
 
 static void wm_block_save_modified_images_save_button(ui::Block *block,
-                                                      wmGenericCallback *post_action)
+                                                      SaveModifiedImagesDialog *data)
 {
   ui::Button *but = uiDefIconTextBut(
       block, ui::ButtonType::But, ICON_NONE, IFACE_("Save"), 0, 0, 0, UI_UNIT_Y, nullptr, "");
-  button_func_set(but, wm_block_save_modified_images_save, block, post_action);
+  button_func_set(but, wm_block_save_modified_images_save, block, data);
   button_drawflag_disable(but, ui::BUT_TEXT_LEFT);
   button_flag_enable(but, ui::BUT_ACTIVE_DEFAULT);
 }
@@ -3890,9 +3991,8 @@ static const char *save_modified_images_dialog_name = "save_modified_images_popu
 
 static ui::Block *block_create_save_modified_images_dialog(bContext *C, ARegion *region, void *arg)
 {
-  wmGenericCallback *post_action = static_cast<wmGenericCallback *>(arg);
+  auto *data = static_cast<SaveModifiedImagesDialog *>(arg);
   Main *bmain = CTX_data_main(C);
-  wmWindowManager *wm = bmain->wm.first();
 
   ui::Block *block = block_begin(
       C, region, save_modified_images_dialog_name, ui::EmbossType::Emboss);
@@ -3910,24 +4010,61 @@ static ui::Block *block_create_save_modified_images_dialog(bContext *C, ARegion 
   /* Image Saving Warnings. */
   ReportList reports;
   BKE_reports_init(&reports, RPT_STORE);
-  uint modified_images_count = ED_image_save_all_modified_info(bmain, &reports);
+  ED_image_save_all_modified_info(bmain, &reports);
   wm_block_image_save_errors(layout, reports);
 
-  /* Modified Images Checkbox. */
-  std::string message = fmt::format(fmt::runtime(RPT_("Save {} modified image(s)")),
-                                    modified_images_count);
+  int selected_count = 0;
+  int saveable_count = 0;
+  for (const SaveModifiedImageItem &image : data->images) {
+    selected_count += image.selected;
+    saveable_count += image.saveable;
+  }
+  const bool all_selected = saveable_count > 0 && selected_count == saveable_count;
   layout.separator();
-  uiDefButV(block,
-            ui::ButtonType::Checkbox,
-            message,
-            0,
-            0,
-            0,
-            UI_UNIT_Y,
-            &wm->runtime->save_modified_images_when_file_is_saved,
-            0,
-            0,
-            "");
+  const std::string message = fmt::format(
+      fmt::runtime(IFACE_("Save selected images ({} / {})")), selected_count, saveable_count);
+  /* A callback button avoids native checkbox edit state overwriting the derived master state
+   * during popup refresh. Its icon always reflects the actual per-image selections. */
+  ui::Button *all = uiDefIconTextBut(block,
+                                     ui::ButtonType::But,
+                                     all_selected       ? ICON_CHECKBOX_HLT :
+                                     selected_count > 0 ? ICON_REMOVE :
+                                                          ICON_CHECKBOX_DEHLT,
+                                     message,
+                                     0,
+                                     0,
+                                     0,
+                                     UI_UNIT_Y,
+                                     nullptr,
+                                     TIP_("Select or deselect all saveable modified images"));
+  button_func_set(all, wm_save_modified_images_select_all, data, nullptr);
+
+  ui::Button *expand = uiDefIconTextBut(
+      block,
+      ui::ButtonType::But,
+      data->expanded ? ICON_TRIA_DOWN : ICON_TRIA_RIGHT,
+      IFACE_("Modified Images"),
+      0,
+      0,
+      0,
+      UI_UNIT_Y,
+      nullptr,
+      TIP_("Show or hide modified image names and destinations"));
+  button_func_set(
+      expand,
+      [](bContext *C, void *arg, void *) {
+        auto *data = static_cast<SaveModifiedImagesDialog *>(arg);
+        data->expanded = !data->expanded;
+        wm_save_modified_images_refresh(C, nullptr, nullptr);
+      },
+      data,
+      nullptr);
+  if (data->expanded) {
+    ui::AbstractTreeView *view = ui::block_add_view(
+        *block, "Modified Images", std::make_unique<SaveModifiedImagesView>(*data));
+    view->set_default_rows(std::clamp<int>(data->images.size(), 4, 6));
+    ui::TreeViewBuilder::build_tree_view(*C, *view, layout);
+  }
 
   BKE_reports_free(&reports);
 
@@ -3947,13 +4084,13 @@ static ui::Block *block_create_save_modified_images_dialog(bContext *C, ARegion 
     split.scale_y_set(1.2f);
 
     split.column(false);
-    wm_block_save_modified_images_save_button(block, post_action);
+    wm_block_save_modified_images_save_button(block, data);
 
     split.column(false);
     /* Empty space. */
 
     split.column(false);
-    wm_block_save_modified_images_cancel_button(block, post_action);
+    wm_block_save_modified_images_cancel_button(block, data);
   }
   else {
     /* Non-Windows layout (macOS and Linux). */
@@ -3970,10 +4107,10 @@ static ui::Block *block_create_save_modified_images_dialog(bContext *C, ARegion 
     /* Empty space. */
 
     split_right.column(false);
-    wm_block_save_modified_images_cancel_button(block, post_action);
+    wm_block_save_modified_images_cancel_button(block, data);
 
     split_right.column(false);
-    wm_block_save_modified_images_save_button(block, post_action);
+    wm_block_save_modified_images_save_button(block, data);
   }
 
   block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
@@ -3983,10 +4120,28 @@ static ui::Block *block_create_save_modified_images_dialog(bContext *C, ARegion 
 static void wm_save_modified_images_dialog(bContext *C, wmGenericCallback *post_action)
 {
   if (!ui::popup_block_name_exists(CTX_wm_screen(C), save_modified_images_dialog_name)) {
-    ui::popup_block_invoke(C,
-                           block_create_save_modified_images_dialog,
-                           post_action,
-                           popup_block_wm_generic_callback_free);
+    auto *data = MEM_new<SaveModifiedImagesDialog>(__func__);
+    data->post_action = post_action;
+    Main *bmain = CTX_data_main(C);
+    wmWindowManager *wm = bmain->wm.first();
+    const Vector<Image *> saveable = ED_image_save_modified_get_images(bmain, true);
+    for (Image *image : ED_image_save_modified_get_images(bmain, false)) {
+      const bool can_save = saveable.contains(image);
+      const bool pack = BKE_image_has_packedfile(image) || image->source == IMA_SRC_GENERATED ||
+                        (image->source == IMA_SRC_TILED && !BKE_image_has_filepath(image));
+      data->images.append({image->id.session_uid,
+                           image->source == IMA_SRC_TILED ?
+                               fmt::format(fmt::runtime(IFACE_("{} (UDIM, {} tiles)")),
+                                           image->id.name + 2,
+                                           BLI_listbase_count(&image->tiles)) :
+                               std::string(image->id.name + 2),
+                           pack ? IFACE_("Packed in blend file") :
+                                  (can_save ? image->filepath : IFACE_("Save As required")),
+                           can_save,
+                           can_save && wm->runtime->save_modified_images_when_file_is_saved});
+    }
+    ui::popup_block_invoke(
+        C, block_create_save_modified_images_dialog, data, wm_save_modified_images_dialog_free);
   }
   else {
     WM_generic_callback_free(post_action);

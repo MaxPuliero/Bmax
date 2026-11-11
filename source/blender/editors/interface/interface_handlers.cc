@@ -11618,6 +11618,33 @@ static int handle_menu_mmb_event(bContext *C,
   return retval;
 }
 
+static bool popup_view_scroll(ARegion *region, const wmEvent *event)
+{
+  /* Scroll embedded views before the modal popup consumes wheel/trackpad events.
+   * Confirmation buttons remain outside the view and do not move. */
+  if (!event->modifier && ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, MOUSEPAN)) {
+    AbstractView *view = region_view_find_at(region, event->xy, 0);
+    if (view && view->supports_scrolling() && !view->is_fully_visible()) {
+      int type = event->type;
+      int value = event->val;
+      if (type == MOUSEPAN) {
+        pan_to_scroll(event, &type, &value);
+      }
+      if (ELEM(type, WHEELUPMOUSE, WHEELDOWNMOUSE)) {
+        bool up = type == WHEELUPMOUSE;
+        if (event->type == MOUSEPAN && (event->flag & WM_EVENT_SCROLL_INVERT)) {
+          up = !up;
+        }
+        view->scroll(up ? ViewScrollDirection::UP : ViewScrollDirection::DOWN);
+        ED_region_tag_refresh_ui(region);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 static int handle_menu_event(bContext *C,
                              const wmEvent *event,
                              PopupBlockHandle *menu,
@@ -12760,6 +12787,10 @@ static int handle_menus_recursive(bContext *C,
                                   const bool is_parent_menu,
                                   const bool is_floating)
 {
+  if (popup_view_scroll(menu->region, event)) {
+    return WM_UI_HANDLER_BREAK;
+  }
+
   int retval = WM_UI_HANDLER_CONTINUE;
   bool do_towards_reinit = false;
 

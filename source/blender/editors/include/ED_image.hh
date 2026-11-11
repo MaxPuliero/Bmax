@@ -14,6 +14,7 @@
 #include "DNA_space_types.h"
 
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 namespace blender {
 
@@ -199,6 +200,11 @@ bool ED_space_image_show_cache_and_mval_over(const SpaceImage *sima,
 bool ED_image_should_save_modified(const Main *bmain);
 int ED_image_save_all_modified_info(const Main *bmain, ReportList *reports);
 bool ED_image_save_all_modified(const bContext *C, ReportList *reports);
+/** Dirty images considered by Save All Modified, optionally restricted to saveable images. */
+Vector<Image *> ED_image_save_modified_get_images(const Main *bmain, bool only_saveable);
+/** Save only the supplied images, using the native image save/pack rules. */
+bool ED_image_save_modified(const bContext *C, ReportList *reports, Span<Image *> images);
+
 void ED_image_internal_autosave_flush(const Main *bmain);
 
 /* `image_sequence.cc` */
