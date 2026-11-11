@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/** \file
+ * \ingroup shdnodes
+ */
+
 #include "node_shader_util.hh"
 
 #include "DNA_material_types.h"
@@ -37,8 +41,15 @@ static int node_shader_gpu_object_info(GPUMaterial *mat,
   float index = ma ? ma->index : 0.0f;
   GPU_material_flag_set(mat, GPU_MATFLAG_OBJECT_INFO);
   const float instances = (node->custom1 & 1) ? 1.0f : 0.0f;
-  return GPU_stack_link(
-      mat, node, "node_object_info", in, out, GPU_constant(&index), GPU_constant(&instances));
+  return GPU_stack_link(mat,
+                        node,
+                        "node_object_info",
+                        in,
+                        out,
+                        GPU_constant(&index),
+                        GPU_constant(&instances),
+                        GPU_kernel_globals(),
+                        GPU_shading_data());
 }
 
 NODE_SHADER_MATERIALX_BEGIN

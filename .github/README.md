@@ -1,6 +1,6 @@
 # Bmax
 
-Bmax is a custom Blender 5.2.2 fork. See the [main README](../README.md) for features, downloads, and usage.
+Bmax is a custom Blender 5.3.0 fork. See the [main README](../README.md) for features, downloads, and usage.
 
 - [Bmax bug reports](https://github.com/MaxPuliero/Bmax/issues)
 - [Bmax pull requests](https://github.com/MaxPuliero/Bmax/pulls)

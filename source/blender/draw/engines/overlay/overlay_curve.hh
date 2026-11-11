@@ -76,6 +76,7 @@ class Curves : Overlay {
         res.bind_hair_curves_theme(sub);
         sub.push_constant("opacity", 1.0f);
         sub.push_constant("depth_bias", 0.0f);
+        sub.push_constant("skip_unselected", false);
         edit_curves_lines_ = &sub;
       }
     }

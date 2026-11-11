@@ -9,10 +9,10 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_listbase.h"
+#include "BLI_listbase.hh"
 #include "BLI_math_matrix.hh"
-#include "BLI_math_vector.h"
-#include "BLI_string_utf8.h"
+#include "BLI_math_vector.hh"
+#include "BLI_string_utf8.hh"
 
 #include "BKE_customdata.hh"
 #include "BKE_lib_id.hh"
@@ -70,8 +70,8 @@ static MultiresModifierData *multires(const Object &object)
 bool native_single(const Mesh &mesh)
 {
   const SculptLayerStack *stack = mesh.sculpt_layer_stack;
-  return stack && stack->layers.first && stack->layers.first == stack->layers.last &&
-         static_cast<const SculptLayer *>(stack->layers.first)->uid == 0;
+  return stack && stack->layers.first() && stack->layers.first() == stack->layers.last() &&
+         static_cast<const SculptLayer *>(stack->layers.first())->uid == 0;
 }
 
 bool topology_valid(const Mesh &mesh)
@@ -94,7 +94,7 @@ bool topology_valid(const Mesh &mesh)
       return false;
     }
     for (int i = 0; i < stack->grids_num; i++) {
-      if (mdisps[i].level != stack->level || mdisps[i].totdisp != size * size) {
+      if (mdisps[i].totdisp != size * size) {
         return false;
       }
     }
@@ -246,7 +246,7 @@ static void release_base(SculptLayerStack &stack)
 
 static void migrate_static_base(SculptLayerStack &stack)
 {
-  auto *first = static_cast<SculptLayer *>(stack.layers.first);
+  auto *first = static_cast<SculptLayer *>(stack.layers.first());
   if (!first || first->uid == 0) {
     return;
   }
@@ -282,7 +282,7 @@ static void migrate_static_base(SculptLayerStack &stack)
   first->grids = nullptr;
   first->uid = 0;
   first->influence = 1.0f;
-  if (stack.layers.first == stack.layers.last) {
+  if (stack.layers.first() == stack.layers.last()) {
     release_base(stack);
   }
 }
@@ -354,7 +354,7 @@ static SculptLayer *append(Mesh &mesh)
   layer->uid = stack.next_uid++;
   const std::string name = "Layer " + std::to_string(BLI_listbase_count(&stack.layers) + 1);
   STRNCPY_UTF8(layer->name, name.c_str());
-  if (stack.grids_num && stack.layers.first) {
+  if (stack.grids_num && stack.layers.first()) {
     layer->grids = MEM_new_array<SculptLayerGrid>(stack.grids_num, __func__);
   }
   BLI_addtail(&stack.layers, layer);
@@ -491,7 +491,7 @@ bool remove(Object &object)
     return false;
   }
   auto &stack = *mesh.sculpt_layer_stack;
-  if (layer == stack.layers.first) {
+  if (layer == stack.layers.first()) {
     return false;
   }
   BLI_remlink(&stack.layers, layer);
@@ -516,7 +516,7 @@ bool bake(Object &object)
   }
   multires_flush_sculpt_updates(&object);
   SculptLayerStack &stack = *id_cast<Mesh *>(object.data)->sculpt_layer_stack;
-  auto *first = static_cast<SculptLayer *>(stack.layers.first);
+  auto *first = static_cast<SculptLayer *>(stack.layers.first());
   for (SculptLayer *layer = first->next; layer;) {
     SculptLayer *next = layer->next;
     BLI_remlink(&stack.layers, layer);

@@ -12,7 +12,7 @@
 #include "BKE_mesh_types.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BLI_array.hh"
-#include "BLI_math_geom.h"
+#include "BLI_math_geom.hh"
 #include "BLI_math_vector.hh"
 #include "ED_uvedit.hh"
 #include "bmesh.hh"
@@ -170,7 +170,7 @@ class UVDiagnostics {
       }
     }
     /* Original edit meshes may not have the evaluated draw cache tessellation. */
-    Array<std::array<BMLoop *, 3>> triangles(poly_to_tri_count(bm.totface, bm.totloop));
+    Array<std::array<BMLoop *, 3>> triangles(math::poly_to_tri_count(bm.totface, bm.totloop));
     BM_mesh_calc_tessellation(&bm, triangles);
     for (const std::array<BMLoop *, 3> &tri : triangles) {
       const int face_index = BM_elem_index_get(tri[0]->f);

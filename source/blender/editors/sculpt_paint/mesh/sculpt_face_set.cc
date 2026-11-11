@@ -18,12 +18,14 @@
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_function_ref.hh"
-#include "BLI_hash.h"
-#include "BLI_math_geom.h"
-#include "BLI_math_matrix.h"
+#include "BLI_hash_c.hh"
+#include "BLI_math_matrix_c.hh"
+#include "BLI_hash.hh"
+#include "BLI_math_geom.hh"
 #include "BLI_math_matrix.hh"
-#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_math_vector_c.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
@@ -387,9 +389,9 @@ static void clear_face_sets(const Depsgraph &depsgraph, Object &object, const In
     node_mask.foreach_index(
         [&](const int i) {
           const Span<int> faces = nodes[i].faces();
-          if (std::any_of(faces.begin(), faces.end(), [&](const int face) {
-                return face_sets[face] != default_face_set;
-              }))
+          if (std::any_of(faces.begin(),
+                          faces.end(),
+                          [&](const int face) { return face_sets[face] != default_face_set; }))
           {
             undo::push_node(depsgraph, object, &nodes[i], undo::Type::FaceSet);
             node_changed[i] = true;
@@ -405,9 +407,9 @@ static void clear_face_sets(const Depsgraph &depsgraph, Object &object, const In
           Vector<int> &face_indices = all_face_indices.local();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
               *ss.subdiv_ccg, nodes[i], face_indices);
-          if (std::any_of(faces.begin(), faces.end(), [&](const int face) {
-                return face_sets[face] != default_face_set;
-              }))
+          if (std::any_of(faces.begin(),
+                          faces.end(),
+                          [&](const int face) { return face_sets[face] != default_face_set; }))
           {
             undo::push_node(depsgraph, object, &nodes[i], undo::Type::FaceSet);
             node_changed[i] = true;
@@ -445,7 +447,7 @@ static wmOperatorStatus create_op_exec(bContext *C, wmOperator *op)
   Mesh &mesh = *id_cast<Mesh *>(object.data);
   const bke::AttributeAccessor attributes = mesh.attributes();
 
-  BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
+  BKE_sculptsession_update_for_edit(&depsgraph, &object, false);
 
   undo::push_begin(scene, object, op);
 
@@ -735,7 +737,7 @@ static wmOperatorStatus init_op_exec(bContext *C, wmOperator *op)
 
   ed::sculpt_paint::face_set_overlay_check(*C, *op);
 
-  BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
+  BKE_sculptsession_update_for_edit(depsgraph, &ob, false);
 
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
   /* Dyntopo not supported. */
@@ -1017,7 +1019,7 @@ static wmOperatorStatus change_visibility_exec(bContext *C, wmOperator *op)
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
 
   Mesh *mesh = BKE_object_get_original_mesh(&object);
-  BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
+  BKE_sculptsession_update_for_edit(&depsgraph, &object, false);
 
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
@@ -1101,9 +1103,7 @@ static wmOperatorStatus change_visibility_exec(bContext *C, wmOperator *op)
       float location[3];
       copy_v3_v3(location, ss.active_vert_position(depsgraph, object));
       mul_m4_v3(object.object_to_world().ptr(), location);
-      copy_v3_v3(paint_runtime->average_stroke_accum, location);
-      paint_runtime->average_stroke_counter = 1;
-      paint_runtime->last_stroke_valid = true;
+      bke::paint::stroke_set_location(*paint, location);
     }
   }
 
@@ -1549,7 +1549,7 @@ static bool edit_op_init(bContext *C, wmOperator *op)
     return false;
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
+  BKE_sculptsession_update_for_edit(depsgraph, ob, false);
 
   return true;
 }
@@ -1602,7 +1602,7 @@ static wmOperatorStatus edit_op_invoke(bContext *C, wmOperator *op, const wmEven
     return OPERATOR_CANCELLED;
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
+  BKE_sculptsession_update_for_edit(depsgraph, &ob, false);
 
   /* Update the current active face set and Vertex as the operator can be used directly from the
    * tool without brush cursor. */
@@ -1692,10 +1692,12 @@ void fill_factor_from_hide_and_mask(const BMesh &bm,
   for (BMFace *f : faces) {
     if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
       r_factors[i] = 0.0f;
+      i++;
       continue;
     }
     if (mask_offset == -1) {
       r_factors[i] = 1.0f;
+      i++;
       continue;
     }
 
@@ -2009,7 +2011,7 @@ static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &ges
 {
   const Scene &scene = *CTX_data_scene(&C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-  BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
+  BKE_sculptsession_update_for_edit(depsgraph, gesture_data.vc.obact, false);
   const auto *operation = reinterpret_cast<FaceSetOperation *>(gesture_data.operation);
   if (operation->cut_geometry) {
     undo::geometry_begin(scene, *gesture_data.vc.obact, &op);
@@ -2474,7 +2476,7 @@ static bool topology_poll(bContext *C)
 
 static BMesh *topology_bmesh(bContext *C, Object &object)
 {
-  BKE_sculpt_update_object_for_edit(CTX_data_depsgraph_pointer(C), &object, false);
+  BKE_sculptsession_update_for_edit(CTX_data_depsgraph_pointer(C), &object, false);
   const Mesh &mesh = *id_cast<Mesh *>(object.data);
   const BMAllocTemplate alloc = BMALLOC_TEMPLATE_FROM_ME(&mesh);
   BMeshCreateParams create{};

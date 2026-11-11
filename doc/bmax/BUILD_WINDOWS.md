@@ -1,5 +1,7 @@
 # Building Bmax on Windows
 
+**5.3 migration, 2026-11-11:** This branch contains the compiled and locally verified 5.3 source port. Release INSTALL, 66 background checks, OpenGL/Vulkan checks and official 5.3 export reading passed. The preserved 5.2.3 source and build remain separate. See [version separation and current status](blender_5_3_sync.md). Historical validation entries below describe their original 5.2 builds and are not 5.3 validation claims.
+
 **November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.
 
 **November 4 source update:** Quick Favorites management, Save as Official, workspace viewport continuity and removal of the Alt active-only exception are included in source commit [e2e19fc44af6](https://github.com/MaxPuliero/Bmax/commit/e2e19fc44af680341e6008954ea096dd863b9680) on `main`. Both local runtimes are rebuilt; Desktop copies and the Gumroad binary package were not replaced. Build records below retain their build-time metadata.
@@ -909,25 +911,25 @@ The retired branches are preserved by tags `archive/armature-ui-2026-10-05` and 
 
 Bmax uses an imported Blender 5.2.3 source snapshot. Keep this source base when updating dependencies; do not replace it with upstream Blender's current development branch. Inherited LFS assets download from Blender's public server; uploads target GitHub Bmax. Reading the public upstream assets does not require permission to modify Blender's repository. Bmax artwork and demonstrations are ordinary Git files.
 
-## Existing local build
+## Preserved local 5.2.3 build
 
 The verified local setup uses these paths:
 
 | Item | Path |
 | --- | --- |
-| Source checkout | `D:\Bmax` |
+| Source checkout | `D:\blender_prj` |
 | CMake build directory | `D:\blender_build\octahedral_radius` |
 | Installed executable | `D:\blender_build\octahedral_radius\bin\blender.exe` |
 
-The build directory's name is historical: it now builds all of Bmax, including Mesh Holes. Keep the directory to reuse its compilation cache. These commands assume the existing Visual Studio 2022 / MSVC v143 configuration and installed dependencies; a fresh machine also needs the dependencies described in the Windows build instructions linked from the root README. Earlier build records below used `D:\blender_prj`; the current checkout is `D:\Bmax`.
+The build directory's name is historical: it now builds all of Bmax, including Mesh Holes. Keep the directory to reuse its compilation cache. These commands assume the existing Visual Studio 2022 / MSVC v143 configuration and installed dependencies; a fresh machine also needs the dependencies described in the Windows build instructions linked from the root README. These source, cache and runtime paths remain reserved for 5.2.3. For the separate 5.3 checkout and build, use [the version-separation guide](blender_5_3_sync.md).
 
 For a fresh configuration matching the local build, initialize the pinned Windows library submodule and explicitly select the generator and runtime destination:
 
 ```powershell
-git -C D:\Bmax submodule update --init --checkout --depth 1 -- lib/windows_x64
+git -C D:\blender_prj submodule update --init --checkout --depth 1 -- lib/windows_x64
 if ($LASTEXITCODE -ne 0) { throw 'Windows dependencies could not be initialized' }
 
-cmake -S D:\Bmax -B D:\blender_build\octahedral_radius `
+cmake -S D:\blender_prj -B D:\blender_build\octahedral_radius `
   -G "Visual Studio 17 2022" -A x64 -T v143 `
   -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF `
   -DWITH_CYCLES_DEVICE_OPTIX=OFF -DWITH_CYCLES_CUDA_BINARIES=OFF `
@@ -939,12 +941,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Initial CMake configuration failed' }
 Run in PowerShell. Inspect the working tree before switching branches; preserve any unfinished changes first.
 
 ```powershell
-git -C D:\Bmax status --short
-git -C D:\Bmax switch main
+git -C D:\blender_prj status --short
+git -C D:\blender_prj switch main
 if ($LASTEXITCODE -ne 0) { throw 'Could not switch to main' }
-git -C D:\Bmax log -1 --oneline
+git -C D:\blender_prj log -1 --oneline
 
-cmake -S D:\Bmax -B D:\blender_build\octahedral_radius `
+cmake -S D:\blender_prj -B D:\blender_build\octahedral_radius `
   -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed' }
 

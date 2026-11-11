@@ -7,7 +7,7 @@
 #include <cfloat>
 
 #include "BLI_kdopbvh.hh"
-#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 

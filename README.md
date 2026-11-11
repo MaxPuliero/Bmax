@@ -1,6 +1,6 @@
 # Bmax — Blender for artists
 
-Bmax is a custom Blender 5.2.3 LTS build with tools for sculpting, rigging, UV editing and everyday scene work.
+Bmax is a custom Blender 5.3.0 build with tools for sculpting, rigging, UV editing and everyday scene work.
 
 [**Download for Windows**](https://maxpuliero.gumroad.com/l/bmax) · [**Artist guide**](doc/bmax/manual/README.md) · [**What's new**](doc/bmax/manual/whats-new.md)
 
@@ -13,6 +13,8 @@ Bmax is a custom Blender 5.2.3 LTS build with tools for sculpting, rigging, UV e
 - **Work comfortably:** manage Quick Favorites, carry your view between workspaces and edit selected objects together.
 
 Browse the [artist guide](doc/bmax/manual/README.md) for practical instructions, images and feature limits.
+
+The Blender 5.3 build is compiled and verified locally on `codex/bmax-5.3`. The preserved 5.2.3 source is on `codex/bmax-5.2.3`; the public download has not been replaced with the 5.3 build. See [version separation and validation](doc/bmax/blender_5_3_sync.md).
 
 ## Get started
 

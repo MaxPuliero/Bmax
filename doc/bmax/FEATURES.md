@@ -1,5 +1,7 @@
 # Bmax feature inventory
 
+**5.3 migration, 2026-11-11:** This branch contains the compiled and locally verified 5.3 source port. Release INSTALL, 66 background checks, OpenGL/Vulkan checks and official 5.3 export reading passed. The preserved 5.2.3 source and build remain separate. See [version separation and current status](blender_5_3_sync.md). Historical validation entries below describe their original 5.2 builds and are not 5.3 validation claims.
+
 > Contributor reference: this inventory includes technical history and superseded records. For current usage, see the [artist guide](manual/README.md).
 
 **November 7 source update:** Repeat Last Stroke, Blend Symmetry, Multires Color Filter and the Multires color-picker correction are included in source commit [631dd2d0](https://github.com/MaxPuliero/Bmax/commit/631dd2d0bc6f08fe52de072cce3c5bf462ab8aa4). Both local runtimes are installed and verified. Desktop copies and the Gumroad download package have not been replaced. Earlier build records retain their historical metadata and publication status.

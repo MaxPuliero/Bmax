@@ -31,10 +31,10 @@
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_eval.hh"
 #include "BLI_array.hh"
-#include "BLI_bitmap.h"
+#include "BLI_bitmap.hh"
 #include "BLI_color.hh"
 #include "BLI_kdtree.hh"
-#include "BLI_listbase.h"
+#include "BLI_listbase.hh"
 #include "BLI_math_vector.hh"
 #include "DEG_depsgraph.hh"
 #include "DNA_meshdata_types.h"
@@ -434,7 +434,7 @@ static wmOperatorStatus symmetrize_mesh_exec(bContext *C, wmOperator *op)
   Object &object = *CTX_data_active_object(C);
   Mesh &mesh = *id_cast<Mesh *>(object.data);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
-  BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
+  BKE_sculptsession_update_for_edit(&depsgraph, &object, false);
   bke::pbvh::Tree &tree = bke::object::pbvh_ensure(depsgraph, object);
   if (tree.type() != bke::pbvh::Type::Mesh) {
     BKE_report(op->reports, RPT_INFO, "Symmetrize Blend requires fixed mesh topology");
@@ -622,7 +622,7 @@ static wmOperatorStatus symmetrize_blend_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_INFO, "No mirrored regions found; geometry was left unchanged");
     return OPERATOR_FINISHED;
   }
-  BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
+  BKE_sculptsession_update_for_edit(&depsgraph, &object, false);
   const SubdivCCG *visible_ccg = object.runtime->sculpt_session->subdiv_ccg;
   if (!visible_ccg || visible_ccg->grids_num != mesh.corners_num) {
     BKE_report(
@@ -778,9 +778,7 @@ static wmOperatorStatus symmetrize_blend_exec(bContext *C, wmOperator *op)
   const auto *current = static_cast<const MDisps *>(
       CustomData_get_layer(&mesh.corner_data, CD_MDISPS));
   for (const int grid : mirror.index_range()) {
-    if (!current || source[grid].totdisp != current[grid].totdisp ||
-        source[grid].level != current[grid].level)
-    {
+    if (!current || source[grid].totdisp != current[grid].totdisp) {
       ccg.reset();
       BKE_id_free(nullptr, work);
       BKE_report(op->reports, RPT_ERROR, "Multires displacement storage is inconsistent");
@@ -837,7 +835,7 @@ static wmOperatorStatus symmetrize_blend_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&mesh.id, ID_RECALC_GEOMETRY);
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   BKE_scene_graph_evaluated_ensure(&depsgraph, CTX_data_main(C));
-  BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
+  BKE_sculptsession_update_for_edit(&depsgraph, &object, false);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &object);
   if (partial) {
     BKE_report(

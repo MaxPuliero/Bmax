@@ -9,6 +9,8 @@ This section retains implementation history, validation records and build inform
 - [Windows build guide and installation records](BUILD_WINDOWS.md)
 - [Original Blender README](README_BLENDER_UPSTREAM.md)
 
+- [Blender 5.3 port and separate version paths](blender_5_3_sync.md)
+
 ## Technical notes
 
 - [blender 5 2 3 sync](blender_5_2_3_sync.md)

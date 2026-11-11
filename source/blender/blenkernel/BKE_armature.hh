@@ -25,7 +25,7 @@
 namespace blender {
 
 struct bDeformGroup;
-struct BMEditMesh;
+struct BMesh;
 struct Bone;
 struct Depsgraph;
 struct IDProperty;
@@ -533,8 +533,10 @@ struct BBoneSplineParameters {
 
 /** Sets the location of the pose channel, respecting #bPoseChannel::protectflag. */
 void BKE_pchan_protected_location_set(bPoseChannel *pchan, const float location[3]);
-/** Sets the rotation of the pose channel, respecting the #bPoseChannel::protectflag. Depending on
- * the current rotation mode, this either modifies quaternion, euler or axis angle. */
+/**
+ * Sets the rotation of the pose channel, respecting the #bPoseChannel::protectflag. Depending on
+ * the current rotation mode, this either modifies quaternion, euler or axis angle.
+ */
 void BKE_pchan_protected_rotation_set(bPoseChannel *pchan, const float mat[3][3]);
 /** Sets the location of the pose channel, respecting #bPoseChannel::protectflag. */
 void BKE_pchan_protected_scale_set(bPoseChannel *pchan, const float scale[3]);
@@ -628,9 +630,7 @@ void BKE_pchan_bbone_deform_segment_index(bke::PChanBoneConst pchanbone,
 
 /* context.selected_pose_bones */
 #define FOREACH_PCHAN_SELECTED_IN_OBJECT_BEGIN(_ob, _pchan) \
-  for (bPoseChannel *_pchan = (bPoseChannel *)(_ob)->pose->chanbase.first; _pchan; \
-       _pchan = _pchan->next) \
-  { \
+  for (bPoseChannel *_pchan = (_ob)->pose->chanbase.first(); _pchan; _pchan = _pchan->next) { \
     if (animrig::bone_is_visible(((bArmature *)(_ob)->data), {_pchan, _pchan->bone_get(*_ob)}) && \
         ((_pchan)->flag & POSE_SELECTED)) \
     {
@@ -640,9 +640,7 @@ void BKE_pchan_bbone_deform_segment_index(bke::PChanBoneConst pchanbone,
   ((void)0)
 /* context.visible_pose_bones */
 #define FOREACH_PCHAN_VISIBLE_IN_OBJECT_BEGIN(_ob, _pchan) \
-  for (bPoseChannel *_pchan = (bPoseChannel *)(_ob)->pose->chanbase.first; _pchan; \
-       _pchan = _pchan->next) \
-  { \
+  for (bPoseChannel *_pchan = (_ob)->pose->chanbase.first(); _pchan; _pchan = _pchan->next) { \
     if (animrig::bone_is_visible(((bArmature *)(_ob)->data), {_pchan, pchan->bone_get(*_ob)})) {
 #define FOREACH_PCHAN_VISIBLE_IN_OBJECT_END \
   } \
@@ -727,7 +725,7 @@ void BKE_armature_deform_coords_with_editmesh(
     std::optional<MutableSpan<float3x3>> vert_deform_mats,
     int deformflag,
     StringRefNull defgrp_name,
-    const BMEditMesh &em_target);
+    const BMesh &bm_target);
 
 /** \} */
 
@@ -756,7 +754,8 @@ struct bArmature_Runtime {
    *
    * This is used when regenerating the bones array, to ensure only a single thread does this. Read
    * access to the bones array is not protected. So far this has worked well; it's not guaranteed
-   * that there won't be a race condition, though. */
+   * that there won't be a race condition, though.
+   */
   Mutex bones_mutex;
 
   /** Clear the `bones` array, ensuring it is rebuilt on its next use. */

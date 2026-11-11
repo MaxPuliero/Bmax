@@ -11,7 +11,7 @@ VERTEX_SHADER_CREATE_INFO(overlay_sculpt_curves_cage)
 #include "draw_view_lib.glsl"
 #include "gpu_shader_attribute_load_lib.glsl"
 #include "gpu_shader_index_load_lib.glsl"
-#include "gpu_shader_utildefines_lib.glsl"
+#include "gpu_shader_utildefines.bsl.hh"
 
 void main()
 {

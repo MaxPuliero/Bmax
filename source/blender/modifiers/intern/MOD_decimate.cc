@@ -10,9 +10,9 @@
 
 #include <fmt/format.h>
 
-#include "BLI_listbase.h"
-#include "BLI_string.h"
-#include "BLI_utildefines.h"
+#include "BLI_listbase.hh"
+#include "BLI_string.hh"
+#include "BLI_utildefines.hh"
 
 #include "BLT_translation.hh"
 
@@ -46,8 +46,8 @@
 // #define USE_TIMEIT
 
 #ifdef USE_TIMEIT
-#  include "BLI_time.h"
-#  include "BLI_time_utildefines.h"
+#  include "BLI_time.hh"
+#  include "BLI_time_utildefines.hh"
 #endif
 
 #include "MOD_ui_common.hh"
@@ -197,7 +197,6 @@ static bool custom_data_equal(const CustomData &a, const CustomData &b, const in
       case CD_SHAPE_KEYINDEX:
       case CD_SHAPEKEY:
       case CD_ORIGSPACE_MLOOP:
-      case CD_MVERT_SKIN:
         if (!bytes_equal(la.data, lb.data, size_t(size) * CustomData_sizeof(la.type))) {
           return false;
         }
@@ -227,8 +226,8 @@ static bool mesh_input_equal(const Mesh &a, const Mesh &b)
     return false;
   }
   /* Group ordering controls the interpretation of deform weights. */
-  const auto *ga = static_cast<const bDeformGroup *>(a.vertex_group_names.first);
-  const auto *gb = static_cast<const bDeformGroup *>(b.vertex_group_names.first);
+  const auto *ga = static_cast<const bDeformGroup *>(a.vertex_group_names.first());
+  const auto *gb = static_cast<const bDeformGroup *>(b.vertex_group_names.first());
   for (; ga && gb; ga = ga->next, gb = gb->next) {
     if (!STREQ(ga->name, gb->name)) {
       return false;
