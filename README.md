@@ -6,11 +6,11 @@ Bmax is a custom Blender 5.3.0 build with tools for sculpting, rigging, UV editi
 
 ## Make room for your workflow
 
-- **Sculpt and paint:** build adjustable Multires sculpt layers, paint color detail, control brush depth and blend symmetry.
+- **Sculpt and paint:** build adjustable Multires sculpt layers, paint color detail, control brush depth and blend symmetry. [Hold Shift to select and edit Smooth](doc/bmax/manual/sculpt.md#edit-smooth-while-holding-shift) before starting a stroke.
 - **Rig with clearer bones:** adjust bone width and axis size, keep selected controls readable and align bones to a master.
 - **Inspect UVs:** spot overlaps and flipped faces, outline shells and adjust the texture background independently.
 - **Clean up meshes:** highlight open boundaries, fill holes, separate parts and control normal weighting.
-- **Work comfortably:** manage Quick Favorites, carry your view between workspaces and edit selected objects together.
+- **Work comfortably:** manage Quick Favorites, carry your view between workspaces, edit selected objects together and [type numeric property values with Shift held](doc/bmax/manual/interface.md#enter-numbers-while-shift-is-already-held), using the number row or keypad.
 - **Save textures selectively:** inspect modified images in a compact scrolling list, select individual images or all images, and save each UDIM set as one image. See [Saving and compatibility](doc/bmax/manual/compatibility.md#choose-which-modified-images-to-save).
 
 Browse the [artist guide](doc/bmax/manual/README.md) for practical instructions, images and feature limits.

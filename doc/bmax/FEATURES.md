@@ -1,9 +1,115 @@
 # Bmax feature inventory
 
+**November 13 source revision:** [1439605c](https://github.com/MaxPuliero/Bmax/commit/1439605c1ad6215d2c57c35691cb95f067ca24d1) on `codex/bmax-5.3` implements
+Shift-held Smooth/Blur and global numeric editing, including the Windows numpad
+case. Both version branches have separate implementation and documentation commits.
+The installed binaries were built and verified from the same implementation before
+committing; source publication does not replace Desktop copies or public downloads.
+
+## Shift+numpad in numeric fields (2026-11-13 follow-up)
+
+The numeric UI editor now derives keypad digits and the keypad decimal point from
+the physical event code when Shift is held, including events with empty Unicode.
+This works whether Shift is pressed before or after opening the field. It is limited
+to Num/NumSlider fields without Ctrl/Alt/OS-Key/Hyper; ordinary text fields and
+unshifted NumLock-off behavior retain their native handling. No DNA/shared layout changed.
+
+The previous fix handled top-row digits but missed the reported Windows numpad path:
+its tests supplied Unicode to the keypad event, while Shift+numpad can arrive with
+none. This follow-up explicitly tests that missing-payload path instead of assuming
+that the earlier keypad-with-Unicode case covered it.
+
+13 native-event assertions per version/backend passed on OpenGL and Vulkan: every
+keypad digit without Unicode, decimal point, Shift before/after field entry, negative
+numbers, comma normalization, unchanged ordinary keypad input and modifier exclusions,
+text-field isolation, top-row/expression regression checks, exact Smooth Strength and
+brush restoration. A separate Windows input-injection UI check on the corrected 5.3
+entered `1.5` through Shift+KP1, Shift+KP_Decimal, Shift+KP5 in a numeric field. The
+edit was cancelled afterward. This is not a claim of testing every physical keyboard.
+
+Both standard local runtimes are updated. The user confirmed the corrected numpad
+behavior; the source revision is recorded above.
+A complete auxiliary 5.3 runtime was also installed at
+`D:\blender_build\bmax_5.3_numpad\bin\blender.exe` while the standard runtime was
+occupied. It is byte-identical to the final standard 5.3 runtime. Existing user sessions
+and Desktop copies were preserved; public packages were not replaced.
+
+## Numeric fields with Shift already held (2026-11-13)
+
+Implemented on both version branches in the source revision above, with separate
+verified local runtimes. Desktop copies and the public package are unchanged.
+
+The common UI numeric text editor now remembers whether Shift was held when entering
+a Num/NumSlider field. While that initial hold continues, top-row number keys enter
+digits, Minus enters a minus sign and Period/Comma enter a decimal point. Ctrl+A and
+clipboard shortcuts are also available without releasing the initial Shift hold.
+Releasing Shift restores normal symbol entry for the rest of that edit. Shift first
+pressed after entering the field keeps the native Unicode symbols for expressions.
+
+This applies to numeric property fields throughout the UI, including header/sidebar
+controls, popups, ordinary object transforms, render properties and Smooth Strength.
+Ordinary text fields, Shift-arrow selection, native text Undo/Redo modifiers and modal
+transform numeric input retain their behavior. Ctrl/Alt/OS-Key/Hyper combinations do
+not undergo digit remapping. Existing numpad decimal-comma handling is retained;
+the follow-up above adds the missing-Unicode Shift+numpad path.
+Only private TextEdit state in interface_handlers.cc changed; there is no DNA or
+existing shared C++ layout change and no new preference or saved data.
+
+The preceding binary reproduced the reported problem: Shift+123 inserted !@# and
+failed evaluation, leaving the value unchanged. The corrected builds passed 22
+native UI event checks each on OpenGL and Vulkan: all ten digits, signed decimals,
+comma/numpad input with supplied Unicode, a top-row missing-Unicode case, sliders,
+normal arithmetic and shifted operators, release/repress semantics, Ctrl+A, paste,
+text selection, Esc, unchanged
+ordinary text input, Object Location/Render resolution fields, and exact Smooth
+Strength typing with restoration and retention. Clipboard content was restored.
+Keyboard events were simulated; physical IME/layout combinations were not tested.
+
+See [artist instructions](manual/interface.md#enter-numbers-while-shift-is-already-held)
+and the [build audit](BUILD_WINDOWS.md#numeric-fields-with-shift-already-held-2026-11-13).
+
+## Shift-held smoothing brush (2026-11-13)
+
+Implemented on the separate `codex/bmax-5.2.3` and `codex/bmax-5.3` branches in the
+source revision above. Both local Release runtimes are installed. Desktop copies
+and the public download have not been replaced.
+
+Pressing either Shift key over a brush viewport activates the essentials Smooth brush
+before a stroke, exposing its actual header/Tool properties. Color paint modes use
+Blur. Repeated strokes leave it active until Shift is released; edits to the smoothing
+brush are retained. No temporary radius copy overwrites edits when starting a stroke
+with Smooth/Blur already active. Native unified settings retain their sharing semantics.
+Releasing Shift during a stroke restores the preceding brush after stroke completion.
+
+Supported contexts: mesh Sculpt (geometry and color), Vertex Paint, Weight Paint,
+Texture Paint, Image Editor Paint and Curves Sculpt. Native Mask/Slide Relax/Face Set
+Shift behavior and Curves selection painting are preserved; non-brush tools and
+Grease Pencil keymaps are unchanged. An explicit brush selection takes precedence
+on release. Mode exit and window deactivation also end the hold outside a running stroke.
+
+A pass-through modal operator owns the runtime timer and resolves Scene/Brush session
+IDs against the current Main instead of retaining datablock pointers across undo.
+No DNA or existing shared C++ structure layout changed. Default keymaps add Shift
+press bindings; the native Shift stroke bindings are retained.
+
+Validation: 72 native-event checks per version/backend for early activation, editable
+header Strength, unchanged original settings, real repeated brush strokes, left/right
+Shift, release during a stroke, modifier combinations, mode exit, non-brush tools and
+Mask behavior. OpenGL and Vulkan passed. An additional 17 checks per version/backend
+cover actual Smooth deformation, native geometry Undo/Redo, Sculpt color Blur without
+geometry changes, Curves property retention and Image Editor painting. Combined-Shift
+modifier states were simulated; physical simultaneous Shift keys, custom keymaps,
+Grease Pencil and production files were not tested. Test fixtures seed a native undo
+baseline before Undo/Redo; an earlier unseeded scripted fixture was discarded.
+
+See [artist instructions](manual/sculpt.md#edit-smooth-while-holding-shift) and the
+[build audit](BUILD_WINDOWS.md#shift-held-smoothing-brush-2026-11-13).
+
 ## Selective modified-image saving (2026-11-11)
 
-Implementation: source commit `ae98b7b445fdb2776371c7227dce3c1989c7ac31` on `codex/bmax-5.3`, committed locally.
-This feature has not been pushed; the local runtime is installed and verified.
+Implementation: source commit [ae98b7b4](https://github.com/MaxPuliero/Bmax/commit/ae98b7b445fdb2776371c7227dce3c1989c7ac31)
+on `codex/bmax-5.3`. The local runtime is installed and verified;
+this source is included in the version-branch publication with the November 13 update.
 
 Implemented on the separate Bmax 5.2.3 and 5.3 branches. The project-save popup
 has a collapsible list with image names/destinations, individual selections,

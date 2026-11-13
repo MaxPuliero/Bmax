@@ -1,12 +1,16 @@
 # Blender 5.3 integration and separate versions
 
-**Subsequent image-save update, 2026-11-11:** Selective image saving is now committed
-locally on both version branches (`e9115666` for 5.2.3, `ae98b7b4` for 5.3), with
-separate verified local builds. This feature has not been pushed. See the current
-[feature inventory](FEATURES.md#selective-modified-image-saving-2026-11-11) and
-[build audit](BUILD_WINDOWS.md#selective-image-saving-2026-11-11). The migration
-records and executable hashes below describe the earlier port, before this update.
-
+**Current version-branch source, 2026-11-13:** Shift-held smoothing brushes and
+numeric entry, including Shift+numpad without Unicode, are implemented in
+[`5d9e2cfe`](https://github.com/MaxPuliero/Bmax/commit/5d9e2cfe5d6219d2dc6e63da8c8bd0e9aa6ca856)
+for 5.2.3 and
+[`1439605c`](https://github.com/MaxPuliero/Bmax/commit/1439605c1ad6215d2c57c35691cb95f067ca24d1)
+for 5.3. The version-branch publication also includes the preceding selective-image
+save commits (`e9115666` / `ae98b7b4`) and their documentation.
+Both standard local runtimes are installed and verified; Desktop copies and the public
+Windows package have not been replaced. See the [current feature inventory](FEATURES.md)
+and [current executable audit](BUILD_WINDOWS.md). The migration record below describes
+the earlier port and its original hashes, before these later additions.
 
 ## Source and status
 

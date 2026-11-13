@@ -2,6 +2,22 @@
 
 [Artist guide](README.md)
 
+## Enter numbers while Shift is already held
+
+If Shift is held before you activate a numeric field, the top-row number keys enter
+digits instead of shifted punctuation. This works throughout numeric property fields,
+including sliders, popups and the Smooth brush settings. Minus and decimal punctuation
+also work, and Ctrl+A and clipboard shortcuts remain available while you keep Shift held.
+
+The numeric keypad also accepts digits and its decimal point with Shift held,
+including on Windows when those keys produce no text character. For the keypad,
+Shift can be pressed before or after activating the numeric field.
+
+To enter a formula using shifted symbols such as `*`, `(` or `)`, release Shift once
+inside the field, then press it again when needed. Shift pressed after editing starts
+keeps its normal symbol behavior. Shift-arrow selection and ordinary text fields retain
+their existing behavior; this change does not alter modal transform numeric input.
+
 ## Organize Quick Favorites
 
 Open **Preferences > Interface > Quick Favorites**, or choose **Manage Quick Favorites…** at the bottom of the **Q** menu.
