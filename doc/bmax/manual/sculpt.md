@@ -2,6 +2,24 @@
 
 [Artist guide](README.md) · [Modeling and cleanup](modeling.md)
 
+## Edit Smooth while holding Shift
+
+With the pointer over a brush viewport, hold **Shift** to activate **Smooth** immediately,
+before drawing a stroke. Keep Shift held while adjusting the brush in the header or
+Tool settings. Numeric fields also accept typed values while Shift remains held; see
+[entering numbers with Shift](interface.md#enter-numbers-while-shift-is-already-held).
+Release Shift to return to the preceding brush. Several strokes can be
+made without releasing Shift; Smooth remains selected between them and retains its edits.
+
+Color painting uses **Blur** instead of geometry Smooth. This works in mesh Sculpt,
+Vertex Paint, Weight Paint, Texture Paint (including the Image Editor) and Curves Sculpt.
+Unified brush settings continue to follow Blender's normal sharing options. If Shift is
+released during a stroke, the preceding brush is restored when that stroke finishes.
+
+Mask smoothing, Slide Relax, Face Set smoothing and the Curves selection brush retain
+their native Shift behavior. Non-brush tools and Grease Pencil mappings are unchanged.
+Selecting another brush explicitly while Shift is held keeps that selection on release.
+
 ## Build a sculpt in layers
 
 With a Multires mesh, open **Mesh Data Properties > Sculpt Layers**, below Shape Keys.

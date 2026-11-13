@@ -1,5 +1,97 @@
 # Building Bmax on Windows
 
+**November 13 source revision:** [5d9e2cfe](https://github.com/MaxPuliero/Bmax/commit/5d9e2cfe5d6219d2dc6e63da8c8bd0e9aa6ca856) on `codex/bmax-5.2.3` contains
+the final implementation audited below. The source and documentation commits do not
+rebuild the installed executable: its pre-commit metadata may still identify an older
+tracking revision. Current binary hashes are in the first audit entry; earlier entries
+retain their build-time hashes. Desktop copies and the public download are unchanged.
+
+## Shift+numpad follow-up (2026-11-13)
+
+Installed standard runtime: `D:\blender_build\octahedral_radius\bin\blender.exe`.
+Installed and Release executables match: **98,144,768 bytes**, **2026-11-13 12:02:22 JST**,
+SHA-256 `3956C78D3F92DC2F6C3067BA555F6CB0ADF621AE6245B23B25372C1400C6EAAC`. The committed source revision is recorded above.
+No DNA or shared C++ layout changed; the existing incremental build was used.
+
+The 5.2 build used the normal INSTALL target:
+
+`cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`
+
+The 5.3 build used target `blender` with the same parallel options. While its standard
+runtime was open, a complete auxiliary runtime was installed with:
+
+`cmake --install D:\blender_build\bmax_5.3 --config Release --prefix D:\blender_build\bmax_5.3_numpad\bin`
+
+Once the standard executable was free, it was updated with:
+
+`cmake --install D:\blender_build\bmax_5.3 --config Release`
+
+Both 5.3 executables have the same final hash.
+
+13 explicit missing-Unicode numpad checks per version/backend passed on OpenGL/Vulkan,
+including exact Smooth Strength and brush restoration. A Windows input-injection UI
+check also entered `1.5` via Shift+numpad in a new empty 5.3 session, then cancelled
+the edit. Earlier keypad tests supplied Unicode and did not cover this Windows case.
+C++ formatting and Git whitespace checks passed. Verification scripts, scenes,
+screenshots, logs and isolated caches were external and removed after checking.
+Build dependencies/caches, both installed runtime packages and user sessions remain.
+Desktop copies and the public download were not replaced. Earlier audit hashes below
+are historical. See [scope](FEATURES.md#shiftnumpad-in-numeric-fields-2026-11-13-follow-up).
+
+## Numeric fields with Shift already held (2026-11-13)
+
+The shared numeric UI handler accepts digits, sign and decimal punctuation while a
+Shift hold inherited when entering the field continues. It also preserves Ctrl+A and
+clipboard shortcuts in that state. Releasing Shift returns to native Unicode entry;
+pressing Shift only after editing starts retains expression symbols. This behavior
+is included in the source revision above; Desktop/public packages are unchanged.
+
+Release INSTALL succeeded using
+`cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`.
+The existing incremental build is appropriate: only private state in the interface
+translation unit changed, with no DNA or existing shared C++ layout change.
+Installed runtime: `D:\blender_build\octahedral_radius\bin\blender.exe`.
+
+Installed and Release executables match: **98,144,768 bytes**,
+**2026-11-13 11:18:46 JST**, SHA-256 `846047E07FEE99E1F8FAFA5FA88A2AA8E5E805DFC9D1A30A17257B1DBC485657`. Version metadata can still refer to the preceding
+tracking commit and does not identify the later source commit.
+
+22 native-event checks per version/backend passed on OpenGL and Vulkan. Coverage
+includes the normal numeric editor and sliders, arithmetic/shifted symbols, clipboard
+and selection shortcuts, normal text fields, object/render properties and exact numeric
+Smooth Strength entry while Shift stays held. The preceding runtime reproduced the
+Shift+123 -> !@# failure. See [scope and limitations](FEATURES.md#numeric-fields-with-shift-already-held-2026-11-13).
+C++ formatting and Git whitespace checks passed. Scripts, captures, recovery files,
+logs and isolated runtime caches were external and removed after verification;
+build dependencies/caches and the user's existing Blender session were preserved.
+Earlier records below describe their historical executables.
+
+## Shift-held smoothing brush (2026-11-13)
+
+Source is included in the November 13 revision above on this version's separate branch.
+Release INSTALL succeeded using:
+`cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`.
+No DNA or existing shared C++ structure layout changed; the normal incremental build
+was used. The installed runtime is `D:\blender_build\octahedral_radius\bin\blender.exe`.
+
+Installed and Release executables match byte for byte: **98,144,256 bytes**,
+**2026-11-13 10:37:34 JST**, SHA-256 `EF279AE3F66CFC1D1561C6EDDA69F4B4660F6A134B83A0C5781F715F076B005F`.
+Embedded version metadata can refer to the preceding tracking commit and does not
+identify the later source commit. Desktop copies and the public package are unchanged.
+
+Both Bmax versions passed 72 native-event checks on each actual OpenGL/Vulkan backend,
+including native header Strength dragging with Shift held, real brush strokes in mesh
+Sculpt/Vertex/Weight/Texture Paint, consecutive strokes, retained smoothing settings,
+left/right Shift and restoration after release during a stroke. Additional per-backend
+17-case checks cover deformation and native Undo/Redo from an explicit fixture undo
+baseline, Sculpt color Blur, Curves and the 2D Image Editor. See scope and limitations
+in [FEATURES.md](FEATURES.md#shift-held-smoothing-brush-2026-11-13).
+
+C++ formatting, Python keymap syntax and Git whitespace checks passed. All scripts,
+scenes, screenshots, recovery files, logs and isolated user/runtime caches were external
+to the repositories and removed after validation. Build caches/dependencies and existing
+user sessions were preserved. Earlier records below describe their historical builds.
+
 ## Selective image saving (2026-11-11)
 
 The committed source implements the project-save image checklist on this version's
@@ -12,8 +104,8 @@ No existing shared C++ structure layout or DNA changed.
 Build command: `cmake --build D:\blender_build\octahedral_radius --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2`.
 The installed runtime is `D:\blender_build\octahedral_radius\bin\blender.exe`.
 Implementation: source commit `e9115666e4cdb8105151617ecfeeced445b1c523` on `codex/bmax-5.2.3`,
-committed locally and not yet pushed. Published branches still refer to their preceding
-commits. Desktop copies and the Gumroad package are unchanged.
+included in the version-branch source publication with the November 13 update.
+Desktop copies and the Gumroad package are unchanged.
 The audited runtime below was built and verified before this commit from the same
 implementation. Its embedded metadata may refer to the preceding tracking commit;
 committing the source and documentation does not rebuild or replace that executable.

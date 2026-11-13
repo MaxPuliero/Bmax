@@ -4,6 +4,18 @@
 
 These are the latest improvements in Bmax development. They are planned for the next public Windows package; check the download's release notes before expecting them in your installed version.
 
+## November 13, 2026 — Editable Smooth and Shift-friendly numeric fields
+
+Available in the verified local Bmax 5.2.3 and 5.3 builds; the public Windows package
+has not been replaced with this update.
+
+- Hold **Shift** over a brush viewport to select Smooth before drawing and edit its actual settings.
+- Keep the smoothing brush active between strokes; release Shift to restore the preceding brush. Color painting uses Blur.
+- Type numeric values in property fields while Shift is held, including keypad digits and decimal input on Windows.
+- Use Ctrl+A and clipboard shortcuts without releasing an initial Shift hold. For top-row expression symbols, release Shift once inside the field, then press it as needed.
+
+[Sculpting and painting](sculpt.md#edit-smooth-while-holding-shift) · [Numeric entry](interface.md#enter-numbers-while-shift-is-already-held)
+
 ## November 11, 2026 — Choose which textures to save
 
 Available in the verified local Bmax 5.2.3 and 5.3 builds; the public Windows package
