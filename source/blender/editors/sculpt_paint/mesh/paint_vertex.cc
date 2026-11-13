@@ -345,6 +345,14 @@ void smooth_brush_toggle_on(Main *bmain, Paint *paint, StrokeToggleSettings &tog
 {
   Brush *cur_brush = BKE_paint_brush(paint);
 
+  if ((paint->runtime->asset_category == bke::paint::AssetCategory::MeshVertex &&
+       cur_brush->vertex_brush_type == VPAINT_BRUSH_TYPE_BLUR) ||
+      (paint->runtime->asset_category == bke::paint::AssetCategory::MeshWeight &&
+       cur_brush->weight_brush_type == WPAINT_BRUSH_TYPE_BLUR))
+  {
+    return;
+  }
+
   /* Switch to the blur (smooth) brush if possible. */
   if (!BKE_paint_brush_set_essentials(bmain, paint, "Blur")) {
     BKE_paint_brush_set(paint, cur_brush);

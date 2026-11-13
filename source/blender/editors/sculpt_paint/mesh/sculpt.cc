@@ -3990,6 +3990,10 @@ static void smooth_brush_toggle_on(Main *bmain,
 {
   Brush *cur_brush = BKE_paint_brush(paint);
 
+  if (ELEM(cur_brush->sculpt_brush_type, SCULPT_BRUSH_TYPE_SMOOTH, SCULPT_BRUSH_TYPE_BLUR)) {
+    return;
+  }
+
   if (cur_brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_MASK) {
     toggle_settings.original_brush_mask_tool = BrushMaskTool(cur_brush->mask_tool);
     cur_brush->mask_tool = BRUSH_MASK_SMOOTH;

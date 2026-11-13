@@ -38,7 +38,9 @@
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
+#include "wm_event_types.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -53,6 +55,155 @@
 #include "mesh/sculpt_intern.hh"
 
 namespace blender {
+
+/* Shift exposes the smoothing brush before a stroke, including its editable UI settings.
+ * Keep only session identifiers across pass-through events: undo can replace Main data. */
+struct BrushSmoothHold {
+  uint32_t scene_uid;
+  uint32_t original_brush_uid;
+  uint32_t smooth_brush_uid;
+  PaintMode mode;
+  wmTimer *timer;
+};
+
+static const char *brush_smooth_hold_asset(const PaintMode mode, const Brush &brush)
+{
+  switch (mode) {
+    case PaintMode::Sculpt:
+      if (ELEM(brush.sculpt_brush_type,
+               SCULPT_BRUSH_TYPE_MASK,
+               SCULPT_BRUSH_TYPE_SLIDE_RELAX,
+               SCULPT_BRUSH_TYPE_DRAW_FACE_SETS))
+      {
+        /* These brushes smooth masks/Face Sets or relax, rather than smooth geometry. */
+        return nullptr;
+      }
+      return ed::sculpt_paint::brush_type_is_paint(brush.sculpt_brush_type) ? "Blur" : "Smooth";
+    case PaintMode::Vertex:
+    case PaintMode::Weight:
+    case PaintMode::Texture2D:
+    case PaintMode::Texture3D:
+      return "Blur";
+    case PaintMode::SculptCurves:
+      /* Shift adds to the selection with this brush. */
+      return brush.curves_sculpt_brush_type == CURVES_SCULPT_BRUSH_TYPE_SELECTION_PAINT ? nullptr :
+                                                                                          "Smooth";
+    default:
+      return nullptr;
+  }
+}
+
+static bool brush_smooth_hold_poll(bContext *C)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = paint ? BKE_paint_brush(paint) : nullptr;
+  return brush && WM_toolsystem_active_tool_is_brush(C) &&
+         brush_smooth_hold_asset(BKE_paintmode_get_active_from_context(C), *brush);
+}
+
+static void brush_smooth_hold_notify(bContext *C)
+{
+  bke::paint::invalidate_overlay_all(*CTX_data_scene(C));
+  WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, nullptr);
+  WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+}
+
+static Paint *brush_smooth_hold_paint(bContext *C, const BrushSmoothHold &data)
+{
+  Scene *scene = reinterpret_cast<Scene *>(
+      BKE_libblock_find_session_uid(CTX_data_main(C), ID_SCE, data.scene_uid));
+  return scene ? BKE_paint_get_active_from_paintmode(scene, data.mode) : nullptr;
+}
+
+static void brush_smooth_hold_end(bContext *C, wmOperator *op)
+{
+  auto *data = static_cast<BrushSmoothHold *>(op->customdata);
+  if (!data) {
+    return;
+  }
+  Paint *paint = brush_smooth_hold_paint(C, *data);
+  Brush *brush = paint ? BKE_paint_brush(paint) : nullptr;
+  /* A deliberate brush selection made while holding Shift takes precedence. */
+  if (brush && brush->id.session_uid == data->smooth_brush_uid) {
+    Brush *original = reinterpret_cast<Brush *>(
+        BKE_libblock_find_session_uid(CTX_data_main(C), ID_BR, data->original_brush_uid));
+    if (original) {
+      BKE_paint_brush_set(paint, original);
+      brush_smooth_hold_notify(C);
+    }
+  }
+  WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), data->timer);
+  MEM_delete(data);
+  op->customdata = nullptr;
+}
+
+static wmOperatorStatus brush_smooth_hold_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (event->val != KM_PRESS || !ELEM(event->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) ||
+      (event->modifier & (KM_CTRL | KM_ALT | KM_OSKEY)))
+  {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  if (paint->runtime->stroke_active) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+  Brush *original = BKE_paint_brush(paint);
+  const PaintMode mode = BKE_paintmode_get_active_from_context(C);
+  const uint32_t original_uid = original->id.session_uid;
+  if (!BKE_paint_brush_set_essentials(
+          CTX_data_main(C), paint, brush_smooth_hold_asset(mode, *original)))
+  {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+  Brush *smooth = BKE_paint_brush(paint);
+  bke::brush::common_pressure_curves_init(*smooth);
+  op->customdata = MEM_new<BrushSmoothHold>(
+      __func__,
+      BrushSmoothHold{CTX_data_scene(C)->id.session_uid,
+                      original_uid,
+                      smooth->id.session_uid,
+                      mode,
+                      WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.05)});
+  brush_smooth_hold_notify(C);
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static wmOperatorStatus brush_smooth_hold_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const auto &data = *static_cast<BrushSmoothHold *>(op->customdata);
+  Paint *paint = brush_smooth_hold_paint(C, data);
+  const bool finished = !paint || CTX_data_scene(C)->id.session_uid != data.scene_uid ||
+                        BKE_paint_get_active_from_context(C) != paint ||
+                        event->type == WINDEACTIVATE || !(event->modifier & KM_SHIFT);
+  /* Never swap a brush underneath a running stroke. The timer restores it as soon as
+   * that stroke ends, even if its modal handler consumed the Shift release. */
+  if (finished && (!paint || !paint->runtime->stroke_active)) {
+    brush_smooth_hold_end(C, op);
+    return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+  }
+  /* A second Shift key must not start a nested hold. Its release is handled by the
+   * window's combined modifier state, so either Shift key can remain held. */
+  if (ELEM(event->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) && event->val == KM_PRESS) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+  return OPERATOR_PASS_THROUGH;
+}
+
+static void BRUSH_OT_smooth_hold(wmOperatorType *ot)
+{
+  ot->name = "Temporary Smooth Brush";
+  ot->description =
+      "Expose the smoothing brush while Shift is held, then restore the previous brush";
+  ot->idname = "BRUSH_OT_smooth_hold";
+  ot->poll = brush_smooth_hold_poll;
+  ot->invoke = brush_smooth_hold_invoke;
+  ot->modal = brush_smooth_hold_modal;
+  ot->cancel = brush_smooth_hold_end;
+  /* Brush selection is not an undo step. Pass through property edits and paint strokes. */
+  ot->flag = OPTYPE_INTERNAL;
+}
 
 static wmOperatorStatus brush_scale_size_exec(bContext *C, wmOperator *op)
 {
@@ -568,6 +719,7 @@ void ED_operatortypes_paint()
 
   /* brush */
   WM_operatortype_append(BRUSH_OT_scale_size);
+  WM_operatortype_append(BRUSH_OT_smooth_hold);
   WM_operatortype_append(BRUSH_OT_stencil_control);
   WM_operatortype_append(BRUSH_OT_stencil_fit_image_aspect);
   WM_operatortype_append(BRUSH_OT_stencil_reset_transform);
