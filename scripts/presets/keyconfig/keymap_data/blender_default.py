@@ -5042,6 +5042,8 @@ def km_image_paint(params):
     )
 
     items.extend([
+        ("brush.smooth_hold", {"type": 'LEFT_SHIFT', "value": 'PRESS'}, None),
+        ("brush.smooth_hold", {"type": 'RIGHT_SHIFT', "value": 'PRESS'}, None),
         ("paint.image_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("paint.image_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
@@ -5098,6 +5100,8 @@ def km_vertex_paint(params):
     )
 
     items.extend([
+        ("brush.smooth_hold", {"type": 'LEFT_SHIFT', "value": 'PRESS'}, None),
+        ("brush.smooth_hold", {"type": 'RIGHT_SHIFT', "value": 'PRESS'}, None),
         ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
@@ -5160,6 +5164,8 @@ def km_weight_paint(params):
     )
 
     items.extend([
+        ("brush.smooth_hold", {"type": 'LEFT_SHIFT', "value": 'PRESS'}, None),
+        ("brush.smooth_hold", {"type": 'RIGHT_SHIFT', "value": 'PRESS'}, None),
         ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
@@ -5288,6 +5294,8 @@ def km_sculpt(params):
     )
 
     items.extend([
+        ("brush.smooth_hold", {"type": 'LEFT_SHIFT', "value": 'PRESS'}, None),
+        ("brush.smooth_hold", {"type": 'RIGHT_SHIFT', "value": 'PRESS'}, None),
         # Brush strokes
         ("sculpt.repeat_last_stroke", {"type": 'ONE', "value": 'PRESS'}, None),
         ("sculpt.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
@@ -5498,6 +5506,8 @@ def km_sculpt_curves(params):
     )
 
     items.extend([
+        ("brush.smooth_hold", {"type": 'LEFT_SHIFT', "value": 'PRESS'}, None),
+        ("brush.smooth_hold", {"type": 'RIGHT_SHIFT', "value": 'PRESS'}, None),
         ("sculpt_curves.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("sculpt_curves.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),

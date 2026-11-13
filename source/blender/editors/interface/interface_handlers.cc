@@ -404,6 +404,10 @@ struct TextEdit {
    * extension direction, selextend, inside do_but_TEX */
   int sel_pos_init = 0;
 
+  /* An inherited Shift hold should not turn numeric entry into punctuation. Releasing
+   * Shift restores normal symbol entry for expressions for the remainder of this edit. */
+  bool numeric_shift_on_entry = false;
+
   /* Text field undo. */
   UndoStack_Text *undo_stack_text = nullptr;
 };
@@ -3781,6 +3785,7 @@ static void textedit_begin(bContext *C, Button *but, HandleButtonData *data)
   wmWindow *win = data->window;
   const bool is_num_but = ELEM(but->type, ButtonType::Num, ButtonType::NumSlider);
   const bool is_textbox = ELEM(but->type, ButtonType::TextBox);
+  text_edit.numeric_shift_on_entry = is_num_but && (win->runtime->eventstate->modifier & KM_SHIFT);
 
   bool no_zero_strip = false;
 
@@ -4103,6 +4108,15 @@ static int do_but_textedit(
     bContext *C, Block *block, Button *but, HandleButtonData *data, const wmEvent *event)
 {
   TextEdit &text_edit = data->text_edit;
+  if (!(event->modifier & KM_SHIFT)) {
+    text_edit.numeric_shift_on_entry = false;
+  }
+
+  /* Keep editing shortcuts usable without releasing an inherited Shift hold. */
+  const auto shortcut_modifiers = text_edit.numeric_shift_on_entry ?
+                                      (event->modifier & ~KM_SHIFT) :
+                                      event->modifier;
+
   int retval = WM_UI_HANDLER_CONTINUE;
   bool changed = false, inbox = false, update = false, skip_undo_push = false;
 
@@ -4266,9 +4280,9 @@ static int do_but_textedit(
       case EVT_XKEY:
       case EVT_CKEY:
 #if defined(__APPLE__)
-        if (ELEM(event->modifier, KM_OSKEY, KM_CTRL))
+        if (ELEM(shortcut_modifiers, KM_OSKEY, KM_CTRL))
 #else
-        if (event->modifier == KM_CTRL)
+        if (shortcut_modifiers == KM_CTRL)
 #endif
         {
           if (event->type == EVT_VKEY) {
@@ -4393,9 +4407,9 @@ static int do_but_textedit(
         /* Ctrl-A: Select all. */
 #if defined(__APPLE__)
         /* OSX uses Command-A system-wide, so add it. */
-        if (ELEM(event->modifier, KM_OSKEY, KM_CTRL))
+        if (ELEM(shortcut_modifiers, KM_OSKEY, KM_CTRL))
 #else
-        if (event->modifier == KM_CTRL)
+        if (shortcut_modifiers == KM_CTRL)
 #endif
         {
           textedit_move(but, text_edit, STRCUR_DIR_PREV, false, STRCUR_JUMP_ALL, true);
@@ -4458,7 +4472,38 @@ static int do_but_textedit(
       }
     }
 
-    if ((event->utf8_buf[0]) && (retval == WM_UI_HANDLER_CONTINUE)
+    char numeric_char = '\0';
+    if (text_edit.numeric_shift_on_entry && (event->modifier & KM_SHIFT) &&
+        !(event->modifier & (KM_CTRL | KM_ALT | KM_OSKEY | KM_HYPER)))
+    {
+      /* Use physical number keys only for a Shift hold inherited on entry. Shift
+       * pressed during editing still produces operators such as *, ( and ). */
+      if (event->type >= EVT_ZEROKEY && event->type <= EVT_NINEKEY) {
+        numeric_char = '0' + (event->type - EVT_ZEROKEY);
+      }
+      else if (event->type == EVT_MINUSKEY) {
+        numeric_char = '-';
+      }
+      else if (ELEM(event->type, EVT_PERIODKEY, EVT_COMMAKEY)) {
+        numeric_char = '.';
+      }
+    }
+
+    /* Windows can report Shift+numpad as a physical keypad key without Unicode.
+     * Keypad digits have no shifted expression symbols: accept them in numeric fields
+     * regardless of whether Shift was pressed before or after entering the field. */
+    if (ELEM(but->type, ButtonType::Num, ButtonType::NumSlider) && (event->modifier & KM_SHIFT) &&
+        !(event->modifier & (KM_CTRL | KM_ALT | KM_OSKEY | KM_HYPER)))
+    {
+      if (event->type >= EVT_PAD0 && event->type <= EVT_PAD9) {
+        numeric_char = '0' + (event->type - EVT_PAD0);
+      }
+      else if (event->type == EVT_PADPERIOD) {
+        numeric_char = '.';
+      }
+    }
+
+    if ((event->utf8_buf[0] || numeric_char) && (retval == WM_UI_HANDLER_CONTINUE)
 #ifdef WITH_INPUT_IME
         && !is_ime_composing && !WM_event_is_ime_switch(event)
 #endif
@@ -4466,6 +4511,10 @@ static int do_but_textedit(
     {
       char utf8_buf_override[2] = {'\0', '\0'};
       const char *utf8_buf = event->utf8_buf;
+      if (numeric_char) {
+        utf8_buf_override[0] = numeric_char;
+        utf8_buf = utf8_buf_override;
+      }
 
       /* Exception that's useful for number buttons, some keyboard
        * numpads have a comma instead of a period. */
