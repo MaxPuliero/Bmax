@@ -2,7 +2,7 @@
 
 ## Repository e documentazione
 
-- Questo repository contiene il fork Bmax di Blender 5.2.3. Il branch di riferimento è `main`; il remoto di pubblicazione è `origin` (`https://github.com/MaxPuliero/Bmax.git`). Non pubblicare modifiche nel repository originale di Blender.
+- Questo checkout contiene il fork Bmax di Blender 5.2.4 LTS. Il branch di riferimento è `codex/bmax-5.2.4`; il remoto di pubblicazione è `origin` (`https://github.com/MaxPuliero/Bmax.git`). Le versioni 5.2.4 e 5.3 hanno checkout e build separati; `main` conserva la base storica. Non pubblicare modifiche nel repository originale di Blender.
 - Leggere `README.md`, `doc/bmax/FEATURES.md` e `doc/bmax/BUILD_WINDOWS.md` prima di modificare funzionalità o compilazione. L'inventario delle feature descrive lo stato implementato; `doc/armature_ui_plan.md` è un documento storico.
 - Aggiornare README e inventario quando cambia il comportamento per l'utente. Aggiornare la guida di build quando cambiano i comandi, i percorsi o le verifiche. Non presentare proposte come funzionalità implementate.
 - Il filtro delle linee di relazione è stato tolto dalle attività richieste: non reintrodurlo senza una nuova richiesta.
@@ -71,8 +71,19 @@
 
 ## Ambiente Windows locale
 
-- Checkout sorgenti: `D:\blender_prj`. Build: `D:\blender_build\octahedral_radius`. Eseguibile installato: `D:\blender_build\octahedral_radius\bin\blender.exe`.
-- Il nome della directory di build è storico; compila l'intero Bmax. Usare Visual Studio 2022/MSVC v143 e il target CMake `INSTALL`, seguendo la guida; i target di test locali sono disabilitati.
+- Checkout sorgenti: `D:\blender_prj`. Build: `D:\blender_build\bmax5.2.3`. Eseguibile installato: `D:\blender_build\bmax5.2.3\bin\blender.exe`.
+- Le build locali si chiamano `bmax5.2.3` e `Bmax5.3` e mantengono cache, dipendenze e runtime di versione separati. Usare Visual Studio 2022/MSVC v143 e il target CMake `INSTALL`, seguendo la guida; i target di test locali sono disabilitati. I percorsi precedenti nelle registrazioni di build sono riferimenti storici.
 - Una copia sul Desktop non viene aggiornata dall'installazione in questa directory. Non chiudere un'istanza dell'utente senza autorizzazione.
 - Con modifiche locali non pubblicate, i metadati Blender possono indicare il commit del branch di tracking. Controllare sorgente, stato Git e build; non modificare il tracking o il sistema di build solo per cambiare la stringa della versione.
 - Dopo modifiche al layout DNA o a strutture C++ condivise, ricompilare tutti i componenti con `/t:Rebuild` prima di INSTALL, senza eliminare la directory e le dipendenze della build. Verificare anche Boolean Manifold e Sculpt Trim: librerie compilate con layout precedenti possono linkare ma causare crash.
+
+## Aggiornamento locale 5.2.4 (2026-11-14)
+
+- Il branch locale corrente è `codex/bmax-5.2.4`; `codex/bmax-5.2.3` conserva il precedente HEAD pubblicato. Il sorgente integra il delta ufficiale v5.2.3..v5.2.4 senza importare test o fixture.
+- La directory di build `D:\blender_build\bmax5.2.3` conserva il nome storico ed è riconfigurata per compilare 5.2.4. Non spostare la cache CMake; verificare la versione dell’eseguibile.
+- CUDA 12.8.1, OptiX 9.0.0 e HIP 7.1.1 sono toolchain separate in `toolchains` sotto ciascuna build. Release INSTALL e render CUDA/OptiX sulla RTX 4070 Ti SUPER sono riusciti; i kernel HIP sono compilati e verificati nel pacchetto, senza test su hardware AMD. Consultare BUILD_WINDOWS.md per hash e limiti.
+
+## GPU locali (2026-11-14)
+
+- Conservare CUDA, OptiX e HIP abilitati e i kernel CUDA/HIP precompilati inclusi. Gli SDK separati e `bmax-hip-parallel.props` sono in `toolchains` sotto ciascuna build. Usare i comandi correnti in BUILD_WINDOWS.md; le vecchie configurazioni con OptiX/kernel OFF sono storiche.
+- Il parallelismo HIP è limitato a 4 comandi per versione tramite la proprietà MSBuild; C++ resta a parallelismo 2 con CL_MPCount=2. Nessun driver o ambiente di sistema è stato modificato.

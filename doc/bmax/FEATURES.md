@@ -1,5 +1,25 @@
 # Bmax feature inventory
 
+**Source publication, November 14:** the verified 5.2.4 integration is commit `e71eadef0c3bbd1669a5a95d845188ef21ff8873` on `codex/bmax-5.2.4`. GPU build requirements and the verified local runtimes are documented below. Source publication preserves the installed binary hashes and does not replace Desktop copies or public binary downloads. Earlier statements about uncommitted work describe the pre-publication audit.
+
+## Local GPU runtimes, November 14
+
+Current local runtime: **Bmax 5.2.4 LTS**, `D:\blender_build\bmax5.2.3\bin\blender.exe`.
+CUDA and OptiX detect the RTX 4070 Ti SUPER and pass real GPU-only renders;
+OptiX denoising also passes. Precompiled HIP kernels are included for
+18 AMD architectures. AMD hardware rendering remains untested.
+The 5.2.4 production delta and Windows dependencies are integrated on local
+`codex/bmax-5.2.4`; see [integration audit](blender_5_2_4_sync.md).
+See [current build configuration and executable audit](BUILD_WINDOWS.md#cuda-optix-and-hip-rebuild-524-upgrade-2026-11-14).
+Desktop/public packages are unchanged. Source and documentation updates are local;
+no new commit or push was requested. Earlier build/version records below are historical.
+
+**Local rebuild paths, November 13:** the current installed runtime for this checkout
+is `D:\blender_build\bmax5.2.3\bin\blender.exe`, rebuilt cleanly from `48ae2926` with the same
+published feature implementation. Separate background and OpenGL/Vulkan smoke checks
+passed. See [current build paths and executable audit](BUILD_WINDOWS.md#named-local-build-directories-2026-11-13).
+Earlier build paths and hashes in the historical entries remain unchanged.
+
 **November 13 source revision:** [5d9e2cfe](https://github.com/MaxPuliero/Bmax/commit/5d9e2cfe5d6219d2dc6e63da8c8bd0e9aa6ca856) on `codex/bmax-5.2.3` implements
 Shift-held Smooth/Blur and global numeric editing, including the Windows numpad
 case. Both version branches have separate implementation and documentation commits.
