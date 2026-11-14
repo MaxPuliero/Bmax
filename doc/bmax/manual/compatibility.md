@@ -31,6 +31,8 @@ This selection applies to the project-save confirmation. The separate close-file
 prompt, Image > Save All Modified, and the Always/Never preference retain their
 existing behavior. Save As still opens its normal file browser after confirmation.
 
+<img src="../media/modified_images_save_prompt.png" alt="Modified Images save prompt with three packed textures, individual selections and Save and Cancel buttons" width="659">
+
 ## Save a copy for official Blender
 
 Choose **File > Save as Official…**. The command creates a separate file while leaving your open project, filename and editable data in place.

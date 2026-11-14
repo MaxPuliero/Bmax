@@ -1,5 +1,180 @@
 # Building Bmax on Windows
 
+**Source publication, November 14:** verified 5.2.4 integration: `07ba31a998015f79cb13eff22bd4d56bc57d1fae` on `codex/bmax-5.2.4`. GPU requirements and local runtime hashes are documented below. Desktop/public binary packages remain unchanged. Earlier uncommitted-status statements describe the pre-publication audit.
+
+## CUDA, OptiX and HIP rebuild; 5.2.4 upgrade (2026-11-14)
+
+Both local Release INSTALL builds succeeded. Current runtimes are **Bmax 5.2.4 LTS**
+and **Bmax 5.3.0**. The November 13 commands below are historical: they explicitly
+omit GPU kernels and disable OptiX, causing NVIDIA/AMD device discovery to fail
+when no matching compiler is installed. Use the configuration in this section.
+
+The 5.2 checkout integrates official `v5.2.4` (`cd5dc428cce1993a4b35986f227c6a24e42a365c`)
+on local branch `codex/bmax-5.2.4`, starting from Bmax `48ae2926`. See
+`D:\blender_prj\doc\bmax\blender_5_2_4_sync.md` in the 5.2 checkout.
+Its Windows libraries are pinned to `578ab7d2b549385552fa4c9145dfed2b7d30bdae`.
+The 5.3 feature source remains `b70c7ea0` on `codex/bmax-5.3`, with its separate
+`4d0478217fd7f53e785cdbac95de8f726f35cd55` Windows libraries.
+The historical cache/install directory name `bmax5.2.3` is retained for 5.2.4;
+CMake caches are not moved. No DNA/shared C++ structure header changed in the
+5.2.4 delta. Existing caches were retained and affected components rebuilt.
+
+### Toolchains
+
+Each build has independent copies under `toolchains`:
+
+- `cuda-12.8.1`: NVIDIA nvcc 12.8.93, cudart and CCCL from the
+  [official 12.8.1 redistribution manifest](https://developer.download.nvidia.com/compute/cuda/redist/redistrib_12.8.1.json).
+  Archive SHA-256 values were verified. The manifest is retained in the toolchain.
+- `optix-9.0.0`: headers from [NVIDIA's v9.0.0 tag](https://github.com/NVIDIA/optix-dev/tree/v9.0.0).
+- `hip-7.1.1`: HIP 7.1.51803-d3a86bd04, matching Blender's Windows release-toolchain
+  reference. The [official AMD package](https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-26.Q1-Win11-For-HIP.exe)
+  had a valid Advanced Micro Devices signature. Only SDKCore was extracted using
+  an MSI administrative image. No AMD/NVIDIA driver was installed or changed.
+  Installer hash and origin are retained in `bmax-sdk-source.json`.
+
+CUDA/OptiX/HIP and both CUDA/HIP binary packaging options are ON. Default full
+architecture lists are retained. HIP-RT, oneAPI and their existing configuration
+remain unchanged; HIP-RT and oneAPI are disabled in these local builds.
+
+### Configure and build
+
+Use forward slashes in CMake cache paths. Before using the commands below,
+create `toolchains/bmax-hip-parallel.props` in **each** build with this content:
+
+```xml
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup Condition="'$(MSBuildProjectName)' == 'cycles_kernel_hip'">
+    <CustomBuild>
+      <BuildInParallel>true</BuildInParallel>
+      <MaxProcesses>4</MaxProcesses>
+      <MaxItemsInBatch>1</MaxItemsInBatch>
+    </CustomBuild>
+  </ItemDefinitionGroup>
+</Project>
+```
+
+The override applies only to `cycles_kernel_hip`, allowing at most four independent
+HIP commands per version. Native C++ remains at project parallelism 2 and
+`CL_MPCount=2`; CUDA kernels remain serial. MSBuild dependency checks preserve
+kernel/compression ordering. The active HIP compiler commands were checked to
+retain their original source, architecture and optimization flags.
+
+```powershell
+$pairs = @(
+  @('D:/blender_prj', 'D:/blender_build/bmax5.2.3'),
+  @('D:/blender_prj_5.3', 'D:/blender_build/Bmax5.3')
+)
+foreach ($pair in $pairs) {
+  $src = $pair[0]
+  $build = $pair[1]
+  cmake -S $src -B $build -G "Visual Studio 17 2022" -A x64 -T v143 `
+    -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF `
+    -DWITH_CUDA_DYNLOAD=ON -DWITH_CYCLES_DEVICE_CUDA=ON `
+    -DWITH_CYCLES_DEVICE_OPTIX=ON -DWITH_CYCLES_DEVICE_HIP=ON `
+    -DWITH_CYCLES_CUDA_BINARIES=ON -DWITH_CYCLES_HIP_BINARIES=ON `
+    -DWITH_CYCLES_CUDA_BUILD_SERIAL=ON `
+    "-DCUDA_TOOLKIT_ROOT_DIR=$build/toolchains/cuda-12.8.1" `
+    "-DCUDA_NVCC_EXECUTABLE=$build/toolchains/cuda-12.8.1/bin/nvcc.exe" `
+    '-DCUDA_HOST_COMPILER=C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe' `
+    "-DOPTIX_ROOT_DIR=$build/toolchains/optix-9.0.0" `
+    "-DHIP_ROOT_DIR=$build/toolchains/hip-7.1.1" `
+    "-DHIP_HIPCC_EXECUTABLE=$build/toolchains/hip-7.1.1/bin/hipcc.exe" `
+    "-DCMAKE_INSTALL_PREFIX=$build/bin"
+  if ($LASTEXITCODE -ne 0) { throw "Configuration failed: $build" }
+  cmake --build $build --config Release --target INSTALL --parallel 2 -- `
+    /p:CL_MPCount=2 "/p:ForceImportBeforeCppTargets=$build/toolchains/bmax-hip-parallel.props"
+  if ($LASTEXITCODE -ne 0) { throw "Build failed: $build" }
+}
+```
+
+Keep the toolchains, `.props` files, compiled kernels, build caches and complete
+installed runtimes. The executable alone is insufficient for distribution.
+
+### Installed executable audit
+
+Installed executables match `bin/Release/blender.exe` byte-for-byte.
+
+| Version | Installed executable | Bytes | Timestamp (JST) |
+| --- | --- | ---: | --- |
+| 5.2.4 LTS | `D:\blender_build\bmax5.2.3\bin\blender.exe` | 98,243,072 | 2026-11-14T13:17:43+09:00 |
+| 5.3.0 | `D:\blender_build\Bmax5.3\bin\blender.exe` | 111,097,856 | 2026-11-14T13:21:14+09:00 |
+
+SHA-256:
+
+- **5.2.4 LTS**: `E92EC0E9C6B6EF8BEA978608466B966F21FEC9B4ADAAD525B57B58746F0B2EE0`.
+- **5.3.0**: `4F35F28C2C58365AC6442FF60675F3EAFB8875009B9F32C439ACE5CCB393EFD0`.
+
+All **73 installed compressed GPU kernels** match their build outputs by SHA-256:
+5.2.4 has 8 CUDA, 9 OptiX and 18 HIP files; 5.3 has 8 CUDA, 11 OptiX and 19 HIP files.
+The CUDA count includes the generic PTX fallback.
+
+### Verification and scope
+
+Both runtimes expose CUDA, OptiX and HIP in Cycles. NVIDIA GeForce RTX 4070 Ti SUPER,
+driver 621.24, is detected through CUDA and OptiX. Four real 64x64, four-sample renders
+passed, with GPU explicitly selected and CPU excluded. CUDA logs confirm use of
+precompiled kernels; OptiX logs confirm OptiX BVH construction, and both OptiX renders
+also used OptiX denoising. Saved pixels are finite and nonuniform. These are smoke
+checks, not performance benchmarks.
+
+The 5.2.4 runtime reads an actual 5.2.3 Bmax fixture, preserving custom bone radius,
+axis size and display settings. Its 98 evaluated Multires vertices and 384 standard
+interpolated color samples match exactly (maximum error 0.0). Armature unit scales
+1, 0.01 and 10, Octahedral/In Front/Wire defaults, Mesh Holes, snapshot RNA and an
+actual Manifold Boolean passed. Bundled pip 26.2.2 and certifi 2026.10.19 passed.
+INSTALL retains deleted Python files: 59 obsolete bundled files were compared with
+the original dependency commit before removal; user additions were excluded.
+
+AMD hardware is absent: all 37 HIP kernel variants across the two versions compiled
+and their installed files were verified, but AMD device detection/rendering has not been tested.
+The Multires fixture covers evaluated geometry and a standard color attribute;
+custom painted-grid strokes and the full historical feature matrix were not rerun.
+An optional synthetic Shift UI harness also failed against the unchanged 5.2.3
+reference, so no new Shift/UI pass is claimed. The existing Bmax source delta in
+all five shared upgrade files is preserved exactly.
+
+Verification scripts, logs, scenes, images and isolated caches were external to Git
+and removed after checking. User preferences and the open Desktop session were preserved. Desktop copies and public download packages were not
+replaced. Source/documentation changes are local; no new commit or push was requested.
+
+## Named local build directories (2026-11-13)
+
+Current source: [b70c7ea0](https://github.com/MaxPuliero/Bmax/commit/b70c7ea047575eadaeb7c952f64dfc537afee388) on `codex/bmax-5.3`.
+The user requested fresh local builds named `bmax5.2.3` and `Bmax5.3`. The old build
+root was empty at the start, so both versions were configured and compiled from
+scratch; no old cache was moved or reused. Source behavior is unchanged.
+
+| Version | Build/cache directory | Installed executable |
+| --- | --- | --- |
+| 5.2.3 LTS | `D:\blender_build\bmax5.2.3` | `D:\blender_build\bmax5.2.3\bin\blender.exe` |
+| 5.3.0 | `D:\blender_build\Bmax5.3` | `D:\blender_build\Bmax5.3\bin\blender.exe` |
+
+Configuration for this version:
+
+```powershell
+cmake -S D:\blender_prj_5.3 -B D:\blender_build\Bmax5.3 -G "Visual Studio 17 2022" -A x64 -T v143 -DWITH_GTESTS=OFF -DWITH_GPU_DRAW_TESTS=OFF -DWITH_GPU_BACKEND_TESTS=OFF -DWITH_CYCLES_DEVICE_OPTIX=OFF -DWITH_CYCLES_CUDA_BINARIES=OFF -DWITH_CYCLES_HIP_BINARIES=OFF -DWITH_CYCLES_ONEAPI_BINARIES=OFF -DCMAKE_INSTALL_PREFIX=D:\blender_build\Bmax5.3\bin
+cmake --build D:\blender_build\Bmax5.3 --config Release --target INSTALL --parallel 2 -- /p:CL_MPCount=2
+```
+
+Full Release INSTALL succeeded. Installed and Release executables match:
+**110,998,528 bytes**, **2026-11-13 13:17:16 JST**, SHA-256
+`0F89018155FF44747AC4B00585B3CB586B085B5B33FDB90050CD2AB40AFFD5D0`. Windows dependencies stayed at each version's pinned commit.
+
+Each new runtime passed ten isolated background checks: version, Bmax operators,
+compatibility snapshot option, packaged NumPy, armature defaults and an actual
+Manifold Boolean with finite geometry. OpenGL and Vulkan each passed three graphical
+checks: Shift activates Smooth before a stroke, the header accepts `0.375` from numpad
+events without Unicode, and releasing Shift restores the preceding brush. The two
+versions passed 32 checks in total. These are packaging/smoke checks; they do not
+repeat all historical feature matrices or claim a new performance result.
+
+Scripts, logs, isolated configuration, recovery files and verification caches were
+external and removed after checking. Build caches, dependencies and installed
+runtimes remain. User sessions and Desktop/public packages were preserved. The path
+documentation update is local; no new source commit or push was requested for this
+rebuild. Older paths and executable hashes below are historical records.
+
 **November 13 source revision:** [1439605c](https://github.com/MaxPuliero/Bmax/commit/1439605c1ad6215d2c57c35691cb95f067ca24d1) on `codex/bmax-5.3` contains
 the final implementation audited below. The source and documentation commits do not
 rebuild the installed executable: its pre-commit metadata may still identify an older

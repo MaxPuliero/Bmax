@@ -17,7 +17,17 @@ Browse the [artist guide](doc/bmax/manual/README.md) for practical instructions,
 
 The Blender 5.3 build is compiled and verified locally on `codex/bmax-5.3`. The preserved 5.2.3 source is on `codex/bmax-5.2.3`; the public download has not been replaced with the 5.3 build. See [version separation and validation](doc/bmax/blender_5_3_sync.md).
 
+## Choose which modified images to save
+
+With **Save Modified Images: Ask**, the project-save prompt lists modified images
+and lets you choose which ones to save or pack with the project.
+[Read the saving guide](doc/bmax/manual/compatibility.md#choose-which-modified-images-to-save).
+
+<img src="doc/bmax/media/modified_images_save_prompt.png" alt="Project-save prompt listing modified base color, normal and roughness images with individual save checkboxes" width="659">
+
 ## Get started
+
+Local Windows runtimes rebuilt on November 14 include NVIDIA CUDA/OptiX and AMD HIP kernels. See the [build audit](doc/bmax/BUILD_WINDOWS.md#cuda-optix-and-hip-rebuild-524-upgrade-2026-11-14) for tested hardware and package status. Public downloads are updated separately.
 
 Download and extract the complete Windows package, then run **blender.exe** from its folder. Keep the accompanying files together.
 
@@ -36,3 +46,17 @@ Choose **Help > Report a Bmax Bug**, or visit the [Bmax issue tracker](https://g
 Bmax is an independent Blender build by Max Puliero, based on Blender by the Blender Foundation and its contributors. It is licensed under the GNU General Public License, version 3; see [COPYING](COPYING). Bundled components retain their respective licenses.
 
 For contributors: [development documentation](doc/bmax/DEVELOPMENT.md).
+
+### GPU support in future Windows builds
+
+Keep NVIDIA CUDA and OptiX, AMD HIP, and precompiled GPU kernels enabled:
+`WITH_CYCLES_DEVICE_CUDA=ON`, `WITH_CYCLES_DEVICE_OPTIX=ON`,
+`WITH_CYCLES_DEVICE_HIP=ON`, `WITH_CYCLES_CUDA_BINARIES=ON`, and
+`WITH_CYCLES_HIP_BINARIES=ON`. Prepare the matching CUDA, OptiX and HIP toolchains
+before configuring. Disabling kernel packaging can prevent supported GPUs from
+appearing in Cycles on computers without the compilers installed.
+
+Distribute the complete installed runtime, including `scripts/addons_core/cycles/lib`.
+Verify CUDA/OptiX device detection and GPU rendering, and check that every expected
+HIP kernel is packaged. AMD hardware rendering requires a separate AMD validation.
+Follow the [current Windows build instructions](doc/bmax/BUILD_WINDOWS.md#cuda-optix-and-hip-rebuild-524-upgrade-2026-11-14).

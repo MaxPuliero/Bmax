@@ -1,5 +1,24 @@
 # Bmax feature inventory
 
+**Source publication, November 14:** verified 5.2.4 integration: `07ba31a998015f79cb13eff22bd4d56bc57d1fae` on `codex/bmax-5.2.4`. GPU requirements and local runtime hashes are documented below. Desktop/public binary packages remain unchanged. Earlier uncommitted-status statements describe the pre-publication audit.
+
+## Local GPU runtimes, November 14
+
+Current local runtime: **Bmax 5.3.0**, `D:\blender_build\Bmax5.3\bin\blender.exe`.
+CUDA and OptiX detect the RTX 4070 Ti SUPER and pass real GPU-only renders;
+OptiX denoising also passes. Precompiled HIP kernels are included for
+19 AMD architectures. AMD hardware rendering remains untested.
+The published 5.3 feature implementation is unchanged; the GPU build configuration is updated.
+See [current build configuration and executable audit](BUILD_WINDOWS.md#cuda-optix-and-hip-rebuild-524-upgrade-2026-11-14).
+Desktop/public packages are unchanged. Source and documentation updates are local;
+no new commit or push was requested. Earlier build/version records below are historical.
+
+**Local rebuild paths, November 13:** the current installed runtime for this checkout
+is `D:\blender_build\Bmax5.3\bin\blender.exe`, rebuilt cleanly from `b70c7ea0` with the same
+published feature implementation. Separate background and OpenGL/Vulkan smoke checks
+passed. See [current build paths and executable audit](BUILD_WINDOWS.md#named-local-build-directories-2026-11-13).
+Earlier build paths and hashes in the historical entries remain unchanged.
+
 **November 13 source revision:** [1439605c](https://github.com/MaxPuliero/Bmax/commit/1439605c1ad6215d2c57c35691cb95f067ca24d1) on `codex/bmax-5.3` implements
 Shift-held Smooth/Blur and global numeric editing, including the Windows numpad
 case. Both version branches have separate implementation and documentation commits.

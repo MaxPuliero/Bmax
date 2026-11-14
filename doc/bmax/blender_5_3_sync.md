@@ -1,5 +1,14 @@
 # Blender 5.3 integration and separate versions
 
+**November 14 GPU rebuild:** the local 5.3 runtime now includes CUDA, OptiX and HIP kernels and passes CUDA/OptiX GPU renders on the RTX 4070 Ti SUPER. The separate 5.2 runtime is upgraded to 5.2.4 on local `codex/bmax-5.2.4`, retaining its historical cache name. See [current build audit](BUILD_WINDOWS.md#cuda-optix-and-hip-rebuild-524-upgrade-2026-11-14). No new commit/push or Desktop/public package replacement was requested. Earlier records below describe their original versions.
+
+**Local build names, November 13:** clean rebuilds are installed at
+`D:\blender_build\bmax5.2.3\bin\blender.exe` and
+`D:\blender_build\Bmax5.3\bin\blender.exe`. Source behavior and publication
+revisions are unchanged. Both new packages passed background and OpenGL/Vulkan smoke
+checks. See [current build audit](BUILD_WINDOWS.md#named-local-build-directories-2026-11-13);
+the earlier migration build commands and binary hashes below are historical.
+
 **Current version-branch source, 2026-11-13:** Shift-held smoothing brushes and
 numeric entry, including Shift+numpad without Unicode, are implemented in
 [`5d9e2cfe`](https://github.com/MaxPuliero/Bmax/commit/5d9e2cfe5d6219d2dc6e63da8c8bd0e9aa6ca856)
@@ -22,8 +31,8 @@ Release compilation and INSTALL succeeded in the separate 5.3 build tree. The ne
 
 | Version | Git branch | Source | Build / installed executable |
 | --- | --- | --- | --- |
-| Preserved Bmax 5.2.3 LTS | `codex/bmax-5.2.3` (`361ec41e`); `main` remains unchanged | `D:\blender_prj` | `D:\blender_build\octahedral_radius\bin\blender.exe` |
-| Bmax 5.3.0 port | `codex/bmax-5.3` | `D:\blender_prj_5.3` | `D:\blender_build\bmax_5.3\bin\blender.exe` |
+| Preserved Bmax 5.2.3 LTS | `codex/bmax-5.2.3` (`361ec41e`); `main` remains unchanged | `D:\blender_prj` | `D:\blender_build\bmax5.2.3\bin\blender.exe` |
+| Bmax 5.3.0 port | `codex/bmax-5.3` | `D:\blender_prj_5.3` | `D:\blender_build\Bmax5.3\bin\blender.exe` |
 
 Linked worktrees share Git objects, but have separate branches, indexes, source files, Windows library checkouts, CMake caches and install prefixes. Never reconfigure the existing 5.2.3 build for 5.3. Its historical build directory name is retained. The repository's existing agent instructions describe the preserved 5.2.3 setup; this document records the new 5.3 paths and status without changing those instructions.
 
